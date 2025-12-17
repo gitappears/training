@@ -1,1 +1,158 @@
-// app global css in SCSS form
+// Estilos globales del proyecto
+// Aquí definimos una base moderna y suavizada para la UI
+
+body {
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  background: radial-gradient(circle at top left, #eef2ff 0, #f9fafb 40%, #e5e7eb 100%);
+  color: #0f172a;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+// Suavizar las páginas principales de Quasar
+.q-page {
+  padding: 24px;
+}
+
+// Contenedores / tarjetas principales
+.card-elevated,
+.q-card {
+  border-radius: 18px;
+  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.12);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(14px);
+}
+
+// Botones principales
+.btn-primary,
+.q-btn--standard.q-btn--rectangle.q-btn--actionable.q-btn--dense.q-btn--round,
+.q-btn.bg-primary {
+  border-radius: 999px; // pill
+  box-shadow: 0 12px 30px rgba(79, 70, 229, 0.35);
+  transition:
+    transform 0.15s ease-out,
+    box-shadow 0.15s ease-out,
+    background-color 0.15s ease-out;
+}
+
+.btn-primary:hover,
+.q-btn.bg-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 18px 40px rgba(79, 70, 229, 0.45);
+}
+
+.btn-primary:active,
+.q-btn.bg-primary:active {
+  transform: translateY(0);
+  box-shadow: 0 8px 20px rgba(79, 70, 229, 0.35);
+}
+
+// Inputs y campos de formulario
+.q-field__control {
+  border-radius: 999px;
+}
+
+.q-field--outlined .q-field__control {
+  border-radius: 14px;
+}
+
+.q-input,
+.q-select,
+.q-field {
+  font-size: 0.95rem;
+}
+
+// Cabeceras de secciones
+.heading-main {
+  font-size: 1.5rem;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  color: #0f172a;
+}
+
+.heading-sub {
+  font-size: 0.95rem;
+  color: #6b7280;
+}
+
+// Scroll suave y minimal
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.8) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: rgba(148, 163, 184, 0.9);
+  border-radius: 999px;
+}
+
+// Pequeñas transiciones globales
+.q-btn,
+.q-card,
+.q-item,
+.q-field {
+  transition:
+    background-color 0.15s ease-out,
+    box-shadow 0.15s ease-out,
+    border-color 0.15s ease-out;
+}
+
+// Drawer y header suaves
+.app-header {
+  box-shadow: 0 14px 40px rgba(15, 23, 42, 0.06);
+  backdrop-filter: blur(12px);
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.app-toolbar {
+  min-height: 72px;
+}
+
+.app-drawer {
+  background: rgba(255, 255, 255, 0.96);
+  color: #0f172a;
+  backdrop-filter: blur(10px);
+}
+
+.app-drawer .q-item__label--caption {
+  color: #6b7280;
+}
+
+.nav-item {
+  margin-bottom: 4px;
+  border-radius: 12px;
+  color: #0f172a;
+}
+
+.nav-item.q-router-link--exact-active,
+.nav-item.q-item--active {
+  background: rgba(79, 70, 229, 0.12);
+  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.08);
+}
+
+.nav-item.q-router-link--exact-active .q-icon,
+.nav-item.q-item--active .q-icon {
+  color: #4f46e5;
+}
+
+.nav-item:hover {
+  background: rgba(148, 163, 184, 0.18);
+}

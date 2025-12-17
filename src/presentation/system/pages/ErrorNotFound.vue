@@ -19,5 +19,5 @@
 </template>
 
 <script setup lang="ts">
-//
+// Página de error en capa de presentación
 </script>
