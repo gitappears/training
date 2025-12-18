@@ -38,6 +38,8 @@ export interface TrainingReview {
   createdAt: string;
 }
 
+export type TrainingStatus = 'active' | 'inactive' | 'draft' | 'published' | 'finished' | 'cancelled';
+
 export interface Training {
   id: string;
   title: string;
@@ -55,6 +57,7 @@ export interface Training {
   capacity?: number;
   studentsCount: number;
   averageRating: number;
+  status?: TrainingStatus;
   sections: TrainingSection[];
   attachments: TrainingAttachment[];
   images: TrainingImage[];

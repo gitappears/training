@@ -1,11 +1,18 @@
 <template>
   <q-page class="q-pa-xl column q-gutter-lg">
-    <div class="row q-col-gutter-lg">
+    <q-inner-loading :showing="loading" />
+
+    <div v-if="!training && !loading" class="text-center q-pa-xl">
+      <q-icon name="error" size="64px" color="negative" class="q-mb-md" />
+      <div class="text-h6 text-grey-7">Capacitación no encontrada</div>
+    </div>
+
+    <div v-else-if="training" class="row q-col-gutter-lg">
       <div class="col-12 col-md-8">
         <div class="text-caption text-grey-7 q-mb-xs">Capacitación</div>
         <div class="text-h5 q-mb-xs">{{ training.title }}</div>
         <div class="text-caption text-grey-7 q-mb-sm">
-          {{ training.area }} · {{ trainingModalityLabel }} · {{ training.durationHours }} h
+          {{ training.area }} · {{ trainingModalityLabel }} · {{ training.durationHours || 0 }} h
         </div>
         <div class="row items-center q-gutter-sm q-mb-md">
           <q-avatar size="32px" color="primary" text-color="white">
@@ -36,12 +43,17 @@
           <q-tab-panel name="overview">
             <div class="q-mt-md">
               <div class="text-subtitle1 q-mb-sm">Descripción</div>
-              <div class="text-body2 text-grey-8">{{ training.description }}</div>
+              <div class="text-body2 text-grey-8">
+                {{ training.description || 'Sin descripción' }}
+              </div>
             </div>
           </q-tab-panel>
 
           <q-tab-panel name="content">
             <div class="q-mt-md column q-gutter-sm">
+              <div v-if="training.sections.length === 0" class="text-center q-pa-md text-grey-6">
+                No hay secciones disponibles
+              </div>
               <q-expansion-item
                 v-for="section in training.sections"
                 :key="section.id"
@@ -55,12 +67,28 @@
           <q-tab-panel name="students">
             <div class="q-mt-md">
               <div class="text-subtitle1 q-mb-sm">Estudiantes inscritos</div>
-              <q-table :rows="training.students" :columns="studentColumns" row-key="id" flat dense>
+              <div v-if="training.students.length === 0" class="text-center q-pa-md text-grey-6">
+                No hay estudiantes inscritos
+              </div>
+              <q-table
+                v-else
+                :rows="training.students"
+                :columns="studentColumns"
+                row-key="id"
+                flat
+                dense
+              >
                 <template #body-cell-progress="props">
                   <q-linear-progress :value="props.row.progress" rounded size="10px" />
                 </template>
                 <template #body-cell-score="props">
-                  <q-input v-model.number="props.row.score" dense type="number" min="1" max="100" />
+                  <q-input
+                    v-model.number="props.row.score"
+                    dense
+                    type="number"
+                    min="1"
+                    max="100"
+                  />
                 </template>
                 <template #body-cell-rating="props">
                   <q-rating v-model="props.row.rating" max="5" size="16px" color="amber" />
@@ -73,7 +101,10 @@
             <div class="q-mt-md column q-gutter-md">
               <div>
                 <div class="text-subtitle1 q-mb-xs">Adjuntos</div>
-                <q-list bordered separator>
+                <div v-if="training.attachments.length === 0" class="text-center q-pa-md text-grey-6">
+                  No hay adjuntos disponibles
+                </div>
+                <q-list v-else bordered separator>
                   <q-item
                     v-for="att in training.attachments"
                     :key="att.id"
@@ -105,7 +136,10 @@
                 </div>
               </div>
               <q-separator spaced />
-              <q-timeline color="primary" layout="comfortable" side="right">
+              <div v-if="training.reviews.length === 0" class="text-center q-pa-md text-grey-6">
+                No hay reseñas disponibles
+              </div>
+              <q-timeline v-else color="primary" layout="comfortable" side="right">
                 <q-timeline-entry
                   v-for="review in training.reviews"
                   :key="review.id"
@@ -124,7 +158,10 @@
 
       <div class="col-12 col-md-4">
         <q-card flat bordered>
-          <q-img :src="training.coverImageUrl" :ratio="16 / 9" />
+          <q-img
+            :src="training.coverImageUrl || 'https://via.placeholder.com/800x450?text=Sin+imagen'"
+            :ratio="16 / 9"
+          />
           <q-card-section>
             <div class="text-subtitle1 q-mb-xs">{{ training.title }}</div>
             <div class="row items-center q-gutter-xs q-mb-sm">
@@ -135,8 +172,9 @@
             <q-btn
               color="primary"
               unelevated
-              label="Inscribir estudiante (mock)"
+              label="Inscribir estudiante"
               class="full-width"
+              @click="() => {}"
             />
           </q-card-section>
         </q-card>
@@ -146,79 +184,52 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
-import { useRoute } from 'vue-router';
+import { ref, computed, onMounted } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import { useQuasar } from 'quasar';
 import type { QTableColumn } from 'quasar';
 import type { Training, TrainingStudent } from '../../../domain/training/models';
+import { TrainingUseCasesFactory } from '../../../application/training/training.use-cases.factory';
+import { trainingsService } from '../../../infrastructure/http/trainings/trainings.service';
 
 const route = useRoute();
+const router = useRouter();
+const $q = useQuasar();
 const tab = ref<'overview' | 'content' | 'students' | 'resources' | 'reviews'>('overview');
 
-const trainingId = route.params.id as string;
+const trainingId = parseInt(route.params.id as string);
+const training = ref<Training | null>(null);
+const loading = ref(false);
 
-const training = ref<Training>({
-  id: trainingId,
-  title: 'Onboarding nuevos colaboradores',
-  description: 'Conoce la cultura, procesos y herramientas clave de la compañía.',
-  type: 'standard',
-  modality: 'online',
-  coverImageUrl:
-    'https://images.pexels.com/photos/1181671/pexels-photo-1181671.jpeg?auto=compress&cs=tinysrgb&w=800',
-  promoVideoUrl: '',
-  instructor: 'Equipo de Personas',
-  area: 'RRHH',
-  targetAudience: 'Todos los colaboradores',
-  startDate: '2025-01-10',
-  endDate: '2025-01-31',
-  durationHours: 4,
-  capacity: 200,
-  studentsCount: 152,
-  averageRating: 4.7,
-  sections: [
-    {
-      id: 's1',
-      title: 'Bienvenida y cultura',
-      description: '',
-      lessonsCount: 4,
-      durationMinutes: 35,
-    },
-    { id: 's2', title: 'Procesos clave', description: '', lessonsCount: 5, durationMinutes: 50 },
-  ],
-  attachments: [
-    {
-      id: 'a1',
-      type: 'file',
-      label: 'Manual del colaborador (PDF)',
-      url: '#',
-    },
-    {
-      id: 'a2',
-      type: 'link',
-      label: 'Intranet corporativa',
-      url: 'https://intranet.example.com',
-    },
-  ],
-  images: [],
-  students: [
-    { id: 'st1', name: 'Ana Pérez', email: 'ana@example.com', progress: 0.8, score: 90, rating: 5 },
-    {
-      id: 'st2',
-      name: 'Juan López',
-      email: 'juan@example.com',
-      progress: 0.45,
-      score: 70,
-      rating: 4,
-    },
-  ],
-  reviews: [
-    {
-      id: 'r1',
-      studentId: 'st1',
-      rating: 5,
-      comment: 'Excelente introducción, muy clara y amigable.',
-      createdAt: '2025-01-15',
-    },
-  ],
+async function loadTraining() {
+  if (isNaN(trainingId)) {
+    $q.notify({
+      type: 'negative',
+      message: 'ID de capacitación inválido',
+    });
+    void router.push('/trainings');
+    return;
+  }
+
+  loading.value = true;
+  try {
+    const getTrainingUseCase = TrainingUseCasesFactory.getGetTrainingUseCase(trainingsService);
+    training.value = await getTrainingUseCase.execute(trainingId);
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : 'Error al cargar la capacitación';
+    $q.notify({
+      type: 'negative',
+      message: errorMessage,
+    });
+    void router.push('/trainings');
+  } finally {
+    loading.value = false;
+  }
+}
+
+onMounted(() => {
+  void loadTraining();
 });
 
 const modalityLabels: Record<string, string> = {
@@ -240,8 +251,12 @@ function getInstructorInitials(instructor: string): string {
     .toUpperCase();
 }
 
-const trainingModalityLabel = computed(() => getModalityLabel(training.value.modality));
-const trainingInstructorInitials = computed(() => getInstructorInitials(training.value.instructor));
+const trainingModalityLabel = computed(() =>
+  training.value ? getModalityLabel(training.value.modality) : '',
+);
+const trainingInstructorInitials = computed(() =>
+  training.value ? getInstructorInitials(training.value.instructor) : '',
+);
 
 const studentColumns: QTableColumn<TrainingStudent>[] = [
   {

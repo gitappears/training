@@ -33,5 +33,21 @@ export default defineRouter(function (/* { store, ssrContext } */) {
     history: createHistory(process.env.VUE_ROUTER_BASE),
   });
 
+  // Guard de navegación para proteger rutas que requieren autenticación
+  Router.beforeEach((to, from, next) => {
+    const token = localStorage.getItem('auth_token');
+    const requiresAuth = to.matched.some((record) => record.meta.requiresAuth);
+
+    if (requiresAuth && !token) {
+      // Redirigir a login si la ruta requiere autenticación y no hay token
+      next({ name: 'login', query: { redirect: to.fullPath } });
+    } else if (token && (to.name === 'login' || to.name === 'register')) {
+      // Si ya está autenticado, redirigir al home desde login/register
+      next('/');
+    } else {
+      next();
+    }
+  });
+
   return Router;
 });

@@ -1,113 +1,268 @@
 <template>
   <q-layout view="lhh lpR lFf">
-    <q-header elevated class="q-px-lg bg-white text-primary app-header">
-      <q-toolbar class="no-wrap app-toolbar">
+    <!-- Header -->
+    <q-header elevated class="bg-white text-primary app-header">
+      <q-toolbar class="no-wrap app-toolbar q-px-lg">
         <q-btn
           flat
           dense
           round
           icon="menu"
           aria-label="Menú"
-          class="q-mr-sm"
+          class="q-mr-md"
           @click="toggleLeftDrawer"
         />
 
         <q-space />
 
-        <div class="row items-center q-gutter-sm">
-          <q-btn flat round dense icon="notifications" />
-          <q-avatar size="32px">
-            <img src="https://cdn.quasar.dev/img/avatar.png" alt="User" />
-          </q-avatar>
+        <div class="row items-center q-gutter-md">
+          <q-btn flat round dense icon="notifications" class="relative-position">
+            <q-badge v-if="false" color="negative" floating rounded />
+            <q-tooltip>Notificaciones</q-tooltip>
+          </q-btn>
+
+          <q-btn flat round class="q-pa-xs">
+            <q-avatar size="36px" class="cursor-pointer">
+              <img src="https://cdn.quasar.dev/img/avatar.png" alt="User" />
+            </q-avatar>
+            <q-menu
+              anchor="bottom right"
+              self="top right"
+              :offset="[0, 8]"
+              class="q-mt-sm"
+            >
+              <q-list style="min-width: 280px" class="q-pa-sm">
+                <q-item class="q-pa-md">
+                  <q-item-section avatar>
+                    <q-avatar size="48px">
+                      <img src="https://cdn.quasar.dev/img/avatar.png" alt="User" />
+                    </q-avatar>
+                  </q-item-section>
+                  <q-item-section>
+                    <q-item-label class="text-weight-medium">{{ authStore.userFullName || 'Usuario' }}</q-item-label>
+                    <q-item-label caption class="text-grey-7">{{ authStore.profile?.email }}</q-item-label>
+                  </q-item-section>
+                </q-item>
+                <q-separator />
+                <q-item clickable v-close-popup class="q-py-md">
+                  <q-item-section avatar>
+                    <q-icon name="logout" color="negative" size="20px" />
+                  </q-item-section>
+                  <q-item-section>
+                    <q-item-label class="text-weight-medium">Cerrar Sesión</q-item-label>
+                    <q-item-label caption class="text-grey-6">Salir de tu cuenta</q-item-label>
+                  </q-item-section>
+                </q-item>
+              </q-list>
+            </q-menu>
+          </q-btn>
         </div>
       </q-toolbar>
     </q-header>
 
-    <q-drawer v-model="leftDrawerOpen" show-if-above side="left" :width="260" class="app-drawer">
-      <div class="column fit q-pa-md q-gutter-md">
-        <!-- Logo plataforma -->
-        <div class="row items-center q-mb-sm">
-          <q-avatar size="34px" color="primary" text-color="white" class="q-mr-sm"> TD </q-avatar>
-          <div class="column">
-            <span class="text-body2 text-weight-medium">Trainigns DO</span>
-            <span class="text-caption text-grey-6">Plataforma de capacitación</span>
-          </div>
-        </div>
-
-        <div class="text-caption text-grey-5 q-mb-sm">MENÚ PRINCIPAL</div>
-
-        <q-list padding class="q-mb-md">
-          <q-item v-ripple clickable to="/" exact class="rounded-borders nav-item">
-            <q-item-section avatar>
-              <q-icon name="dashboard" />
-            </q-item-section>
-            <q-item-section>
-              <q-item-label>Dashboard</q-item-label>
-              <q-item-label caption>Resumen de capacitación</q-item-label>
-            </q-item-section>
-          </q-item>
-
-          <q-item v-ripple clickable to="/trainings/new" class="rounded-borders nav-item">
-            <q-item-section avatar>
-              <q-icon name="school" />
-            </q-item-section>
-            <q-item-section>
-              <q-item-label>Cursos</q-item-label>
-              <q-item-label caption>Gestión de catálogo</q-item-label>
-            </q-item-section>
-          </q-item>
-
-          <q-item v-ripple clickable class="rounded-borders nav-item">
-            <q-item-section avatar>
-              <q-icon name="people" />
-            </q-item-section>
-            <q-item-section>
-              <q-item-label>Usuarios</q-item-label>
-              <q-item-label caption>Participantes y roles</q-item-label>
-            </q-item-section>
-          </q-item>
-
-          <q-item v-ripple clickable class="rounded-borders nav-item">
-            <q-item-section avatar>
-              <q-icon name="event" />
-            </q-item-section>
-            <q-item-section>
-              <q-item-label>Calendario</q-item-label>
-              <q-item-label caption>Próximas sesiones</q-item-label>
-            </q-item-section>
-          </q-item>
-        </q-list>
-
-        <q-separator dark spaced />
-
-        <div class="text-caption text-grey-5 q-mb-sm">MÉTRICAS</div>
-
-        <q-list padding class="q-mb-md">
-          <q-item v-ripple clickable class="rounded-borders nav-item">
-            <q-item-section avatar>
-              <q-icon name="insights" />
-            </q-item-section>
-            <q-item-section>
-              <q-item-label>Reportes</q-item-label>
-              <q-item-label caption>Desempeño y KPIs</q-item-label>
-            </q-item-section>
-          </q-item>
-        </q-list>
-
-        <q-separator dark spaced />
-
-        <div class="row items-center q-mt-sm">
-          <q-avatar size="32px" class="q-mr-sm">
-            <img src="https://cdn.quasar.dev/img/avatar.png" alt="User" />
+    <!-- Sidebar Navigation -->
+    <q-drawer
+      v-model="leftDrawerOpen"
+      show-if-above
+      side="left"
+      :width="280"
+      :breakpoint="1024"
+      bordered
+      class="app-drawer"
+      :mini="miniState"
+      @mouseover="miniState = false"
+      @mouseout="miniState = false"
+    >
+      <!-- Logo Section -->
+      <div class="drawer-header q-pa-lg">
+        <div class="row items-center no-wrap">
+          <q-avatar
+            size="40px"
+            color="primary"
+            text-color="white"
+            class="q-mr-sm cursor-pointer"
+            @click="$router.push('/')"
+          >
+            <span class="text-weight-bold">TD</span>
           </q-avatar>
-          <div class="column">
-            <span class="text-body2">Admin</span>
-            <span class="text-caption text-grey-5">Plataforma de capacitación</span>
+          <div v-if="!miniState" class="column col">
+            <div class="text-body1 text-weight-bold text-primary">Formar 360</div>
+            <div class="text-caption text-grey-6">Plataforma de capacitación</div>
           </div>
         </div>
       </div>
+
+      <q-scroll-area class="fit drawer-scroll">
+        <q-list padding class="q-pa-sm">
+          <!-- Main Navigation -->
+          <div v-if="!miniState" class="text-uppercase text-caption text-grey-6 q-px-md q-py-sm text-weight-medium">
+            Menú Principal
+          </div>
+
+          <q-item
+            v-ripple
+            clickable
+            to="/"
+            exact
+            class="nav-item q-my-xs"
+            active-class="nav-item-active"
+          >
+            <q-item-section avatar class="q-mr-none">
+              <q-icon name="dashboard" size="22px" />
+            </q-item-section>
+            <q-item-section v-if="!miniState">
+              <q-item-label class="text-weight-medium">Dashboard</q-item-label>
+              <q-item-label caption class="text-grey-6">Resumen de capacitación</q-item-label>
+            </q-item-section>
+            <q-tooltip v-if="miniState" anchor="center right" self="center left" :offset="[10, 0]">
+              Dashboard
+            </q-tooltip>
+          </q-item>
+
+          <q-item
+            v-ripple
+            clickable
+            to="/trainings"
+            class="nav-item q-my-xs"
+            active-class="nav-item-active"
+          >
+            <q-item-section avatar class="q-mr-none">
+              <q-icon name="school" size="22px" />
+            </q-item-section>
+            <q-item-section v-if="!miniState">
+              <q-item-label class="text-weight-medium">Cursos</q-item-label>
+              <q-item-label caption class="text-grey-6">Gestión de catálogo</q-item-label>
+            </q-item-section>
+            <q-tooltip v-if="miniState" anchor="center right" self="center left" :offset="[10, 0]">
+              Cursos
+            </q-tooltip>
+          </q-item>
+
+          <q-item
+            v-ripple
+            clickable
+            to="/users"
+            class="nav-item q-my-xs"
+            active-class="nav-item-active"
+          >
+            <q-item-section avatar class="q-mr-none">
+              <q-icon name="people" size="22px" />
+            </q-item-section>
+            <q-item-section v-if="!miniState">
+              <q-item-label class="text-weight-medium">Usuarios</q-item-label>
+              <q-item-label caption class="text-grey-6">Participantes y roles</q-item-label>
+            </q-item-section>
+            <q-tooltip v-if="miniState" anchor="center right" self="center left" :offset="[10, 0]">
+              Usuarios
+            </q-tooltip>
+          </q-item>
+
+          <q-item
+            v-ripple
+            clickable
+            to="/evaluations"
+            class="nav-item q-my-xs"
+            active-class="nav-item-active"
+          >
+            <q-item-section avatar class="q-mr-none">
+              <q-icon name="quiz" size="22px" />
+            </q-item-section>
+            <q-item-section v-if="!miniState">
+              <q-item-label class="text-weight-medium">Evaluaciones</q-item-label>
+              <q-item-label caption class="text-grey-6">Realizar evaluaciones</q-item-label>
+            </q-item-section>
+            <q-tooltip v-if="miniState" anchor="center right" self="center left" :offset="[10, 0]">
+              Evaluaciones
+            </q-tooltip>
+          </q-item>
+
+          <q-item
+            v-ripple
+            clickable
+            to="/certificates"
+            class="nav-item q-my-xs"
+            active-class="nav-item-active"
+          >
+            <q-item-section avatar class="q-mr-none">
+              <q-icon name="verified" size="22px" />
+            </q-item-section>
+            <q-item-section v-if="!miniState">
+              <q-item-label class="text-weight-medium">Certificados</q-item-label>
+              <q-item-label caption class="text-grey-6">Mis certificados</q-item-label>
+            </q-item-section>
+            <q-tooltip v-if="miniState" anchor="center right" self="center left" :offset="[10, 0]">
+              Certificados
+            </q-tooltip>
+          </q-item>
+
+          <!-- Separator -->
+          <q-separator class="q-my-md" />
+
+          <!-- Metrics Section -->
+          <div v-if="!miniState" class="text-uppercase text-caption text-grey-6 q-px-md q-py-sm text-weight-medium">
+            Métricas
+          </div>
+
+          <q-item
+            v-ripple
+            clickable
+            to="/reports"
+            class="nav-item q-my-xs"
+            active-class="nav-item-active"
+          >
+            <q-item-section avatar class="q-mr-none">
+              <q-icon name="insights" size="22px" />
+            </q-item-section>
+            <q-item-section v-if="!miniState">
+              <q-item-label class="text-weight-medium">Reportes</q-item-label>
+              <q-item-label caption class="text-grey-6">Desempeño y KPIs</q-item-label>
+            </q-item-section>
+            <q-tooltip v-if="miniState" anchor="center right" self="center left" :offset="[10, 0]">
+              Reportes
+            </q-tooltip>
+          </q-item>
+        </q-list>
+      </q-scroll-area>
+
+      <!-- User Profile Footer -->
+      <div class="drawer-footer q-pa-md">
+        <q-separator class="q-mb-md" />
+        <div v-if="!miniState" class="row items-center q-mb-md">
+          <q-avatar size="40px" class="q-mr-sm">
+            <img src="https://cdn.quasar.dev/img/avatar.png" alt="User" />
+          </q-avatar>
+          <div class="column col">
+            <span class="text-body2 text-weight-medium">{{ authStore.userFullName || 'Usuario' }}</span>
+            <span class="text-caption text-grey-6">{{ authStore.profile?.email || 'Usuario' }}</span>
+          </div>
+        </div>
+        <q-btn
+          v-if="!miniState"
+          flat
+          unelevated
+          color="negative"
+          icon="logout"
+          label="Cerrar Sesión"
+          class="full-width"
+          @click="handleLogout"
+        />
+        <q-btn
+          v-else
+          flat
+          round
+          color="negative"
+          icon="logout"
+          class="full-width"
+          @click="handleLogout"
+        >
+          <q-tooltip anchor="center right" self="center left" :offset="[10, 0]">
+            Cerrar Sesión
+          </q-tooltip>
+        </q-btn>
+      </div>
     </q-drawer>
 
+    <!-- Main Content -->
     <q-page-container>
       <router-view />
     </q-page-container>
@@ -116,10 +271,149 @@
 
 <script setup lang="ts">
 import { ref } from 'vue';
+import { useRouter } from 'vue-router';
+import { useQuasar } from 'quasar';
+import { useAuthStore } from '../../stores/auth.store';
+
+const router = useRouter();
+const $q = useQuasar();
+const authStore = useAuthStore();
 
 const leftDrawerOpen = ref(true);
+const miniState = ref(false);
 
 function toggleLeftDrawer() {
   leftDrawerOpen.value = !leftDrawerOpen.value;
 }
+
+function handleLogout() {
+  authStore.logout();
+  $q.notify({
+    type: 'info',
+    message: 'Sesión cerrada exitosamente',
+    position: 'top',
+  });
+  void router.push('/auth/login');
+}
 </script>
+
+<style lang="scss" scoped>
+.app-header {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.95) !important;
+}
+
+.app-toolbar {
+  min-height: 64px;
+}
+
+.app-drawer {
+  background: #ffffff !important;
+  border-right: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.04);
+}
+
+.drawer-header {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  background: linear-gradient(135deg, rgba(79, 70, 229, 0.02) 0%, rgba(255, 255, 255, 1) 100%);
+}
+
+.drawer-scroll {
+  height: calc(100vh - 200px);
+}
+
+.drawer-footer {
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  background: rgba(249, 250, 251, 0.8);
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+}
+
+.nav-item {
+  border-radius: 12px;
+  margin: 2px 8px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+
+  &:before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: transparent;
+    transition: background 0.2s ease;
+  }
+
+  .q-item__section--avatar {
+    min-width: 40px;
+    justify-content: center;
+  }
+
+  .q-icon {
+    transition: all 0.2s ease;
+  }
+
+  &:hover {
+    background: rgba(79, 70, 229, 0.08);
+    transform: translateX(2px);
+
+    .q-icon {
+      color: #4f46e5;
+      transform: scale(1.1);
+    }
+  }
+}
+
+.nav-item-active {
+  background: linear-gradient(135deg, rgba(79, 70, 229, 0.12) 0%, rgba(79, 70, 229, 0.06) 100%);
+  color: #4f46e5;
+  font-weight: 600;
+
+  &:before {
+    background: #4f46e5;
+  }
+
+  .q-icon {
+    color: #4f46e5;
+  }
+
+  .q-item__label {
+    color: #4f46e5;
+    font-weight: 600;
+  }
+
+  .q-item__label--caption {
+    color: rgba(79, 70, 229, 0.7);
+  }
+}
+
+// Responsive adjustments
+@media (max-width: 1023px) {
+  .app-drawer {
+    box-shadow: 4px 0 16px rgba(0, 0, 0, 0.12);
+  }
+}
+
+// Smooth scrollbar
+.drawer-scroll :deep(.q-scrollarea__thumb) {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+  width: 6px;
+}
+
+.drawer-scroll :deep(.q-scrollarea__bar) {
+  opacity: 0.3;
+  transition: opacity 0.3s;
+}
+
+.drawer-scroll:hover :deep(.q-scrollarea__bar) {
+  opacity: 1;
+}
+</style>
