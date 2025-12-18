@@ -12,10 +12,7 @@
           @click="toggleLeftDrawer"
         />
 
-        <q-toolbar-title class="row items-center">
-          <q-avatar size="28px" color="primary" text-color="white" class="q-mr-sm"> TD </q-avatar>
-          <span class="text-weight-medium">Trainigns DO</span>
-        </q-toolbar-title>
+        <q-space />
 
         <div class="row items-center q-gutter-sm">
           <q-btn flat round dense icon="notifications" />
@@ -50,7 +47,7 @@
             </q-item-section>
           </q-item>
 
-          <q-item v-ripple clickable class="rounded-borders nav-item">
+          <q-item v-ripple clickable to="/trainings/new" class="rounded-borders nav-item">
             <q-item-section avatar>
               <q-icon name="school" />
             </q-item-section>
