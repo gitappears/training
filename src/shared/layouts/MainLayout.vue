@@ -1,7 +1,7 @@
 <template>
   <q-layout view="lhh lpR lFf">
     <!-- Header -->
-    <q-header elevated class="bg-white text-primary app-header">
+    <q-header elevated :class="themeStore.isDark ? 'bg-dark text-white' : 'bg-white text-primary'" class="app-header">
       <q-toolbar class="no-wrap app-toolbar q-px-lg">
         <q-btn
           flat
@@ -16,6 +16,18 @@
         <q-space />
 
         <div class="row items-center q-gutter-md">
+          <!-- Toggle Dark Mode -->
+          <q-btn
+            flat
+            round
+            dense
+            :icon="themeStore.isDark ? 'light_mode' : 'dark_mode'"
+            class="relative-position"
+            @click="themeStore.toggleTheme()"
+          >
+            <q-tooltip>{{ themeStore.isDark ? 'Modo Claro' : 'Modo Oscuro' }}</q-tooltip>
+          </q-btn>
+
           <q-btn flat round dense icon="notifications" class="relative-position">
             <q-badge v-if="false" color="negative" floating rounded />
             <q-tooltip>Notificaciones</q-tooltip>
@@ -44,7 +56,7 @@
                   </q-item-section>
                 </q-item>
                 <q-separator />
-                <q-item clickable v-close-popup class="q-py-md">
+                <q-item clickable v-close-popup class="q-py-md" @click="handleLogout">
                   <q-item-section avatar>
                     <q-icon name="logout" color="negative" size="20px" />
                   </q-item-section>
@@ -270,14 +282,26 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 import { useAuthStore } from '../../stores/auth.store';
+import { useThemeStore } from '../../stores/theme.store';
 
 const router = useRouter();
 const $q = useQuasar();
 const authStore = useAuthStore();
+const themeStore = useThemeStore();
+
+// Sincronizar el tema con el body
+watch(
+  () => themeStore.isDark,
+  (isDark) => {
+    document.body.classList.toggle('body--dark', isDark);
+    document.body.classList.toggle('body--light', !isDark);
+  },
+  { immediate: true },
+);
 
 const leftDrawerOpen = ref(true);
 const miniState = ref(false);
@@ -302,7 +326,18 @@ function handleLogout() {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   border-bottom: 1px solid rgba(0, 0, 0, 0.06);
   backdrop-filter: blur(10px);
+  transition: background-color 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+}
+
+body.body--light .app-header {
   background: rgba(255, 255, 255, 0.95) !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+body.body--dark .app-header {
+  background: rgba(30, 27, 75, 0.95) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
 .app-toolbar {
@@ -310,14 +345,35 @@ function handleLogout() {
 }
 
 .app-drawer {
-  background: #ffffff !important;
   border-right: 1px solid rgba(0, 0, 0, 0.08);
   box-shadow: 2px 0 8px rgba(0, 0, 0, 0.04);
+  transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+body.body--light .app-drawer {
+  background: #ffffff !important;
+  border-right: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+body.body--dark .app-drawer {
+  background: #1e1b4b !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.3);
 }
 
 .drawer-header {
   border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  transition: background 0.3s ease, border-color 0.3s ease;
+}
+
+body.body--light .drawer-header {
   background: linear-gradient(135deg, rgba(79, 70, 229, 0.02) 0%, rgba(255, 255, 255, 1) 100%);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+body.body--dark .drawer-header {
+  background: linear-gradient(135deg, rgba(79, 70, 229, 0.1) 0%, rgba(30, 27, 75, 1) 100%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .drawer-scroll {
@@ -326,11 +382,21 @@ function handleLogout() {
 
 .drawer-footer {
   border-top: 1px solid rgba(0, 0, 0, 0.06);
-  background: rgba(249, 250, 251, 0.8);
   position: absolute;
   bottom: 0;
   left: 0;
   right: 0;
+  transition: background 0.3s ease, border-color 0.3s ease;
+}
+
+body.body--light .drawer-footer {
+  background: rgba(249, 250, 251, 0.8);
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+body.body--dark .drawer-footer {
+  background: rgba(15, 23, 42, 0.8);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .nav-item {

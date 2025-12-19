@@ -11,10 +11,21 @@ body {
   margin: 0;
   padding: 0;
   min-height: 100vh;
-  background: radial-gradient(circle at top left, #eef2ff 0, #f9fafb 40%, #e5e7eb 100%);
-  color: #0f172a;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+// Modo claro
+body.body--light {
+  background: radial-gradient(circle at top left, #eef2ff 0, #f9fafb 40%, #e5e7eb 100%);
+  color: #0f172a;
+}
+
+// Modo oscuro
+body.body--dark {
+  background: radial-gradient(circle at top left, #1e1b4b 0, #0f172a 40%, #020617 100%);
+  color: #f1f5f9;
 }
 
 // Suavizar las páginas principales de Quasar
@@ -26,9 +37,22 @@ body {
 .card-elevated,
 .q-card {
   border-radius: 18px;
+  transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+body.body--light .card-elevated,
+body.body--light .q-card {
   box-shadow: 0 18px 45px rgba(15, 23, 42, 0.12);
   border: 1px solid rgba(148, 163, 184, 0.25);
   background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(14px);
+}
+
+body.body--dark .card-elevated,
+body.body--dark .q-card {
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  background: rgba(30, 27, 75, 0.8);
   backdrop-filter: blur(14px);
 }
 
@@ -76,18 +100,41 @@ body {
   font-size: 1.5rem;
   font-weight: 600;
   letter-spacing: -0.03em;
+  transition: color 0.3s ease;
+}
+
+body.body--light .heading-main {
   color: #0f172a;
+}
+
+body.body--dark .heading-main {
+  color: #f1f5f9;
 }
 
 .heading-sub {
   font-size: 0.95rem;
+  transition: color 0.3s ease;
+}
+
+body.body--light .heading-sub {
   color: #6b7280;
+}
+
+body.body--dark .heading-sub {
+  color: #94a3b8;
 }
 
 // Scroll suave y minimal
 * {
   scrollbar-width: thin;
+}
+
+body.body--light * {
   scrollbar-color: rgba(148, 163, 184, 0.8) transparent;
+}
+
+body.body--dark * {
+  scrollbar-color: rgba(148, 163, 184, 0.4) transparent;
 }
 
 *::-webkit-scrollbar {
@@ -99,8 +146,13 @@ body {
   background: transparent;
 }
 
-*::-webkit-scrollbar-thumb {
+body.body--light *::-webkit-scrollbar-thumb {
   background-color: rgba(148, 163, 184, 0.9);
+  border-radius: 999px;
+}
+
+body.body--dark *::-webkit-scrollbar-thumb {
+  background-color: rgba(148, 163, 184, 0.4);
   border-radius: 999px;
 }
 
@@ -117,9 +169,18 @@ body {
 
 // Drawer y header suaves
 .app-header {
-  box-shadow: 0 14px 40px rgba(15, 23, 42, 0.06);
   backdrop-filter: blur(12px);
+  transition: background-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+body.body--light .app-header {
+  box-shadow: 0 14px 40px rgba(15, 23, 42, 0.06);
   background: rgba(255, 255, 255, 0.9);
+}
+
+body.body--dark .app-header {
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.3);
+  background: rgba(30, 27, 75, 0.9);
 }
 
 .app-toolbar {
@@ -127,27 +188,56 @@ body {
 }
 
 .app-drawer {
-  background: rgba(255, 255, 255, 0.96);
-  color: #0f172a;
   backdrop-filter: blur(10px);
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-.app-drawer .q-item__label--caption {
+body.body--light .app-drawer {
+  background: rgba(255, 255, 255, 0.96);
+  color: #0f172a;
+}
+
+body.body--dark .app-drawer {
+  background: rgba(30, 27, 75, 0.96);
+  color: #f1f5f9;
+}
+
+body.body--light .app-drawer .q-item__label--caption {
   color: #6b7280;
+}
+
+body.body--dark .app-drawer .q-item__label--caption {
+  color: #94a3b8;
 }
 
 // Navigation items - mejorados para el nuevo diseño
 .nav-item {
   margin-bottom: 4px;
   border-radius: 12px;
-  color: #0f172a;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+body.body--light .nav-item {
+  color: #0f172a;
+}
+
+body.body--dark .nav-item {
+  color: #f1f5f9;
 }
 
 .nav-item.q-router-link--exact-active,
 .nav-item.q-item--active {
-  background: linear-gradient(135deg, rgba(79, 70, 229, 0.12) 0%, rgba(79, 70, 229, 0.06) 100%);
   box-shadow: 0 2px 8px rgba(79, 70, 229, 0.15);
+}
+
+body.body--light .nav-item.q-router-link--exact-active,
+body.body--light .nav-item.q-item--active {
+  background: linear-gradient(135deg, rgba(79, 70, 229, 0.12) 0%, rgba(79, 70, 229, 0.06) 100%);
+}
+
+body.body--dark .nav-item.q-router-link--exact-active,
+body.body--dark .nav-item.q-item--active {
+  background: linear-gradient(135deg, rgba(79, 70, 229, 0.25) 0%, rgba(79, 70, 229, 0.15) 100%);
 }
 
 .nav-item.q-router-link--exact-active .q-icon,
@@ -156,8 +246,15 @@ body {
   transform: scale(1.05);
 }
 
-.nav-item:hover {
+body.body--light .nav-item:hover {
   background: rgba(79, 70, 229, 0.08);
+}
+
+body.body--dark .nav-item:hover {
+  background: rgba(79, 70, 229, 0.15);
+}
+
+.nav-item:hover {
   transform: translateX(2px);
 }
 
