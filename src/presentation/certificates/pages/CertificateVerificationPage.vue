@@ -15,6 +15,103 @@
         <q-card class="verification-card" flat bordered>
           <q-inner-loading :showing="loading" />
 
+          <!-- Search Section (si no hay certificado) -->
+          <div v-if="!certificate && !loading" class="verification-search q-mb-lg">
+            <div class="text-h6 text-weight-medium q-mb-md text-center">
+              Verificar Certificado
+            </div>
+            <div class="text-body2 text-grey-7 q-mb-lg text-center">
+              Ingresa el código de verificación o escanea el código QR del certificado
+            </div>
+
+            <div class="row q-col-gutter-md">
+              <!-- Input de búsqueda -->
+              <div class="col-12 col-md-8">
+                <q-input
+                  v-model="searchCode"
+                  filled
+                  label="Código de Verificación"
+                  placeholder="Ej: ABC123XYZ789"
+                  :disable="scanning"
+                  @keyup.enter="verifyCertificate"
+                >
+                  <template #prepend>
+                    <q-icon name="qr_code_scanner" />
+                  </template>
+                  <template #append>
+                    <q-btn
+                      v-if="searchCode"
+                      flat
+                      dense
+                      round
+                      icon="clear"
+                      @click="searchCode = ''"
+                    />
+                  </template>
+                </q-input>
+              </div>
+              <div class="col-12 col-md-4">
+                <q-btn
+                  color="primary"
+                  unelevated
+                  label="Verificar"
+                  icon="search"
+                  class="full-width"
+                  :loading="verifying"
+                  :disable="!searchCode || scanning"
+                  @click="verifyCertificate"
+                />
+              </div>
+            </div>
+
+            <q-separator class="q-my-lg" />
+
+            <!-- QR Scanner -->
+            <div class="qr-scanner-section">
+              <div class="text-subtitle2 text-weight-medium q-mb-md text-center">
+                O escanea el código QR
+              </div>
+              <div class="row justify-center">
+                <q-card flat bordered class="scanner-card">
+                  <q-card-section class="text-center">
+                    <div v-if="!scanning" class="scanner-placeholder">
+                      <q-icon name="qr_code_scanner" size="64px" color="primary" class="q-mb-md" />
+                      <q-btn
+                        color="primary"
+                        unelevated
+                        label="Activar Escáner"
+                        icon="camera_alt"
+                        @click="startScanning"
+                      />
+                      <div class="text-caption text-grey-6 q-mt-md">
+                        Permite el acceso a la cámara para escanear el código QR
+                      </div>
+                    </div>
+                    <div v-else class="scanner-active">
+                      <div class="scanner-viewfinder">
+                        <div class="viewfinder-border"></div>
+                        <div class="scanner-instructions">
+                          <q-icon name="qr_code_scanner" size="48px" color="white" class="q-mb-sm" />
+                          <div class="text-body2 text-white text-weight-medium">
+                            Apunta la cámara al código QR
+                          </div>
+                        </div>
+                      </div>
+                      <q-btn
+                        flat
+                        color="negative"
+                        label="Cancelar Escaneo"
+                        icon="close"
+                        class="q-mt-md"
+                        @click="stopScanning"
+                      />
+                    </div>
+                  </q-card-section>
+                </q-card>
+              </div>
+            </div>
+          </div>
+
           <!-- Success State -->
           <div v-if="!loading && certificate" class="verification-result">
             <div class="result-icon q-mb-lg">
@@ -110,22 +207,39 @@
                 </div>
               </div>
 
-              <!-- QR Code -->
+              <!-- QR Code Mejorado -->
               <div class="row justify-center q-mt-xl">
                 <q-card flat bordered class="qr-card q-pa-lg">
                   <div class="text-subtitle2 text-weight-medium q-mb-md text-center">
                     Código de Verificación
                   </div>
-                  <q-img
-                    v-if="certificate.qrCodeUrl"
-                    :src="certificate.qrCodeUrl"
-                    :ratio="1"
-                    style="max-width: 200px"
-                    class="rounded-borders q-mb-md"
-                  />
+                  <div class="row justify-center q-mb-md">
+                    <QRCodeDisplay
+                      :value="certificate.verificationCode || certificate.publicVerificationUrl"
+                      :size="200"
+                    />
+                  </div>
                   <code class="verification-code">{{ certificate.verificationCode }}</code>
                   <div class="text-caption text-grey-6 text-center q-mt-md">
                     Escanea el código QR o usa el código de verificación para validar este certificado
+                  </div>
+                  <div class="row q-gutter-sm q-mt-md justify-center">
+                    <q-btn
+                      flat
+                      dense
+                      size="sm"
+                      icon="content_copy"
+                      label="Copiar Código"
+                      @click="copyCode"
+                    />
+                    <q-btn
+                      flat
+                      dense
+                      size="sm"
+                      icon="share"
+                      label="Compartir"
+                      @click="shareVerification"
+                    />
                   </div>
                 </q-card>
               </div>
@@ -242,17 +356,24 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { useQuasar } from 'quasar';
 import type { Certificate } from '../../../domain/certificate/models';
+import QRCodeDisplay from '../../../shared/components/QRCodeDisplay.vue';
 
 const route = useRoute();
 const router = useRouter();
+const $q = useQuasar();
 
 const verificationToken = route.params.token as string;
 
 const certificate = ref<Certificate | null>(null);
 const loading = ref(true);
+const searchCode = ref('');
+const verifying = ref(false);
+const scanning = ref(false);
+const scannerStream = ref<MediaStream | null>(null);
 
 // Funciones
 function formatDate(dateString: string): string {
@@ -297,13 +418,23 @@ function callSupport() {
   window.location.href = 'tel:+5712345678';
 }
 
-// Lifecycle
-onMounted(async () => {
-  // Aquí se llamaría al servicio HTTP para verificar el certificado
-  // Por ahora, simulamos una respuesta
+async function verifyCertificate() {
+  if (!searchCode.value.trim()) {
+    $q.notify({
+      type: 'warning',
+      message: 'Ingresa un código de verificación',
+      position: 'top',
+    });
+    return;
+  }
+
+  verifying.value = true;
+  loading.value = true;
+
+  // Simular verificación
   await new Promise((resolve) => setTimeout(resolve, 1000));
 
-  if (verificationToken === 'ABC123XYZ789' || verificationToken === 'ABC123XYZ') {
+  if (searchCode.value === 'ABC123XYZ789' || searchCode.value === 'ABC123XYZ') {
     certificate.value = {
       id: '1',
       courseId: '1',
@@ -319,15 +450,109 @@ onMounted(async () => {
       score: 85,
       minimumScore: 70,
       status: 'valid',
-      verificationCode: verificationToken,
-      qrCodeUrl: `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${verificationToken}`,
-      publicVerificationUrl: `/verify/${verificationToken}`,
+      verificationCode: searchCode.value,
+      qrCodeUrl: `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${searchCode.value}`,
+      publicVerificationUrl: `/verify/${searchCode.value}`,
       pdfUrl: '/certificates/1.pdf',
       createdAt: '2025-01-15',
     };
+    $q.notify({
+      type: 'positive',
+      message: 'Certificado verificado correctamente',
+      position: 'top',
+    });
+  } else {
+    certificate.value = null;
+    $q.notify({
+      type: 'negative',
+      message: 'Código de verificación no válido',
+      position: 'top',
+    });
   }
 
+  verifying.value = false;
   loading.value = false;
+}
+
+async function startScanning() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment' },
+    });
+    scannerStream.value = stream;
+    scanning.value = true;
+    // En una implementación completa, aquí se integraría una librería de escaneo QR
+    // como jsQR o html5-qrcode
+    $q.notify({
+      type: 'info',
+      message: 'Escáner activado. Apunta la cámara al código QR',
+      position: 'top',
+    });
+  } catch (error) {
+    $q.notify({
+      type: 'negative',
+      message: 'No se pudo acceder a la cámara. Verifica los permisos.',
+      position: 'top',
+    });
+    console.error('Error accessing camera:', error);
+  }
+}
+
+function stopScanning() {
+  if (scannerStream.value) {
+    scannerStream.value.getTracks().forEach((track) => track.stop());
+    scannerStream.value = null;
+  }
+  scanning.value = false;
+}
+
+async function copyCode() {
+  if (certificate.value?.verificationCode) {
+    try {
+      await navigator.clipboard.writeText(certificate.value.verificationCode);
+      $q.notify({
+        type: 'positive',
+        message: 'Código copiado al portapapeles',
+        position: 'top',
+      });
+    } catch {
+      $q.notify({
+        type: 'negative',
+        message: 'Error al copiar el código',
+        position: 'top',
+      });
+    }
+  }
+}
+
+function shareVerification() {
+  if (certificate.value?.publicVerificationUrl) {
+    const url = `${window.location.origin}${certificate.value.publicVerificationUrl}`;
+    if (navigator.share) {
+      void navigator.share({
+        title: 'Verificación de Certificado',
+        text: `Verifica este certificado: ${certificate.value.courseName}`,
+        url,
+      });
+    } else {
+      void copyCode();
+    }
+  }
+}
+
+// Lifecycle
+onMounted(async () => {
+  // Si hay token en la URL, verificar automáticamente
+  if (verificationToken && verificationToken !== 'undefined') {
+    searchCode.value = verificationToken;
+    await verifyCertificate();
+  } else {
+    loading.value = false;
+  }
+});
+
+onUnmounted(() => {
+  stopScanning();
 });
 </script>
 
@@ -430,6 +655,63 @@ body.body--dark .qr-card {
 body.body--dark .verification-code {
   background: rgba(79, 70, 229, 0.2);
   color: #a78bfa;
+}
+
+.verification-search {
+  padding: 24px 0;
+}
+
+.qr-scanner-section {
+  margin-top: 24px;
+}
+
+.scanner-card {
+  max-width: 400px;
+  width: 100%;
+}
+
+.scanner-placeholder {
+  padding: 32px;
+  min-height: 200px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.scanner-active {
+  position: relative;
+}
+
+.scanner-viewfinder {
+  position: relative;
+  width: 100%;
+  min-height: 300px;
+  background: rgba(0, 0, 0, 0.8);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.viewfinder-border {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 200px;
+  height: 200px;
+  border: 3px solid #4f46e5;
+  border-radius: 12px;
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);
+}
+
+.scanner-instructions {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+  padding: 16px;
 }
 
 .support-section {

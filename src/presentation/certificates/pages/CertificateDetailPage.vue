@@ -36,6 +36,14 @@
         <q-btn
           color="primary"
           unelevated
+          icon="preview"
+          label="Vista Previa"
+          class="q-mr-sm"
+          @click="showPreview = true"
+        />
+        <q-btn
+          color="primary"
+          unelevated
           icon="download"
           label="Descargar PDF"
           @click="downloadPDF"
@@ -285,16 +293,14 @@
 
                   <div class="text-subtitle1 text-weight-medium q-mt-lg">Código QR</div>
                   <q-card flat bordered class="q-pa-lg">
-                    <q-img
-                      v-if="certificate.qrCodeUrl"
-                      :src="certificate.qrCodeUrl"
-                      :ratio="1"
-                      style="max-width: 250px"
-                      class="rounded-borders"
-                    />
-                    <div v-else class="text-center q-pa-xl">
-                      <q-icon name="qr_code" size="64px" color="grey-4" class="q-mb-md" />
-                      <div class="text-body2 text-grey-6">QR Code no disponible</div>
+                    <div class="row justify-center">
+                      <QRCodeDisplay
+                        :value="certificate.verificationCode || certificate.publicVerificationUrl"
+                        :size="250"
+                      />
+                    </div>
+                    <div class="text-caption text-grey-6 text-center q-mt-md">
+                      Escanea este código para verificar el certificado
                     </div>
                   </q-card>
 
@@ -492,6 +498,13 @@
         </q-item>
       </q-list>
     </q-menu>
+
+    <!-- Certificate Preview Dialog -->
+    <CertificatePreview
+      v-model="showPreview"
+      :certificate="certificate"
+      @download="downloadPDF"
+    />
   </q-page>
 </template>
 
@@ -501,6 +514,8 @@ import { useRoute, useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 import type { Certificate, CertificateVerificationHistory } from '../../../domain/certificate/models';
 import EmptyState from '../../../shared/components/EmptyState.vue';
+import CertificatePreview from '../../../shared/components/CertificatePreview.vue';
+import QRCodeDisplay from '../../../shared/components/QRCodeDisplay.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -513,6 +528,7 @@ const certificateId = route.params.id as string;
 const zoomLevel = ref(1);
 const isFullscreen = ref(false);
 const showShareMenuDialog = ref(false);
+const showPreview = ref(false);
 const viewerContainer = ref<HTMLElement | null>(null);
 const shareMenu = ref();
 

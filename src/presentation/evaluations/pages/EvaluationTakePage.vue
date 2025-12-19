@@ -106,133 +106,291 @@
             </div>
 
             <!-- Type: Única respuesta -->
-            <div v-if="currentQuestion.type === 'single'" class="column q-gutter-sm">
-              <q-radio
+            <div v-if="currentQuestion.type === 'single'" class="single-choice-options column q-gutter-md">
+              <q-card
                 v-for="option in currentQuestion.options"
                 :key="option.id"
-                v-model="currentAnswer"
-                :val="option.id"
-                :label="option.text"
-                color="primary"
-                class="option-radio"
+                flat
+                bordered
+                class="option-card cursor-pointer transition-all"
                 :class="{
+                  'option-selected': currentAnswer === option.id,
                   'option-correct': reviewMode && option.isCorrect,
-                  'option-incorrect':
-                    reviewMode && !option.isCorrect && currentAnswer === option.id,
+                  'option-incorrect': reviewMode && !option.isCorrect && currentAnswer === option.id,
                 }"
-              />
+                @click="currentAnswer = option.id"
+              >
+                <q-card-section class="row items-center q-pa-md">
+                  <q-radio
+                    v-model="currentAnswer"
+                    :val="option.id"
+                    color="primary"
+                    class="q-mr-md"
+                  />
+                  <div class="col text-body1">{{ option.text }}</div>
+                  <q-icon
+                    v-if="reviewMode && option.isCorrect"
+                    name="check_circle"
+                    color="positive"
+                    size="24px"
+                    class="q-ml-sm"
+                  />
+                  <q-icon
+                    v-if="reviewMode && !option.isCorrect && currentAnswer === option.id"
+                    name="cancel"
+                    color="negative"
+                    size="24px"
+                    class="q-ml-sm"
+                  />
+                </q-card-section>
+              </q-card>
             </div>
 
             <!-- Type: Múltiple respuesta -->
-            <div v-if="currentQuestion.type === 'multiple'" class="column q-gutter-sm">
-              <q-checkbox
+            <div v-if="currentQuestion.type === 'multiple'" class="multiple-choice-options column q-gutter-md">
+              <q-card
                 v-for="option in currentQuestion.options"
                 :key="option.id"
-                v-model="currentAnswer"
-                :val="option.id"
-                :label="option.text"
-                color="primary"
-                class="option-checkbox"
+                flat
+                bordered
+                class="option-card cursor-pointer transition-all"
                 :class="{
+                  'option-selected': Array.isArray(currentAnswer) && currentAnswer.includes(option.id),
                   'option-correct': reviewMode && option.isCorrect,
-                  'option-incorrect':
-                    reviewMode && !option.isCorrect && currentAnswer.includes(option.id),
+                  'option-incorrect': reviewMode && !option.isCorrect && Array.isArray(currentAnswer) && currentAnswer.includes(option.id),
                 }"
-              />
+                @click="toggleMultipleAnswer(option.id)"
+              >
+                <q-card-section class="row items-center q-pa-md">
+                  <q-checkbox
+                    :model-value="Array.isArray(currentAnswer) && currentAnswer.includes(option.id)"
+                    color="primary"
+                    class="q-mr-md"
+                    @update:model-value="() => toggleMultipleAnswer(option.id)"
+                  />
+                  <div class="col text-body1">{{ option.text }}</div>
+                  <q-icon
+                    v-if="reviewMode && option.isCorrect"
+                    name="check_circle"
+                    color="positive"
+                    size="24px"
+                    class="q-ml-sm"
+                  />
+                  <q-icon
+                    v-if="reviewMode && !option.isCorrect && Array.isArray(currentAnswer) && currentAnswer.includes(option.id)"
+                    name="cancel"
+                    color="negative"
+                    size="24px"
+                    class="q-ml-sm"
+                  />
+                </q-card-section>
+              </q-card>
             </div>
 
             <!-- Type: Selección de imagen -->
-            <div v-if="currentQuestion.type === 'image'" class="row q-col-gutter-md">
+            <div v-if="currentQuestion.type === 'image'" class="image-choice-options row q-col-gutter-md">
               <div
                 v-for="option in currentQuestion.options"
                 :key="option.id"
                 class="col-6 col-md-4"
               >
                 <q-card
-                  class="image-option-card cursor-pointer"
+                  class="image-option-card cursor-pointer transition-all"
                   :class="{
                     'option-selected': currentAnswer === option.id,
                     'option-correct': reviewMode && option.isCorrect,
-                    'option-incorrect':
-                      reviewMode && !option.isCorrect && currentAnswer === option.id,
+                    'option-incorrect': reviewMode && !option.isCorrect && currentAnswer === option.id,
                   }"
                   @click="currentAnswer = option.id"
                 >
-                  <q-img
-                    v-if="option.imageUrl"
-                    :src="option.imageUrl"
-                    :ratio="16 / 9"
-                    class="rounded-borders-top"
-                  />
-                  <q-card-section class="text-center">
-                    <div class="text-body2">{{ option.text }}</div>
+                  <div class="relative-position">
+                    <q-img
+                      v-if="option.imageUrl"
+                      :src="option.imageUrl"
+                      :ratio="16 / 9"
+                      class="rounded-borders-top"
+                    >
+                      <div class="absolute-full flex flex-center bg-transparent">
+                        <q-icon
+                          v-if="currentAnswer === option.id"
+                          name="check_circle"
+                          color="white"
+                          size="48px"
+                          class="selection-indicator"
+                        />
+                        <q-icon
+                          v-if="reviewMode && option.isCorrect"
+                          name="check_circle"
+                          color="positive"
+                          size="48px"
+                          class="correct-indicator"
+                        />
+                        <q-icon
+                          v-if="reviewMode && !option.isCorrect && currentAnswer === option.id"
+                          name="cancel"
+                          color="negative"
+                          size="48px"
+                          class="incorrect-indicator"
+                        />
+                      </div>
+                    </q-img>
+                    <div v-else class="image-placeholder flex flex-center" style="height: 200px; background: rgba(0,0,0,0.05);">
+                      <q-icon name="image" size="48px" color="grey-5" />
+                    </div>
+                  </div>
+                  <q-card-section class="text-center q-pa-sm">
+                    <div class="text-body2 text-weight-medium">{{ option.text }}</div>
                   </q-card-section>
                 </q-card>
               </div>
             </div>
 
             <!-- Type: Falso/Verdadero -->
-            <div v-if="currentQuestion.type === 'true_false'" class="row q-gutter-sm">
-              <q-btn
-                :color="currentAnswer === 'true' ? 'primary' : 'grey-7'"
-                :outline="currentAnswer !== 'true'"
-                :unelevated="currentAnswer === 'true'"
-                label="Verdadero"
-                class="col"
-                size="lg"
+            <div v-if="currentQuestion.type === 'true_false'" class="true-false-options row q-gutter-md">
+              <q-card
+                flat
+                bordered
+                class="col true-false-card cursor-pointer transition-all"
                 :class="{
+                  'option-selected': currentAnswer === 'true',
                   'option-correct': reviewMode && currentQuestion.options[0]?.isCorrect,
-                  'option-incorrect':
-                    reviewMode && !currentQuestion.options[0]?.isCorrect && currentAnswer === 'true',
+                  'option-incorrect': reviewMode && !currentQuestion.options[0]?.isCorrect && currentAnswer === 'true',
                 }"
                 @click="currentAnswer = 'true'"
-              />
-              <q-btn
-                :color="currentAnswer === 'false' ? 'primary' : 'grey-7'"
-                :outline="currentAnswer !== 'false'"
-                :unelevated="currentAnswer === 'false'"
-                label="Falso"
-                class="col"
-                size="lg"
+              >
+                <q-card-section class="text-center q-pa-xl">
+                  <q-icon
+                    name="check"
+                    size="64px"
+                    :color="currentAnswer === 'true' ? 'primary' : 'grey-6'"
+                    class="q-mb-md"
+                  />
+                  <div class="text-h6 text-weight-bold">Verdadero</div>
+                  <q-icon
+                    v-if="reviewMode && currentQuestion.options[0]?.isCorrect"
+                    name="check_circle"
+                    color="positive"
+                    size="32px"
+                    class="q-mt-sm"
+                  />
+                  <q-icon
+                    v-if="reviewMode && !currentQuestion.options[0]?.isCorrect && currentAnswer === 'true'"
+                    name="cancel"
+                    color="negative"
+                    size="32px"
+                    class="q-mt-sm"
+                  />
+                </q-card-section>
+              </q-card>
+              <q-card
+                flat
+                bordered
+                class="col true-false-card cursor-pointer transition-all"
                 :class="{
+                  'option-selected': currentAnswer === 'false',
                   'option-correct': reviewMode && currentQuestion.options[1]?.isCorrect,
-                  'option-incorrect':
-                    reviewMode && !currentQuestion.options[1]?.isCorrect && currentAnswer === 'false',
+                  'option-incorrect': reviewMode && !currentQuestion.options[1]?.isCorrect && currentAnswer === 'false',
                 }"
                 @click="currentAnswer = 'false'"
-              />
+              >
+                <q-card-section class="text-center q-pa-xl">
+                  <q-icon
+                    name="close"
+                    size="64px"
+                    :color="currentAnswer === 'false' ? 'primary' : 'grey-6'"
+                    class="q-mb-md"
+                  />
+                  <div class="text-h6 text-weight-bold">Falso</div>
+                  <q-icon
+                    v-if="reviewMode && currentQuestion.options[1]?.isCorrect"
+                    name="check_circle"
+                    color="positive"
+                    size="32px"
+                    class="q-mt-sm"
+                  />
+                  <q-icon
+                    v-if="reviewMode && !currentQuestion.options[1]?.isCorrect && currentAnswer === 'false'"
+                    name="cancel"
+                    color="negative"
+                    size="32px"
+                    class="q-mt-sm"
+                  />
+                </q-card-section>
+              </q-card>
             </div>
 
             <!-- Type: Sí/No -->
-            <div v-if="currentQuestion.type === 'yes_no'" class="row q-gutter-sm">
-              <q-btn
-                :color="currentAnswer === 'yes' ? 'primary' : 'grey-7'"
-                :outline="currentAnswer !== 'yes'"
-                :unelevated="currentAnswer === 'yes'"
-                label="Sí"
-                class="col"
-                size="lg"
+            <div v-if="currentQuestion.type === 'yes_no'" class="yes-no-options row q-gutter-md">
+              <q-card
+                flat
+                bordered
+                class="col yes-no-card cursor-pointer transition-all"
                 :class="{
+                  'option-selected': currentAnswer === 'yes',
                   'option-correct': reviewMode && currentQuestion.options[0]?.isCorrect,
-                  'option-incorrect':
-                    reviewMode && !currentQuestion.options[0]?.isCorrect && currentAnswer === 'yes',
+                  'option-incorrect': reviewMode && !currentQuestion.options[0]?.isCorrect && currentAnswer === 'yes',
                 }"
                 @click="currentAnswer = 'yes'"
-              />
-              <q-btn
-                :color="currentAnswer === 'no' ? 'primary' : 'grey-7'"
-                :outline="currentAnswer !== 'no'"
-                :unelevated="currentAnswer === 'no'"
-                label="No"
-                class="col"
-                size="lg"
+              >
+                <q-card-section class="text-center q-pa-xl">
+                  <q-icon
+                    name="thumb_up"
+                    size="64px"
+                    :color="currentAnswer === 'yes' ? 'primary' : 'grey-6'"
+                    class="q-mb-md"
+                  />
+                  <div class="text-h6 text-weight-bold">Sí</div>
+                  <q-icon
+                    v-if="reviewMode && currentQuestion.options[0]?.isCorrect"
+                    name="check_circle"
+                    color="positive"
+                    size="32px"
+                    class="q-mt-sm"
+                  />
+                  <q-icon
+                    v-if="reviewMode && !currentQuestion.options[0]?.isCorrect && currentAnswer === 'yes'"
+                    name="cancel"
+                    color="negative"
+                    size="32px"
+                    class="q-mt-sm"
+                  />
+                </q-card-section>
+              </q-card>
+              <q-card
+                flat
+                bordered
+                class="col yes-no-card cursor-pointer transition-all"
                 :class="{
+                  'option-selected': currentAnswer === 'no',
                   'option-correct': reviewMode && currentQuestion.options[1]?.isCorrect,
-                  'option-incorrect':
-                    reviewMode && !currentQuestion.options[1]?.isCorrect && currentAnswer === 'no',
+                  'option-incorrect': reviewMode && !currentQuestion.options[1]?.isCorrect && currentAnswer === 'no',
                 }"
                 @click="currentAnswer = 'no'"
-              />
+              >
+                <q-card-section class="text-center q-pa-xl">
+                  <q-icon
+                    name="thumb_down"
+                    size="64px"
+                    :color="currentAnswer === 'no' ? 'primary' : 'grey-6'"
+                    class="q-mb-md"
+                  />
+                  <div class="text-h6 text-weight-bold">No</div>
+                  <q-icon
+                    v-if="reviewMode && currentQuestion.options[1]?.isCorrect"
+                    name="check_circle"
+                    color="positive"
+                    size="32px"
+                    class="q-mt-sm"
+                  />
+                  <q-icon
+                    v-if="reviewMode && !currentQuestion.options[1]?.isCorrect && currentAnswer === 'no'"
+                    name="cancel"
+                    color="negative"
+                    size="32px"
+                    class="q-mt-sm"
+                  />
+                </q-card-section>
+              </q-card>
             </div>
 
             <!-- Navigation -->
@@ -297,29 +455,118 @@
               requerido: {{ evaluation.minimumScore }}%)
             </div>
 
-            <!-- Score Breakdown -->
-            <q-card flat bordered class="q-mb-lg q-mt-lg">
+            <!-- Score Breakdown Mejorado -->
+            <q-card flat bordered class="q-mb-lg q-mt-lg result-breakdown-card">
               <q-card-section>
-                <div class="text-subtitle1 q-mb-md text-weight-medium">Desglose de Resultados</div>
-                <div class="row q-col-gutter-md">
-                  <div class="col-12 col-md-4">
-                    <div class="text-h6 text-weight-bold text-positive">
-                      {{ correctAnswers }}
-                    </div>
-                    <div class="text-caption text-grey-6">Correctas</div>
+                <div class="text-subtitle1 q-mb-md text-weight-medium">Desglose Detallado de Resultados</div>
+
+                <!-- Estadísticas principales con animación -->
+                <div class="row q-col-gutter-md q-mb-lg">
+                  <div class="col-12 col-md-3">
+                    <q-card flat class="stat-card stat-correct text-center q-pa-md">
+                      <div class="text-h4 text-weight-bold text-positive q-mb-xs">
+                        {{ correctAnswers }}
+                      </div>
+                      <div class="text-body2 text-grey-7">Correctas</div>
+                      <q-linear-progress
+                        :value="correctAnswers / questions.length"
+                        color="positive"
+                        size="8px"
+                        rounded
+                        class="q-mt-sm"
+                      />
+                    </q-card>
                   </div>
-                  <div class="col-12 col-md-4">
-                    <div class="text-h6 text-weight-bold text-negative">
-                      {{ incorrectAnswers }}
-                    </div>
-                    <div class="text-caption text-grey-6">Incorrectas</div>
+                  <div class="col-12 col-md-3">
+                    <q-card flat class="stat-card stat-incorrect text-center q-pa-md">
+                      <div class="text-h4 text-weight-bold text-negative q-mb-xs">
+                        {{ incorrectAnswers }}
+                      </div>
+                      <div class="text-body2 text-grey-7">Incorrectas</div>
+                      <q-linear-progress
+                        :value="incorrectAnswers / questions.length"
+                        color="negative"
+                        size="8px"
+                        rounded
+                        class="q-mt-sm"
+                      />
+                    </q-card>
                   </div>
-                  <div class="col-12 col-md-4">
-                    <div class="text-h6 text-weight-bold text-grey-7">
-                      {{ unansweredCount }}
-                    </div>
-                    <div class="text-caption text-grey-6">Sin responder</div>
+                  <div class="col-12 col-md-3">
+                    <q-card flat class="stat-card stat-unanswered text-center q-pa-md">
+                      <div class="text-h4 text-weight-bold text-grey-7 q-mb-xs">
+                        {{ unansweredCount }}
+                      </div>
+                      <div class="text-body2 text-grey-7">Sin responder</div>
+                      <q-linear-progress
+                        :value="unansweredCount / questions.length"
+                        color="grey-6"
+                        size="8px"
+                        rounded
+                        class="q-mt-sm"
+                      />
+                    </q-card>
                   </div>
+                  <div class="col-12 col-md-3">
+                    <q-card flat class="stat-card stat-total text-center q-pa-md">
+                      <div class="text-h4 text-weight-bold text-primary q-mb-xs">
+                        {{ questions.length }}
+                      </div>
+                      <div class="text-body2 text-grey-7">Total</div>
+                      <q-linear-progress
+                        :value="1"
+                        color="primary"
+                        size="8px"
+                        rounded
+                        class="q-mt-sm"
+                      />
+                    </q-card>
+                  </div>
+                </div>
+
+                <!-- Desglose por pregunta -->
+                <q-separator class="q-mb-md" />
+                <div class="text-subtitle2 q-mb-md text-weight-medium">Detalle por Pregunta</div>
+                <div class="questions-breakdown column q-gutter-sm">
+                  <q-card
+                    v-for="(question, index) in questions"
+                    :key="question.id"
+                    flat
+                    bordered
+                    class="question-result-card"
+                    :class="{
+                      'question-correct': isQuestionCorrect(question.id),
+                      'question-incorrect': isQuestionIncorrect(question.id),
+                      'question-unanswered': !isQuestionAnswered(question.id),
+                    }"
+                  >
+                    <q-card-section class="row items-center q-pa-md">
+                      <div class="col-auto q-mr-md">
+                        <q-avatar
+                          :color="getQuestionResultColor(question.id)"
+                          text-color="white"
+                          size="32px"
+                        >
+                          {{ index + 1 }}
+                        </q-avatar>
+                      </div>
+                      <div class="col">
+                        <div class="text-body1 text-weight-medium q-mb-xs">
+                          {{ question.text }}
+                        </div>
+                        <div class="text-caption text-grey-6">
+                          {{ getQuestionResultText(question.id) }}
+                        </div>
+                      </div>
+                      <div class="col-auto">
+                        <q-icon
+                          :name="getQuestionResultIcon(question.id)"
+                          :color="getQuestionResultColor(question.id)"
+                          size="24px"
+                        />
+                      </div>
+                    </q-card-section>
+                  </q-card>
                 </div>
               </q-card-section>
             </q-card>
@@ -616,6 +863,60 @@ function confirmCancel() {
   });
 }
 
+function toggleMultipleAnswer(optionId: string) {
+  if (!Array.isArray(currentAnswer.value)) {
+    currentAnswer.value = [];
+  }
+  const index = currentAnswer.value.indexOf(optionId);
+  if (index > -1) {
+    currentAnswer.value.splice(index, 1);
+  } else {
+    currentAnswer.value.push(optionId);
+  }
+}
+
+function isQuestionCorrect(questionId: string): boolean {
+  const question = questions.value.find((q) => q.id === questionId);
+  if (!question) return false;
+  const answer = answers.value[questionId];
+  if (!answer) return false;
+
+  if (question.type === 'multiple') {
+    const selectedIds = Array.isArray(answer) ? answer : [];
+    const correctIds = question.options.filter((opt) => opt.isCorrect).map((opt) => opt.id);
+    return (
+      selectedIds.length === correctIds.length &&
+      selectedIds.every((id) => correctIds.includes(id))
+    );
+  } else {
+    const selectedId = Array.isArray(answer) ? answer[0] : answer;
+    const correctOption = question.options.find((opt) => opt.isCorrect);
+    return correctOption?.id === selectedId;
+  }
+}
+
+function isQuestionIncorrect(questionId: string): boolean {
+  return isQuestionAnswered(questionId) && !isQuestionCorrect(questionId);
+}
+
+function getQuestionResultColor(questionId: string): string {
+  if (isQuestionCorrect(questionId)) return 'positive';
+  if (isQuestionIncorrect(questionId)) return 'negative';
+  return 'grey-6';
+}
+
+function getQuestionResultIcon(questionId: string): string {
+  if (isQuestionCorrect(questionId)) return 'check_circle';
+  if (isQuestionIncorrect(questionId)) return 'cancel';
+  return 'help_outline';
+}
+
+function getQuestionResultText(questionId: string): string {
+  if (isQuestionCorrect(questionId)) return 'Respuesta correcta';
+  if (isQuestionIncorrect(questionId)) return 'Respuesta incorrecta';
+  return 'Sin responder';
+}
+
 function goBack() {
   void router.push('/evaluations');
 }
@@ -709,21 +1010,37 @@ body.body--dark .question-card:hover {
   overflow: hidden;
 }
 
-.option-radio,
-.option-checkbox {
-  padding: 12px;
-  border-radius: 8px;
-  transition: all 0.2s ease;
-}
+// Estilos mejorados para opciones
+.single-choice-options,
+.multiple-choice-options {
+  .option-card {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 2px solid transparent;
 
-.option-radio:hover,
-.option-checkbox:hover {
-  background: rgba(79, 70, 229, 0.05);
-}
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      border-color: rgba(79, 70, 229, 0.3);
+    }
 
-body.body--dark .option-radio:hover,
-body.body--dark .option-checkbox:hover {
-  background: rgba(79, 70, 229, 0.15);
+    &.option-selected {
+      border-color: #4f46e5;
+      background: rgba(79, 70, 229, 0.05);
+      box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+    }
+
+    &.option-correct {
+      background: rgba(34, 197, 94, 0.1) !important;
+      border-left: 4px solid #22c55e;
+      animation: correctPulse 0.5s ease;
+    }
+
+    &.option-incorrect {
+      background: rgba(239, 68, 68, 0.1) !important;
+      border-left: 4px solid #ef4444;
+      animation: incorrectShake 0.5s ease;
+    }
+  }
 }
 
 .option-correct {
@@ -736,19 +1053,70 @@ body.body--dark .option-checkbox:hover {
   border-left: 4px solid #ef4444;
 }
 
-.image-option-card {
-  transition: all 0.2s ease;
-  border: 2px solid transparent;
+.image-choice-options {
+  .image-option-card {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 2px solid transparent;
+    overflow: hidden;
+
+    &:hover {
+      transform: translateY(-4px) scale(1.02);
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+    }
+
+    &.option-selected {
+      border-color: #4f46e5;
+      box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2);
+    }
+
+    &.option-correct {
+      border-color: #22c55e;
+      animation: correctPulse 0.5s ease;
+    }
+
+    &.option-incorrect {
+      border-color: #ef4444;
+      animation: incorrectShake 0.5s ease;
+    }
+
+    .selection-indicator,
+    .correct-indicator,
+    .incorrect-indicator {
+      animation: iconBounce 0.5s ease;
+    }
+  }
 }
 
-.image-option-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
+.true-false-options,
+.yes-no-options {
+  .true-false-card,
+  .yes-no-card {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 2px solid transparent;
 
-.option-selected {
-  border-color: #4f46e5;
-  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2);
+    &:hover {
+      transform: translateY(-4px) scale(1.02);
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+    }
+
+    &.option-selected {
+      border-color: #4f46e5;
+      background: rgba(79, 70, 229, 0.05);
+      box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2);
+    }
+
+    &.option-correct {
+      background: rgba(34, 197, 94, 0.1) !important;
+      border-color: #22c55e;
+      animation: correctPulse 0.5s ease;
+    }
+
+    &.option-incorrect {
+      background: rgba(239, 68, 68, 0.1) !important;
+      border-color: #ef4444;
+      animation: incorrectShake 0.5s ease;
+    }
+  }
 }
 
 // Animaciones
@@ -780,5 +1148,136 @@ body.body--dark .option-checkbox:hover {
 .result-fade-leave-to {
   opacity: 0;
   transform: scale(1.1);
+}
+
+// Estilos para desglose de resultados
+.result-breakdown-card {
+  .stat-card {
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    &.stat-correct {
+      background: rgba(34, 197, 94, 0.05);
+      border-color: rgba(34, 197, 94, 0.2);
+    }
+
+    &.stat-incorrect {
+      background: rgba(239, 68, 68, 0.05);
+      border-color: rgba(239, 68, 68, 0.2);
+    }
+
+    &.stat-unanswered {
+      background: rgba(107, 114, 128, 0.05);
+      border-color: rgba(107, 114, 128, 0.2);
+    }
+
+    &.stat-total {
+      background: rgba(79, 70, 229, 0.05);
+      border-color: rgba(79, 70, 229, 0.2);
+    }
+  }
+
+  .question-result-card {
+    transition: all 0.3s ease;
+
+    &:hover {
+      transform: translateX(4px);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    &.question-correct {
+      background: rgba(34, 197, 94, 0.05);
+      border-left: 4px solid #22c55e;
+    }
+
+    &.question-incorrect {
+      background: rgba(239, 68, 68, 0.05);
+      border-left: 4px solid #ef4444;
+    }
+
+    &.question-unanswered {
+      background: rgba(107, 114, 128, 0.05);
+      border-left: 4px solid #6b7280;
+    }
+  }
+}
+
+// Animaciones
+@keyframes correctPulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.02);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes incorrectShake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-4px);
+  }
+  75% {
+    transform: translateX(4px);
+  }
+}
+
+@keyframes iconBounce {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+}
+
+.transition-all {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+body.body--dark {
+  .result-breakdown-card {
+    .stat-card {
+      &.stat-correct {
+        background: rgba(34, 197, 94, 0.1);
+      }
+
+      &.stat-incorrect {
+        background: rgba(239, 68, 68, 0.1);
+      }
+
+      &.stat-unanswered {
+        background: rgba(107, 114, 128, 0.1);
+      }
+
+      &.stat-total {
+        background: rgba(79, 70, 229, 0.1);
+      }
+    }
+
+    .question-result-card {
+      &.question-correct {
+        background: rgba(34, 197, 94, 0.1);
+      }
+
+      &.question-incorrect {
+        background: rgba(239, 68, 68, 0.1);
+      }
+
+      &.question-unanswered {
+        background: rgba(107, 114, 128, 0.1);
+      }
+    }
+  }
 }
 </style>

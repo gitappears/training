@@ -225,7 +225,7 @@
         <!-- Aceptación de Políticas (RF-43, RF-44) -->
         <q-separator class="q-my-md" />
         <div class="text-subtitle2 q-mb-sm">Aceptación de Políticas *</div>
-        
+
         <div class="column q-gutter-sm">
           <q-checkbox
             v-model="aceptaPoliticaDatos"
@@ -241,7 +241,7 @@
               </div>
             </template>
           </q-checkbox>
-          
+
           <q-checkbox
             v-model="aceptaTerminos"
             :disable="loading"
@@ -256,7 +256,7 @@
               </div>
             </template>
           </q-checkbox>
-          
+
           <div v-if="!aceptaPoliticaDatos || !aceptaTerminos" class="text-negative text-caption q-mt-xs">
             * Debes aceptar ambas políticas para continuar
           </div>
@@ -285,6 +285,20 @@
         </div>
       </q-form>
     </q-card>
+
+    <!-- Modal de Políticas -->
+    <PoliciesModal
+      v-model="showPoliticaModal"
+      :policy-type="'datos'"
+      :show-acceptance="true"
+      @accepted="() => { aceptaPoliticaDatos = true; onPolicyAccepted(); }"
+    />
+    <PoliciesModal
+      v-model="showTerminosModal"
+      :policy-type="'terminos'"
+      :show-acceptance="true"
+      @accepted="() => { aceptaTerminos = true; onPolicyAccepted(); }"
+    />
   </q-page>
 </template>
 
@@ -294,6 +308,7 @@ import { useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 import { useAuthStore } from '../../../stores/auth.store';
 import type { RegisterDto } from '../../../application/auth/auth.repository.port';
+import PoliciesModal from '../../../shared/components/PoliciesModal.vue';
 
 const router = useRouter();
 const $q = useQuasar();
@@ -331,20 +346,21 @@ watch(tipoRegistro, (newValue) => {
   form.value.tipoRegistro = newValue;
 });
 
+const showPoliticaModal = ref(false);
+const showTerminosModal = ref(false);
+
 function verPoliticaDatos() {
-  // TODO: Implementar modal o página con política de tratamiento de datos
-  $q.notify({
-    type: 'info',
-    message: 'Política de tratamiento de datos - Próximamente',
-    position: 'top',
-  });
+  showPoliticaModal.value = true;
 }
 
 function verTerminos() {
-  // TODO: Implementar modal o página con términos y condiciones
+  showTerminosModal.value = true;
+}
+
+function onPolicyAccepted() {
   $q.notify({
-    type: 'info',
-    message: 'Términos y condiciones - Próximamente',
+    type: 'positive',
+    message: 'Política aceptada correctamente',
     position: 'top',
   });
 }
