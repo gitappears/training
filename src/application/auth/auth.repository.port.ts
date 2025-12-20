@@ -1,6 +1,3 @@
-// Puerto (interface) para el repositorio de autenticación
-// Define el contrato que debe cumplir cualquier implementación
-
 export interface LoginDto {
   username: string;
   password: string;
@@ -8,20 +5,26 @@ export interface LoginDto {
 
 export interface RegisterDto {
   numeroDocumento: string;
-  tipoDocumento?: string;
+  tipoDocumento?: string | undefined;
   nombres: string;
-  apellidos: string;
-  email: string;
-  telefono?: string;
-  fechaNacimiento?: string;
-  genero?: string;
-  direccion?: string;
+  apellidos?: string | undefined;
+  email?: string | undefined;
+  telefono?: string | undefined;
+  fechaNacimiento?: string | undefined;
+  genero?: string | undefined;
+  direccion?: string | undefined;
+  razonSocial?: string | undefined;
+  fotoUrl?: string | undefined;
   username: string;
   password: string;
-  tipoRegistro: 'ALUMNO' | 'INSTRUCTOR';
-  codigoEstudiante?: string;
-  especialidad?: string;
-  biografia?: string;
+  tipoRegistro: 'ALUMNO' | 'INSTRUCTOR' | 'OPERADOR';
+  codigoEstudiante?: string | undefined;
+  especialidad?: string | undefined;
+  biografia?: string | undefined;
+}
+
+export interface RegisterResponse {
+  message: string;
 }
 
 export interface TokenResponse {
@@ -33,22 +36,31 @@ export interface TokenResponse {
 export interface UserProfile {
   id: number;
   username: string;
-  email?: string;
-  nombres: string;
-  apellidos: string;
-  rol?: string;
+  rol: string;
+  persona: {
+    numeroDocumento: string;
+    nombres: string;
+    apellidos?: string;
+    email?: string;
+    fotoUrl?: string;
+    telefono?: string;
+    direccion?: string;
+    fechaNacimiento?: string;
+    genero?: string;
+    biografia?: string;
+  };
 }
 
 export interface IAuthRepository {
   /**
-   * Iniciar sesión
+   * Iniciar sesión en el sistema
    */
   login(dto: LoginDto): Promise<TokenResponse>;
 
   /**
    * Registrar un nuevo usuario
    */
-  register(dto: RegisterDto): Promise<TokenResponse>;
+  register(dto: RegisterDto): Promise<RegisterResponse>;
 
   /**
    * Obtener perfil del usuario autenticado
@@ -59,5 +71,6 @@ export interface IAuthRepository {
    * Refrescar token de acceso
    */
   refreshToken(): Promise<TokenResponse>;
-}
 
+  updateProfile(data: any): Promise<void>;
+}
