@@ -24,13 +24,20 @@
         <q-input
           v-model="form.password"
           label="Contraseña"
-          type="password"
+          :type="isPasswordVisible ? 'text' : 'password'"
           outlined
           :rules="[(val) => !!val || 'La contraseña es requerida']"
           :disable="loading"
         >
           <template #prepend>
             <q-icon name="lock" />
+          </template>
+          <template #append>
+            <q-icon
+              :name="isPasswordVisible ? 'visibility_off' : 'visibility'"
+              class="cursor-pointer"
+              @click="isPasswordVisible = !isPasswordVisible"
+            />
           </template>
         </q-input>
 
@@ -88,6 +95,7 @@ const form = ref<LoginDto>({
   password: '',
 });
 const rememberMe = ref(false);
+const isPasswordVisible = ref(false);
 const loading = computed(() => authStore.loading);
 
 async function handleSubmit() {

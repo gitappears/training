@@ -56,6 +56,16 @@
                   </q-item-section>
                 </q-item>
                 <q-separator />
+
+                <q-item clickable v-close-popup :to="{ name: 'profile' }" class="q-py-md">
+                  <q-item-section avatar>
+                    <q-icon name="manage_accounts" size="20px" />
+                  </q-item-section>
+                  <q-item-section>
+                    <q-item-label class="text-weight-medium">Editar Perfil</q-item-label>
+                  </q-item-section>
+                </q-item>
+
                 <q-item clickable v-close-popup class="q-py-md" @click="handleLogout">
                   <q-item-section avatar>
                     <q-icon name="logout" color="negative" size="20px" />

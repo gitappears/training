@@ -81,6 +81,13 @@ const routes: RouteRecordRaw[] = [
         component: () => import('../presentation/certificates/pages/CertificateDetailPage.vue'),
       },
 
+      // Perfil
+      {
+        path: 'profile',
+        name: 'profile',
+        component: () => import('../presentation/users/pages/ProfilePage.vue'),
+      },
+
       // Reportes (RF-40 a RF-42)
       {
         path: 'reports',
@@ -97,10 +104,10 @@ const routes: RouteRecordRaw[] = [
 
   // Always leave this as last one,
   // but you can also remove it
-  {
-    path: '/:catchAll(.*)*',
-    component: () => import('../presentation/system/pages/ErrorNotFound.vue'),
-  },
+  // {
+  //   path: '/:catchAll(.*)*',
+  //   component: () => import('../presentation/system/pages/ErrorNotFound.vue'),
+  // },
 ];
 
 export default routes;
