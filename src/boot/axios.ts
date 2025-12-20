@@ -141,11 +141,12 @@ api.interceptors.response.use(
 
     // Si el error es 401 (No autorizado), redirigir a login
     if (error?.response?.status === 401) {
-      localStorage.removeItem('auth_token');
-      localStorage.removeItem('auth_profile');
-      // Solo redirigir si no estamos ya en la página de login
+      // Si el error 401 ocurre en la página de login, no redirigir, solo mostrar el error
       if (window.location.pathname !== '/auth/login') {
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('auth_profile');
         window.location.href = '/auth/login';
+        return Promise.reject(new Error('Sesión expirada. Por favor, inicia sesión de nuevo.'));
       }
     }
 
@@ -154,23 +155,32 @@ api.interceptors.response.use(
       config._retry = true;
       try {
         return await retryRequest(() => api.request(config));
-      } catch {
+      } catch (retryError) {
         // Si el retry falla, continuar con el manejo de errores normal
+        error = retryError; // Propagar el error del último intento de retry
       }
     }
 
-    // Convertir el error a Error si no lo es ya
-    if (error instanceof Error) {
-      return Promise.reject(error);
+    // Determinar el mensaje de error final
+    let finalErrorMessage: string;
+    if (axios.isAxiosError(error) && error.response) {
+      // Si hay un mensaje específico del backend, usarlo
+      if (typeof error.response.data.message === 'string') {
+        finalErrorMessage = error.response.data.message;
+      } else if (Array.isArray(error.response.data.message) && error.response.data.message.length > 0) {
+        // Si el backend envía un array de mensajes (ej. por ValidationPipe), usar el primero o unirlos
+        finalErrorMessage = error.response.data.message[0];
+      } else {
+        // Mensaje genérico para errores de respuesta HTTP
+        finalErrorMessage = `Error ${error.response.status}: ${error.response.statusText}`;
+      }
+    } else if (error instanceof Error) {
+      finalErrorMessage = error.message;
+    } else {
+      finalErrorMessage = 'Error desconocido en la petición';
     }
 
-    // Si es un error de Axios, crear un Error con el mensaje apropiado
-    const errorMessage =
-      error?.response?.data?.message ??
-      error?.message ??
-      'Error desconocido en la petición';
-
-    return Promise.reject(new Error(errorMessage));
+    return Promise.reject(new Error(finalErrorMessage));
   },
 );
 

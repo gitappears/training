@@ -48,6 +48,7 @@
             label="¿Olvidaste tu contraseña?"
             no-caps
             size="sm"
+            :to="{ name: 'forgot-password' }"
             :disable="loading"
           />
         </div>
@@ -109,6 +110,7 @@ async function handleSubmit() {
     const redirect = route.query.redirect as string | undefined;
     void router.push(redirect || '/');
   } catch (error) {
+    console.error('Login error caught in component:', error);
     const errorMessage =
       error instanceof Error ? error.message : 'Error al iniciar sesión';
     $q.notify({
