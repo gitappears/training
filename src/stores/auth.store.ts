@@ -60,10 +60,12 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function updateProfile(data: Partial<RegisterDto>): Promise<void> {
     loading.value = true;
+    console.log('Updating profile with payload:', data);
     try {
       const updateProfileUseCase = AuthUseCasesFactory.getUpdateProfileUseCase(authService);
       await updateProfileUseCase.execute(data);
       // Refresh profile data
+      console.log('Profile updated on backend, refetching...');
       await fetchProfile();
     } finally {
       loading.value = false;
@@ -74,8 +76,10 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       const getProfileUseCase = AuthUseCasesFactory.getGetProfileUseCase(authService);
       const userProfile = await getProfileUseCase.execute();
+      console.log('Fetched profile from backend:', userProfile);
       profile.value = userProfile;
       localStorage.setItem(PROFILE_KEY, JSON.stringify(userProfile));
+      console.log('Profile saved to localStorage.');
     } catch (error) {
       // Si falla obtener el perfil, hacer logout
       logout();

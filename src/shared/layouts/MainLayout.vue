@@ -35,7 +35,7 @@
 
           <q-btn flat round class="q-pa-xs">
             <q-avatar size="36px" class="cursor-pointer">
-              <img src="https://cdn.quasar.dev/img/avatar.png" alt="User" />
+              <img :src="userImageUrl" alt="User" />
             </q-avatar>
             <q-menu
               anchor="bottom right"
@@ -47,7 +47,7 @@
                 <q-item class="q-pa-md">
                   <q-item-section avatar>
                     <q-avatar size="48px">
-                      <img src="https://cdn.quasar.dev/img/avatar.png" alt="User" />
+                      <img :src="userImageUrl" alt="User" />
                     </q-avatar>
                   </q-item-section>
                   <q-item-section>
@@ -251,7 +251,7 @@
         <q-separator class="q-mb-md" />
         <div v-if="!miniState" class="row items-center q-mb-md">
           <q-avatar size="40px" class="q-mr-sm">
-            <img src="https://cdn.quasar.dev/img/avatar.png" alt="User" />
+            <img :src="userImageUrl" alt="User" />
           </q-avatar>
           <div class="column col">
             <span class="text-body2 text-weight-medium">{{ authStore.userFullName || 'Usuario' }}</span>
@@ -292,16 +292,30 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { ref, watch, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 import { useAuthStore } from '../../stores/auth.store';
 import { useThemeStore } from '../../stores/theme.store';
+import { api } from 'boot/axios';
 
 const router = useRouter();
 const $q = useQuasar();
 const authStore = useAuthStore();
 const themeStore = useThemeStore();
+
+const userImageUrl = computed(() => {
+  const fotoUrl = authStore.profile?.fotoUrl;
+  if (!fotoUrl) {
+    // Return a default or a generated avatar if no photo is set
+    return `https://api.dicebear.com/8.x/adventurer/svg?seed=${authStore.profile?.username || 'default'}`;
+  }
+  if (fotoUrl.startsWith('http')) {
+    return fotoUrl;
+  }
+  return `${api.defaults.baseURL}${fotoUrl}`;
+});
+
 
 // Sincronizar el tema con el body
 watch(

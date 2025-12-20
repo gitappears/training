@@ -81,25 +81,49 @@
                 <q-input
                   v-model="form.currentPassword"
                   label="Contraseña Actual"
-                  type="password"
+                  :type="isCurrentPasswordVisible ? 'text' : 'password'"
                   outlined
                   :rules="[val => !form.newPassword || !!val || 'Requerido si cambia la contraseña']"
-                />
+                >
+                  <template #append>
+                    <q-icon
+                      :name="isCurrentPasswordVisible ? 'visibility_off' : 'visibility'"
+                      class="cursor-pointer"
+                      @click="isCurrentPasswordVisible = !isCurrentPasswordVisible"
+                    />
+                  </template>
+                </q-input>
                 <q-input
                   v-model="form.newPassword"
                   label="Nueva Contraseña"
-                  type="password"
+                  :type="isNewPasswordVisible ? 'text' : 'password'"
                   outlined
                   :rules="[val => !val || val.length >= 8 || 'Mínimo 8 caracteres']"
                   hint="Dejar en blanco para no cambiar"
-                />
+                >
+                  <template #append>
+                    <q-icon
+                      :name="isNewPasswordVisible ? 'visibility_off' : 'visibility'"
+                      class="cursor-pointer"
+                      @click="isNewPasswordVisible = !isNewPasswordVisible"
+                    />
+                  </template>
+                </q-input>
                 <q-input
                   v-model="form.confirmPassword"
                   label="Confirmar Nueva Contraseña"
-                  type="password"
+                  :type="isConfirmPasswordVisible ? 'text' : 'password'"
                   outlined
                   :rules="[val => val === form.newPassword || 'Las contraseñas no coinciden']"
-                />
+                >
+                  <template #append>
+                    <q-icon
+                      :name="isConfirmPasswordVisible ? 'visibility_off' : 'visibility'"
+                      class="cursor-pointer"
+                      @click="isConfirmPasswordVisible = !isConfirmPasswordVisible"
+                    />
+                  </template>
+                </q-input>
               </div>
             </q-card-section>
 
@@ -146,6 +170,21 @@
                 </template>
               </q-file>
           </q-card-section>
+          <q-separator />
+          <q-card-section>
+            <div class="text-subtitle2 q-mb-sm">O selecciona un avatar</div>
+            <div class="row q-gutter-sm justify-center">
+              <q-avatar
+                v-for="avatar in defaultAvatars"
+                :key="avatar.seed"
+                size="60px"
+                class="cursor-pointer avatar-option"
+                @click="form.fotoUrl = avatar.url"
+              >
+                <img :src="avatar.url" />
+              </q-avatar>
+            </div>
+          </q-card-section>
         </q-card>
       </div>
     </div>
@@ -153,7 +192,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, reactive, computed } from 'vue';
+import { ref, onMounted, reactive, computed, watch } from 'vue';
 import { useAuthStore } from '../../../stores/auth.store';
 import { useQuasar } from 'quasar';
 import { api } from 'boot/axios';
@@ -161,13 +200,25 @@ import { api } from 'boot/axios';
 const authStore = useAuthStore();
 const $q = useQuasar();
 
-const localProfile = ref<any>(null);
+const localProfile = ref<any>(null); // This is just for rendering username and doc number
 const photoToUpload = ref<File | null>(null);
+
+const isCurrentPasswordVisible = ref(false);
+const isNewPasswordVisible = ref(false);
+const isConfirmPasswordVisible = ref(false);
 
 const generoOptions = [
   { label: 'Masculino', value: 'M' },
   { label: 'Femenino', value: 'F' },
   { label: 'Otro', value: 'O' },
+];
+
+const defaultAvatars = [
+  { seed: 'Felix', url: 'https://api.dicebear.com/8.x/adventurer/svg?seed=Felix' },
+  { seed: 'Mimi', url: 'https://api.dicebear.com/8.x/adventurer/svg?seed=Mimi' },
+  { seed: 'Sheba', url: 'https://api.dicebear.com/8.x/adventurer/svg?seed=Sheba' },
+  { seed: 'Max', url: 'https://api.dicebear.com/8.x/adventurer/svg?seed=Max' },
+  { seed: 'Abby', url: 'https://api.dicebear.com/8.x/adventurer/svg?seed=Abby' },
 ];
 
 const form = reactive({
@@ -194,14 +245,9 @@ const fullImageUrl = computed(() => {
   return `${api.defaults.baseURL}${form.fotoUrl}`;
 });
 
-
-onMounted(async () => {
-  if (!authStore.profile) {
-    await authStore.fetchProfile();
-  }
-
+function populateForm() {
   if (authStore.profile) {
-    localProfile.value = authStore.profile;
+    localProfile.value = authStore.profile; // Keep localProfile updated
     const p = authStore.profile as any;
     form.nombres = p.nombres || '';
     form.apellidos = p.apellidos || '';
@@ -212,8 +258,27 @@ onMounted(async () => {
     form.genero = p.genero || '';
     form.biografia = p.biografia || '';
     form.fotoUrl = p.fotoUrl || '';
+    // Clear password fields on form population
+    form.currentPassword = '';
+    form.newPassword = '';
+    form.confirmPassword = '';
   }
+}
+
+onMounted(async () => {
+  if (!authStore.profile) {
+    await authStore.fetchProfile();
+  }
+  populateForm();
 });
+
+watch(
+  () => authStore.profile,
+  () => {
+    populateForm();
+  },
+  { deep: true }
+);
 
 async function handleFileUpload(file: File) {
   if (!file) return;
@@ -250,10 +315,13 @@ async function onSubmit() {
   try {
     const payload: { [key: string]: any } = { ...form };
 
+    // El backend no espera este campo, es solo para validación en el frontend
+    delete payload.confirmPassword;
+
+    // No enviar campo de contraseña actual si no se está cambiando
     if (!payload.newPassword) {
       delete payload.currentPassword;
       delete payload.newPassword;
-      delete payload.confirmPassword;
     }
     
     Object.keys(payload).forEach(key => {
