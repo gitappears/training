@@ -8,6 +8,7 @@ import {
   RegisterUseCase,
   GetProfileUseCase,
   RefreshTokenUseCase,
+  UpdateProfileUseCase,
 } from './use-cases';
 
 /**
@@ -45,6 +46,14 @@ export class AuthUseCasesFactory {
    */
   static getRefreshTokenUseCase(repository: IAuthRepository): RefreshTokenUseCase {
     return new RefreshTokenUseCase(repository);
+  }
+
+  /**
+   * Crea una instancia del caso de uso para actualizar el perfil
+   * @param repository - Repositorio inyectado desde la capa de presentación
+   */
+  static getUpdateProfileUseCase(repository: IAuthRepository): UpdateProfileUseCase {
+    return new UpdateProfileUseCase(repository);
   }
 }
 
