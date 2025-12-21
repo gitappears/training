@@ -90,6 +90,18 @@ const routes: RouteRecordRaw[] = [
         path: 'certificates/:id',
         component: () => import('../presentation/certificates/pages/CertificateDetailPage.vue'),
       },
+      
+      // Certificados - Vigencias y Alertas (RF-35 a RF-39)
+      {
+        path: 'certificates/expiring',
+        name: 'expiring-certificates',
+        component: () => import('../presentation/certificates/pages/ExpiringCertificatesPage.vue'),
+      },
+      {
+        path: 'admin/alert-config',
+        name: 'alert-configuration',
+        component: () => import('../presentation/admin/pages/AlertConfigurationPage.vue'),
+      },
 
       // Perfil
       {
