@@ -20,6 +20,36 @@ export interface PaginatedResponse<T> {
   totalPages: number;
 }
 
+export interface EvaluationOptionDto {
+  texto: string;
+  esCorrecta: boolean;
+  puntajeParcial?: number;
+  orden?: number;
+}
+
+export interface QuestionDto {
+  tipoPreguntaId: number;
+  enunciado: string;
+  imagenUrl?: string;
+  puntaje?: number;
+  orden?: number;
+  requerida?: boolean;
+  opciones: EvaluationOptionDto[];
+}
+
+export interface InlineEvaluationDto {
+  titulo: string;
+  descripcion?: string;
+  tiempoLimiteMinutos?: number;
+  intentosPermitidos?: number;
+  mostrarResultados?: boolean;
+  mostrarRespuestasCorrectas?: boolean;
+  puntajeTotal?: number;
+  minimoAprobacion?: number;
+  orden?: number;
+  preguntas: QuestionDto[];
+}
+
 export interface CreateTrainingDto {
   titulo: string;
   descripcion?: string;
@@ -37,6 +67,7 @@ export interface CreateTrainingDto {
   minimoAprobacion?: number;
   estado?: string;
   usuarioCreacion?: string;
+  evaluacion?: InlineEvaluationDto;
 }
 
 export type UpdateTrainingDto = Partial<CreateTrainingDto>;

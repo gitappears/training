@@ -38,16 +38,20 @@
 import { useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 import TrainingForm, { type TrainingFormModel } from '../components/TrainingForm.vue';
+import type { Material } from '../../../shared/components/MaterialViewer.vue';
 import { TrainingUseCasesFactory } from '../../../application/training/training.use-cases.factory';
 import { trainingsService } from '../../../infrastructure/http/trainings/trainings.service';
+import { materialsService } from '../../../infrastructure/http/materials/materials.service';
+import { trainingsLinkEvaluationService } from '../../../infrastructure/http/trainings/trainings-link-evaluation.service';
 import { useAuthStore } from '../../../stores/auth.store';
 import type { CreateTrainingDto } from '../../../application/training/training.repository.port';
+import type { CreateMaterialDto } from '../../../application/material/material.repository.port';
 
 const router = useRouter();
 const $q = useQuasar();
 const authStore = useAuthStore();
 
-async function handleSubmit(payload: TrainingFormModel) {
+async function handleSubmit(payload: TrainingFormModel, formMaterials: Material[]) {
   try {
     // Obtener el usuario actual para usuario_creacion
     const usuarioCreacion = authStore.profile?.email || authStore.profile?.username || 'system';
@@ -90,8 +94,131 @@ async function handleSubmit(payload: TrainingFormModel) {
       dto.videoPromocionalUrl = payload.promoVideoUrl;
     }
 
+    // Si hay evaluación inline, incluirla en el DTO
+    if (payload.evaluationInline) {
+      const evaluacionDto: {
+        titulo: string;
+        descripcion?: string;
+        tiempoLimiteMinutos?: number;
+        intentosPermitidos?: number;
+        mostrarResultados?: boolean;
+        mostrarRespuestasCorrectas?: boolean;
+        puntajeTotal?: number;
+        minimoAprobacion?: number;
+        orden?: number;
+        preguntas: Array<{
+          tipoPreguntaId: number;
+          enunciado: string;
+          imagenUrl?: string;
+          puntaje?: number;
+          orden?: number;
+          requerida?: boolean;
+          opciones: Array<{
+            texto: string;
+            esCorrecta: boolean;
+            puntajeParcial?: number;
+            orden?: number;
+          }>;
+        }>;
+      } = {
+        titulo: payload.evaluationInline.titulo,
+        intentosPermitidos: payload.evaluationInline.intentosPermitidos || 1,
+        mostrarResultados: payload.evaluationInline.mostrarResultados ?? true,
+        mostrarRespuestasCorrectas: payload.evaluationInline.mostrarRespuestasCorrectas ?? false,
+        puntajeTotal: payload.evaluationInline.puntajeTotal || 100,
+        minimoAprobacion: payload.evaluationInline.minimoAprobacion || 70,
+        orden: payload.evaluationInline.orden || 0,
+        preguntas: payload.evaluationInline.preguntas.map((p) => {
+          const pregunta: {
+            tipoPreguntaId: number;
+            enunciado: string;
+            imagenUrl?: string;
+            puntaje?: number;
+            orden?: number;
+            requerida?: boolean;
+            opciones: Array<{
+              texto: string;
+              esCorrecta: boolean;
+              puntajeParcial?: number;
+              orden?: number;
+            }>;
+          } = {
+            tipoPreguntaId: p.tipoPreguntaId,
+            enunciado: p.enunciado,
+            puntaje: p.puntaje || 1,
+            orden: p.orden ?? 0,
+            requerida: p.requerida ?? true,
+            opciones: p.opciones.map((o) => ({
+              texto: o.texto,
+              esCorrecta: o.esCorrecta,
+              puntajeParcial: o.puntajeParcial || 0,
+              orden: o.orden ?? 0,
+            })),
+          };
+          if (p.imagenUrl) {
+            pregunta.imagenUrl = p.imagenUrl;
+          }
+          return pregunta;
+        }),
+      };
+
+      // Agregar propiedades opcionales solo si tienen valor
+      if (payload.evaluationInline.descripcion) {
+        evaluacionDto.descripcion = payload.evaluationInline.descripcion;
+      }
+      if (payload.evaluationInline.tiempoLimiteMinutos !== undefined && payload.evaluationInline.tiempoLimiteMinutos !== null) {
+        evaluacionDto.tiempoLimiteMinutos = payload.evaluationInline.tiempoLimiteMinutos;
+      }
+
+      dto.evaluacion = evaluacionDto;
+    }
+
     const createTrainingUseCase = TrainingUseCasesFactory.getCreateTrainingUseCase(trainingsService);
     const created = await createTrainingUseCase.execute(dto);
+
+    // Vincular evaluación existente si fue seleccionada (RF-09) - solo si no hay evaluación inline
+    if (!payload.evaluationInline && payload.evaluationId) {
+      try {
+        await trainingsLinkEvaluationService.linkEvaluation(
+          parseInt(created.id),
+          payload.evaluationId,
+        );
+      } catch (evaluationError) {
+        console.error('Error al vincular evaluación:', evaluationError);
+        $q.notify({
+          type: 'warning',
+          message: 'Capacitación creada pero la evaluación no se pudo vincular. Puede vincularla manualmente después.',
+        });
+      }
+    }
+
+    // Guardar materiales si existen
+    if (formMaterials && formMaterials.length > 0) {
+      try {
+        const materialPromises = formMaterials.map((material) => {
+          const materialDto: CreateMaterialDto = {
+            capacitacionId: parseInt(created.id),
+            tipoMaterialId: mapMaterialTypeToId(material.type),
+            nombre: material.name,
+            url: material.url,
+            orden: material.order ?? 0,
+          };
+          // Agregar descripción solo si existe
+          if (material.description) {
+            materialDto.descripcion = material.description;
+          }
+          return materialsService.create(materialDto);
+        });
+
+        await Promise.all(materialPromises);
+      } catch (materialError) {
+        console.error('Error al guardar materiales:', materialError);
+        $q.notify({
+          type: 'warning',
+          message: 'Capacitación creada pero algunos materiales no se pudieron guardar',
+        });
+      }
+    }
 
     $q.notify({
       type: 'positive',
@@ -100,11 +227,42 @@ async function handleSubmit(payload: TrainingFormModel) {
 
     void router.push(`/trainings/${created.id}`);
   } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : 'Error al crear la capacitación';
+    // Mejorar mensajes de error con más contexto
+    let errorMessage = 'Error al crear la capacitación';
+
+    if (error instanceof Error) {
+      const errorStr = error.message.toLowerCase();
+
+      // Mensajes específicos según el tipo de error
+      if (errorStr.includes('evaluación') || errorStr.includes('evaluation')) {
+        errorMessage = 'Error: Debe vincular una evaluación antes de crear la capacitación (RF-09)';
+      } else if (errorStr.includes('validación') || errorStr.includes('validation')) {
+        errorMessage = 'Error de validación: Verifique que todos los campos requeridos estén completos correctamente';
+      } else if (errorStr.includes('network') || errorStr.includes('timeout')) {
+        errorMessage = 'Error de conexión: Verifique su conexión a internet e intente nuevamente';
+      } else if (errorStr.includes('401') || errorStr.includes('unauthorized')) {
+        errorMessage = 'Error de autenticación: Su sesión ha expirado. Por favor, inicie sesión nuevamente';
+      } else if (errorStr.includes('403') || errorStr.includes('forbidden')) {
+        errorMessage = 'Error de permisos: No tiene permisos para crear capacitaciones';
+      } else if (errorStr.includes('500') || errorStr.includes('server')) {
+        errorMessage = 'Error del servidor: Por favor, intente más tarde o contacte al administrador';
+      } else {
+        errorMessage = error.message;
+      }
+    }
+
     $q.notify({
       type: 'negative',
       message: errorMessage,
+      icon: 'error',
+      position: 'top',
+      timeout: 7000,
+      actions: [
+        {
+          label: 'Cerrar',
+          color: 'white',
+        },
+      ],
     });
   }
 }
@@ -126,5 +284,19 @@ function mapModalityToId(modality: string | null): number {
     hybrid: 3,
   };
   return map[modality ?? 'online'] ?? 1;
+}
+
+// Mapeo temporal de tipos de material - TODO: Obtener de catálogo del backend
+function mapMaterialTypeToId(type: string): number {
+  const map: Record<string, number> = {
+    PDF: 1,
+    IMAGE: 2,
+    VIDEO: 3,
+    DOC: 4,
+    LINK: 5,
+    PRESENTATION: 6,
+    AUDIO: 7,
+  };
+  return map[type] ?? 1;
 }
 </script>

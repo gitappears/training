@@ -14,8 +14,14 @@
             filled
             label="Título de la capacitación"
             placeholder="Ej: Introducción a React y TypeScript"
-            :rules="[(val) => !!val || 'El título es obligatorio']"
-            hint="Nombre descriptivo y atractivo para la capacitación"
+            :rules="[
+              (val) => !!val || 'El título es obligatorio',
+              (val) => (val && val.length >= 5) || 'El título debe tener al menos 5 caracteres',
+              (val) => (val && val.length <= 200) || 'El título no puede exceder 200 caracteres',
+            ]"
+            @blur="validateTitle"
+            hint="Nombre descriptivo y atractivo para la capacitación (5-200 caracteres)"
+            :error-message="titleError"
             :dense="false"
           >
             <template #prepend>
@@ -51,9 +57,11 @@
             autogrow
             label="Descripción"
             placeholder="Describe los objetivos, contenidos y beneficios de esta capacitación..."
-            hint="Proporciona información detallada que motive a los participantes"
+            hint="Proporciona información detallada que motive a los participantes (mínimo 20 caracteres)"
             rows="4"
             :dense="false"
+            :error-message="descriptionError"
+            @blur="validateDescription"
           >
             <template #prepend>
               <q-icon name="description" />
@@ -397,6 +405,368 @@
         </q-card>
       </div>
 
+      <!-- Sección: Evaluación (RF-09) -->
+      <q-separator class="q-my-md" />
+      <q-card
+        flat
+        bordered
+        class="q-pa-md q-mt-md evaluation-section"
+        :class="{
+          'evaluation-warning': !hasEvaluation,
+          'evaluation-selected': hasEvaluation,
+        }"
+      >
+        <div class="row items-center q-mb-md">
+          <q-icon
+            name="quiz"
+            size="24px"
+            :color="hasEvaluation ? 'primary' : 'warning'"
+            class="q-mr-sm"
+          />
+          <div class="text-h6 text-weight-medium">Evaluación</div>
+          <q-badge v-if="!hasEvaluation" color="warning" class="q-ml-md">
+            Requerida
+          </q-badge>
+        </div>
+
+        <q-banner
+          v-if="!hasEvaluation"
+          dense
+          class="bg-warning-1 text-warning q-mb-md"
+          rounded
+        >
+          <template #avatar>
+            <q-icon name="warning" color="warning" />
+          </template>
+          <div class="text-body2">
+            <strong>Evaluación obligatoria (RF-09):</strong> Cada capacitación debe tener una evaluación vinculada.
+            No se puede publicar un curso sin evaluación.
+          </div>
+        </q-banner>
+
+        <!-- Toggle para elegir modo -->
+        <q-btn-toggle
+          v-model="evaluationMode"
+          toggle-color="primary"
+          :options="[
+            { label: 'Vincular evaluación existente', value: 'link' },
+            { label: 'Crear nueva evaluación', value: 'create' },
+          ]"
+          class="q-mb-md"
+        />
+
+        <!-- Modo: Vincular evaluación existente -->
+        <div v-if="evaluationMode === 'link'">
+          <q-select
+            v-model="form.evaluationId"
+            filled
+            :options="evaluationOptions"
+            label="Evaluación asociada *"
+            emit-value
+            map-options
+            :rules="[(val) => !!val || 'Debe seleccionar una evaluación']"
+            hint="Seleccione la evaluación que se aplicará en esta capacitación"
+            :dense="false"
+            :loading="loadingEvaluations"
+            clearable
+            @update:model-value="form.evaluationInline = null"
+          >
+            <template #prepend>
+              <q-icon name="assignment" />
+            </template>
+            <template #no-option>
+              <q-item>
+                <q-item-section class="text-grey">
+                  <q-item-label v-if="loadingEvaluations">
+                    Cargando evaluaciones...
+                  </q-item-label>
+                  <q-item-label v-else>
+                    No hay evaluaciones disponibles. Use la opción "Crear nueva evaluación".
+                  </q-item-label>
+                </q-item-section>
+              </q-item>
+            </template>
+          </q-select>
+
+          <div v-if="form.evaluationId" class="q-mt-sm">
+            <q-btn
+              flat
+              dense
+              color="primary"
+              icon="open_in_new"
+              label="Ver detalles de la evaluación"
+              size="sm"
+              @click="handleViewEvaluationDetails"
+            />
+          </div>
+        </div>
+
+        <!-- Modo: Crear nueva evaluación inline -->
+        <div v-else class="q-mt-md">
+          <q-banner dense class="bg-info-1 text-info q-mb-md" rounded>
+            <template #avatar>
+              <q-icon name="info" color="info" />
+            </template>
+            <div class="text-body2">
+              Cree una evaluación completa con preguntas y opciones. La evaluación se creará junto con la capacitación.
+            </div>
+          </q-banner>
+
+          <!-- Formulario de evaluación -->
+          <div class="q-gutter-md">
+            <q-input
+              v-model="form.evaluationInline!.titulo"
+              filled
+              label="Título de la evaluación *"
+              hint="Nombre descriptivo de la evaluación"
+              :rules="[(val) => !!val || 'El título es obligatorio']"
+              :dense="false"
+            >
+              <template #prepend>
+                <q-icon name="title" />
+              </template>
+            </q-input>
+
+            <q-input
+              v-model="form.evaluationInline!.descripcion"
+              filled
+              type="textarea"
+              label="Descripción"
+              hint="Descripción opcional de la evaluación"
+              :dense="false"
+              rows="2"
+            />
+
+            <div class="row q-col-gutter-md">
+              <div class="col-12 col-md-6">
+                <q-input
+                  v-model.number="form.evaluationInline!.tiempoLimiteMinutos"
+                  filled
+                  type="number"
+                  label="Tiempo límite (minutos)"
+                  hint="Deje vacío para sin límite"
+                  :dense="false"
+                  min="1"
+                >
+                  <template #prepend>
+                    <q-icon name="schedule" />
+                  </template>
+                </q-input>
+              </div>
+              <div class="col-12 col-md-6">
+                <q-input
+                  v-model.number="form.evaluationInline!.intentosPermitidos"
+                  filled
+                  type="number"
+                  label="Intentos permitidos *"
+                  hint="Número de veces que se puede intentar"
+                  :dense="false"
+                  min="1"
+                >
+                  <template #prepend>
+                    <q-icon name="repeat" />
+                  </template>
+                </q-input>
+              </div>
+            </div>
+
+            <div class="row q-col-gutter-md">
+              <div class="col-12 col-md-6">
+                <q-input
+                  v-model.number="form.evaluationInline!.puntajeTotal"
+                  filled
+                  type="number"
+                  label="Puntaje total *"
+                  hint="Puntaje máximo de la evaluación"
+                  :dense="false"
+                  min="0"
+                  step="0.01"
+                >
+                  <template #prepend>
+                    <q-icon name="star" />
+                  </template>
+                </q-input>
+              </div>
+              <div class="col-12 col-md-6">
+                <q-input
+                  v-model.number="form.evaluationInline!.minimoAprobacion"
+                  filled
+                  type="number"
+                  label="Mínimo para aprobar (%) *"
+                  hint="Porcentaje mínimo para aprobar"
+                  :dense="false"
+                  min="0"
+                  max="100"
+                  step="0.01"
+                >
+                  <template #prepend>
+                    <q-icon name="check_circle" />
+                  </template>
+                </q-input>
+              </div>
+            </div>
+
+            <q-toggle
+              v-model="form.evaluationInline!.mostrarResultados"
+              label="Mostrar resultados al finalizar"
+            />
+
+            <q-toggle
+              v-model="form.evaluationInline!.mostrarRespuestasCorrectas"
+              label="Mostrar respuestas correctas"
+            />
+
+            <!-- Sección de preguntas -->
+            <q-separator class="q-my-md" />
+            <div class="text-subtitle1 text-weight-medium q-mb-md">
+              <q-icon name="help" class="q-mr-xs" />
+              Preguntas (mínimo 1 según RF-08)
+            </div>
+
+            <div
+              v-for="(pregunta, preguntaIndex) in form.evaluationInline!.preguntas"
+              :key="preguntaIndex"
+              class="q-mb-lg"
+            >
+              <q-card flat bordered class="q-pa-md">
+                <div class="row items-center q-mb-md">
+                  <div class="text-subtitle2 text-weight-medium">
+                    Pregunta {{ preguntaIndex + 1 }}
+                  </div>
+                  <q-space />
+                  <q-btn
+                    v-if="form.evaluationInline!.preguntas.length > 1"
+                    flat
+                    dense
+                    round
+                    color="negative"
+                    icon="delete"
+                    size="sm"
+                    @click="removeQuestion(preguntaIndex)"
+                  />
+                </div>
+
+                <div class="q-gutter-md">
+                  <q-select
+                    v-model.number="pregunta.tipoPreguntaId"
+                    filled
+                    :options="questionTypes"
+                    label="Tipo de pregunta *"
+                    emit-value
+                    map-options
+                    :rules="[(val) => !!val || 'Seleccione un tipo']"
+                    :dense="false"
+                  >
+                    <template #prepend>
+                      <q-icon name="category" />
+                    </template>
+                  </q-select>
+
+                  <q-input
+                    v-model="pregunta.enunciado"
+                    filled
+                    type="textarea"
+                    label="Enunciado *"
+                    hint="Texto de la pregunta"
+                    :rules="[(val) => !!val || 'El enunciado es obligatorio']"
+                    :dense="false"
+                    rows="2"
+                  />
+
+                  <q-input
+                    v-if="pregunta.tipoPreguntaId === 3"
+                    v-model="pregunta.imagenUrl"
+                    filled
+                    label="URL de la imagen"
+                    hint="URL de la imagen para preguntas de tipo imagen"
+                    :dense="false"
+                  >
+                    <template #prepend>
+                      <q-icon name="image" />
+                    </template>
+                  </q-input>
+
+                  <q-input
+                    v-model.number="pregunta.puntaje"
+                    filled
+                    type="number"
+                    label="Puntaje de la pregunta"
+                    hint="Puntaje que vale esta pregunta"
+                    :dense="false"
+                    min="0"
+                    step="0.01"
+                  />
+
+                  <!-- Opciones de respuesta -->
+                  <q-separator class="q-my-sm" />
+                  <div class="text-body2 text-weight-medium q-mb-sm">
+                    Opciones de respuesta (mínimo 1, al menos una debe ser correcta)
+                  </div>
+
+                  <div
+                    v-for="(opcion, opcionIndex) in pregunta.opciones"
+                    :key="opcionIndex"
+                    class="q-mb-sm"
+                  >
+                    <q-card flat bordered class="q-pa-sm">
+                      <div class="row items-center q-gutter-sm">
+                        <div class="col">
+                          <q-input
+                            v-model="opcion.texto"
+                            filled
+                            dense
+                            label="Texto de la opción *"
+                            :rules="[(val) => !!val || 'El texto es obligatorio']"
+                          />
+                        </div>
+                        <div class="col-auto">
+                          <q-checkbox
+                            v-model="opcion.esCorrecta"
+                            label="Correcta"
+                            color="positive"
+                          />
+                        </div>
+                        <div class="col-auto">
+                          <q-btn
+                            v-if="pregunta.opciones.length > 1"
+                            flat
+                            dense
+                            round
+                            color="negative"
+                            icon="close"
+                            size="sm"
+                            @click="removeOption(preguntaIndex, opcionIndex)"
+                          />
+                        </div>
+                      </div>
+                    </q-card>
+                  </div>
+
+                  <q-btn
+                    flat
+                    dense
+                    color="primary"
+                    icon="add"
+                    label="Agregar opción"
+                    size="sm"
+                    @click="addOption(preguntaIndex)"
+                  />
+                </div>
+              </q-card>
+            </div>
+
+            <q-btn
+              flat
+              dense
+              color="primary"
+              icon="add"
+              label="Agregar pregunta"
+              @click="addQuestion"
+            />
+          </div>
+        </div>
+      </q-card>
+
       <!-- Enlaces externos (mantener compatibilidad) -->
       <q-separator class="q-my-md" />
       <div class="text-subtitle2 q-mb-sm text-weight-medium">
@@ -555,10 +925,44 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref } from 'vue';
+import { reactive, ref, onMounted, computed, watch } from 'vue';
 import { useQuasar } from 'quasar';
+import { useRouter } from 'vue-router';
 import MaterialViewer from '../../../shared/components/MaterialViewer.vue';
 import type { Material } from '../../../shared/components/MaterialViewer.vue';
+import { evaluationsService } from '../../../infrastructure/http/evaluations/evaluations.service';
+
+export interface EvaluationOption {
+  id?: number; // ID de la opción (para edición)
+  texto: string;
+  esCorrecta: boolean;
+  puntajeParcial?: number;
+  orden?: number;
+}
+
+export interface QuestionOption {
+  id?: number; // ID de la pregunta (para edición)
+  tipoPreguntaId: number;
+  enunciado: string;
+  imagenUrl?: string;
+  puntaje?: number;
+  orden?: number;
+  requerida?: boolean;
+  opciones: EvaluationOption[];
+}
+
+export interface InlineEvaluation {
+  titulo: string;
+  descripcion?: string;
+  tiempoLimiteMinutos?: number;
+  intentosPermitidos?: number;
+  mostrarResultados?: boolean;
+  mostrarRespuestasCorrectas?: boolean;
+  puntajeTotal?: number;
+  minimoAprobacion?: number;
+  orden?: number;
+  preguntas: QuestionOption[];
+}
 
 export interface TrainingFormModel {
   title: string;
@@ -575,19 +979,61 @@ export interface TrainingFormModel {
   endDate: string;
   coverImageUrl: string;
   promoVideoUrl: string;
+  evaluationId: number | null; // RF-09: Evaluación obligatoria (para vincular existente)
+  evaluationInline: InlineEvaluation | null; // RF-09: Evaluación a crear inline
   attachments: { id: string; label: string; url: string }[];
   links: { id: string; label: string; url: string }[];
 }
 
+const props = withDefaults(
+  defineProps<{
+    initialData?: {
+      id?: string;
+      title?: string;
+      description?: string;
+      type?: 'standard' | 'certified' | 'survey' | null;
+      modality?: 'online' | 'onsite' | 'hybrid' | null;
+      location?: string;
+      durationHours?: number | null;
+      capacity?: number | null;
+      instructor?: string;
+      area?: string;
+      targetAudience?: string | null;
+      startDate?: string;
+      endDate?: string;
+      coverImageUrl?: string;
+      promoVideoUrl?: string;
+      evaluations?: Array<{ id: number }>;
+    } | null;
+    initialMaterials?: Material[];
+    initialEvaluationId?: number | null;
+    initialEvaluationInline?: InlineEvaluation | null;
+  }>(),
+  {
+    initialData: null,
+    initialMaterials: () => [],
+    initialEvaluationId: null,
+    initialEvaluationInline: null,
+  }
+);
+
 const emit = defineEmits<{
-  submit: [TrainingFormModel];
+  submit: [TrainingFormModel, Material[]];
 }>();
 
+// Toggle para elegir entre vincular evaluación existente o crear nueva
+const evaluationMode = ref<'link' | 'create'>('link');
+
 const $q = useQuasar();
+const router = useRouter();
 const showImagePreview = ref(false);
 const showAddMaterialDialog = ref(false);
 const editingMaterialIndex = ref<number | null>(null);
 const materials = ref<Material[]>([]);
+
+// Estados de validación en tiempo real
+const titleError = ref('');
+const descriptionError = ref('');
 
 const newMaterial = reactive<Material>({
   name: '',
@@ -628,6 +1074,160 @@ const targetAudiences = [
   'Diseñadores',
 ];
 
+// Opciones de evaluaciones (cargadas dinámicamente desde backend)
+const evaluationOptions = ref<Array<{ label: string; value: number }>>([]);
+const loadingEvaluations = ref(false);
+
+// Tipos de pregunta (RF-16)
+const questionTypes = [
+  { label: 'Única respuesta', value: 1 },
+  { label: 'Respuesta múltiple', value: 2 },
+  { label: 'Selección de imagen', value: 3 },
+  { label: 'Falso o Verdadero', value: 4 },
+  { label: 'Sí o No', value: 5 },
+];
+
+// Computed para verificar si hay evaluación (link o inline)
+const hasEvaluation = computed(() => {
+  return (
+    (evaluationMode.value === 'link' && !!form.evaluationId) ||
+    (evaluationMode.value === 'create' && !!form.evaluationInline && form.evaluationInline.preguntas.length > 0)
+  );
+});
+
+// Inicializar evaluación inline cuando se cambia a modo 'create'
+watch(evaluationMode, (newMode: 'link' | 'create') => {
+  if (newMode === 'create' && !form.evaluationInline) {
+    form.evaluationInline = {
+      titulo: '',
+      descripcion: '',
+      intentosPermitidos: 1,
+      mostrarResultados: true,
+      mostrarRespuestasCorrectas: false,
+      puntajeTotal: 100,
+      minimoAprobacion: 70,
+      orden: 0,
+      preguntas: [
+        {
+          tipoPreguntaId: 1,
+          enunciado: '',
+          puntaje: 1,
+          orden: 0,
+          requerida: true,
+          opciones: [
+            { texto: '', esCorrecta: false, puntajeParcial: 0, orden: 0 },
+            { texto: '', esCorrecta: false, puntajeParcial: 0, orden: 1 },
+          ],
+        },
+      ],
+    };
+    form.evaluationId = null;
+  } else if (newMode === 'link') {
+    form.evaluationInline = null;
+  }
+});
+
+// Cargar evaluaciones disponibles desde el backend
+async function loadEvaluations(): Promise<void> {
+  loadingEvaluations.value = true;
+  try {
+    const response = await evaluationsService.findAll({
+      page: 1,
+      limit: 100, // Cargar todas las evaluaciones disponibles
+    });
+
+    evaluationOptions.value = response.data.map((evaluation) => ({
+      label: evaluation.description
+        ? `${evaluation.courseName} - ${evaluation.description}`
+        : evaluation.courseName,
+      value: parseInt(evaluation.id),
+    }));
+  } catch (error) {
+    console.error('Error al cargar evaluaciones:', error);
+    // En caso de error, usar opciones mock como fallback
+    evaluationOptions.value = [
+      { label: 'Evaluación de Manejo Defensivo', value: 1 },
+      { label: 'Evaluación de Primeros Auxilios', value: 2 },
+      { label: 'Evaluación de Transporte de Mercancías Peligrosas', value: 3 },
+    ];
+    $q.notify({
+      type: 'warning',
+      message: 'No se pudieron cargar las evaluaciones. Usando opciones predeterminadas.',
+      position: 'top',
+      timeout: 3000,
+    });
+  } finally {
+    loadingEvaluations.value = false;
+  }
+}
+
+// Funciones para manejar preguntas y opciones
+function addQuestion(): void {
+  if (!form.evaluationInline) return;
+  const newQuestion: QuestionOption = {
+    tipoPreguntaId: 1,
+    enunciado: '',
+    puntaje: 1,
+    orden: form.evaluationInline.preguntas.length,
+    requerida: true,
+    opciones: [
+      { texto: '', esCorrecta: false, puntajeParcial: 0, orden: 0 },
+      { texto: '', esCorrecta: false, puntajeParcial: 0, orden: 1 },
+    ],
+  };
+  form.evaluationInline.preguntas.push(newQuestion);
+}
+
+function removeQuestion(index: number): void {
+  if (!form.evaluationInline) return;
+  if (form.evaluationInline.preguntas.length > 1) {
+    form.evaluationInline.preguntas.splice(index, 1);
+    // Reordenar
+    form.evaluationInline.preguntas.forEach((p, i) => {
+      p.orden = i;
+    });
+  } else {
+    $q.notify({
+      type: 'warning',
+      message: 'Debe tener al menos una pregunta (RF-08)',
+      position: 'top',
+      timeout: 3000,
+    });
+  }
+}
+
+function addOption(preguntaIndex: number): void {
+  if (!form.evaluationInline) return;
+  const pregunta = form.evaluationInline.preguntas[preguntaIndex];
+  if (!pregunta) return;
+  pregunta.opciones.push({
+    texto: '',
+    esCorrecta: false,
+    puntajeParcial: 0,
+    orden: pregunta.opciones.length,
+  });
+}
+
+function removeOption(preguntaIndex: number, opcionIndex: number): void {
+  if (!form.evaluationInline) return;
+  const pregunta = form.evaluationInline.preguntas[preguntaIndex];
+  if (!pregunta) return;
+  if (pregunta.opciones.length > 1) {
+    pregunta.opciones.splice(opcionIndex, 1);
+    // Reordenar
+    pregunta.opciones.forEach((o, i) => {
+      o.orden = i;
+    });
+  } else {
+    $q.notify({
+      type: 'warning',
+      message: 'Cada pregunta debe tener al menos una opción',
+      position: 'top',
+      timeout: 3000,
+    });
+  }
+}
+
 const form = reactive<TrainingFormModel>({
   title: '',
   description: '',
@@ -643,6 +1243,8 @@ const form = reactive<TrainingFormModel>({
   endDate: '',
   coverImageUrl: '',
   promoVideoUrl: '',
+  evaluationId: null, // RF-09: Evaluación obligatoria (para vincular existente)
+  evaluationInline: null, // RF-09: Evaluación a crear inline
   attachments: [],
   links: [],
 });
@@ -662,13 +1264,189 @@ function reset() {
   form.endDate = '';
   form.coverImageUrl = '';
   form.promoVideoUrl = '';
+  form.evaluationId = null;
+  form.evaluationInline = null;
   form.attachments = [];
   form.links = [];
   showImagePreview.value = false;
+  titleError.value = '';
+  descriptionError.value = '';
+  evaluationMode.value = 'link';
 }
 
+// Inicializar formulario con datos existentes (modo edición)
+function initializeFormWithData() {
+  if (!props.initialData) return;
+
+  const data = props.initialData;
+
+  form.title = data.title || '';
+  form.description = data.description || '';
+  form.type = data.type ?? null;
+  form.modality = data.modality ?? null;
+  form.location = data.location || '';
+  form.durationHours = data.durationHours ?? null;
+  form.capacity = data.capacity ?? null;
+  form.instructor = data.instructor || '';
+  form.area = data.area || '';
+  form.targetAudience = data.targetAudience ?? null;
+  form.startDate = data.startDate || '';
+  form.endDate = data.endDate || '';
+  form.coverImageUrl = data.coverImageUrl || '';
+  form.promoVideoUrl = data.promoVideoUrl || '';
+
+  // Cargar materiales iniciales
+  if (props.initialMaterials && props.initialMaterials.length > 0) {
+    materials.value = [...props.initialMaterials];
+  }
+
+  // Cargar evaluación inline si se proporciona (modo edición)
+  if (props.initialEvaluationInline) {
+    form.evaluationInline = { ...props.initialEvaluationInline };
+    evaluationMode.value = 'create';
+  } else if (props.initialEvaluationId) {
+    // Cargar evaluación vinculada
+    form.evaluationId = props.initialEvaluationId;
+    evaluationMode.value = 'link';
+  } else if (data.evaluations && data.evaluations.length > 0 && data.evaluations[0]) {
+    form.evaluationId = data.evaluations[0].id;
+    evaluationMode.value = 'link';
+  }
+}
+
+// Inicializar cuando se monta el componente o cambian los props
+watch(
+  () => props.initialData,
+  () => {
+    initializeFormWithData();
+  },
+  { immediate: true }
+);
+
+// También inicializar materiales cuando cambien
+watch(
+  () => props.initialMaterials,
+  (newMaterials) => {
+    if (newMaterials && newMaterials.length > 0) {
+      materials.value = [...newMaterials];
+    }
+  },
+  { immediate: true }
+);
+
+// Función para ver detalles de evaluación
+function handleViewEvaluationDetails(): void {
+  if (form.evaluationId) {
+    void router.push(`/evaluations/${form.evaluationId}`);
+  }
+}
+
+// Cargar evaluaciones al montar el componente
+onMounted(() => {
+  void loadEvaluations();
+});
+
+
 function onSubmit() {
-  emit('submit', { ...form });
+  // Validar evaluación obligatoria (RF-09)
+  if (evaluationMode.value === 'link' && !form.evaluationId) {
+    $q.notify({
+      type: 'warning',
+      message: 'Debe seleccionar una evaluación antes de crear la capacitación (RF-09)',
+      position: 'top',
+      timeout: 5000,
+      actions: [
+        {
+          label: 'Entendido',
+          color: 'white',
+        },
+      ],
+    });
+    return;
+  }
+
+  if (evaluationMode.value === 'create') {
+    if (!form.evaluationInline || !form.evaluationInline.titulo) {
+      $q.notify({
+        type: 'warning',
+        message: 'Debe completar el título de la evaluación',
+        position: 'top',
+        timeout: 3000,
+      });
+      return;
+    }
+
+    if (!form.evaluationInline.preguntas || form.evaluationInline.preguntas.length === 0) {
+      $q.notify({
+        type: 'warning',
+        message: 'Debe agregar al menos una pregunta (RF-08)',
+        position: 'top',
+        timeout: 3000,
+      });
+      return;
+    }
+
+    // Validar que todas las preguntas tengan enunciado y al menos una opción correcta
+    for (let i = 0; i < form.evaluationInline.preguntas.length; i++) {
+      const pregunta = form.evaluationInline.preguntas[i];
+      if (!pregunta) {
+        $q.notify({
+          type: 'warning',
+          message: `Error en la pregunta ${i + 1}`,
+          position: 'top',
+          timeout: 3000,
+        });
+        return;
+      }
+
+      if (!pregunta.enunciado) {
+        $q.notify({
+          type: 'warning',
+          message: `La pregunta ${i + 1} debe tener un enunciado`,
+          position: 'top',
+          timeout: 3000,
+        });
+        return;
+      }
+
+      if (!pregunta.opciones || pregunta.opciones.length === 0) {
+        $q.notify({
+          type: 'warning',
+          message: `La pregunta ${i + 1} debe tener al menos una opción`,
+          position: 'top',
+          timeout: 3000,
+        });
+        return;
+      }
+
+      const tieneOpcionCorrecta = pregunta.opciones.some((o) => o.esCorrecta && o.texto);
+      if (!tieneOpcionCorrecta) {
+        $q.notify({
+          type: 'warning',
+          message: `La pregunta ${i + 1} debe tener al menos una opción correcta`,
+          position: 'top',
+          timeout: 3000,
+        });
+        return;
+      }
+
+      // Validar que todas las opciones tengan texto
+      for (let j = 0; j < pregunta.opciones.length; j++) {
+        const opcion = pregunta.opciones[j];
+        if (!opcion || !opcion.texto) {
+          $q.notify({
+            type: 'warning',
+            message: `La pregunta ${i + 1}, opción ${j + 1} debe tener texto`,
+            position: 'top',
+            timeout: 3000,
+          });
+          return;
+        }
+      }
+    }
+  }
+
+  emit('submit', { ...form }, materials.value);
 }
 
 // Funciones de attachments removidas - ya no se usan en el formulario actual
@@ -683,6 +1461,38 @@ function addLink() {
 
 function removeLink(index: number) {
   form.links.splice(index, 1);
+}
+
+function validateTitle() {
+  const title = form.title?.trim() ?? '';
+  if (!title) {
+    titleError.value = 'El título es obligatorio';
+    return false;
+  }
+  if (title.length < 5) {
+    titleError.value = 'El título debe tener al menos 5 caracteres';
+    return false;
+  }
+  if (title.length > 200) {
+    titleError.value = 'El título no puede exceder 200 caracteres';
+    return false;
+  }
+  titleError.value = '';
+  return true;
+}
+
+function validateDescription() {
+  const desc = form.description?.trim() ?? '';
+  if (desc && desc.length < 20) {
+    descriptionError.value = 'La descripción debe tener al menos 20 caracteres';
+    return false;
+  }
+  if (desc && desc.length > 2000) {
+    descriptionError.value = 'La descripción no puede exceder 2000 caracteres';
+    return false;
+  }
+  descriptionError.value = '';
+  return true;
 }
 
 function validateImageUrl() {
@@ -897,6 +1707,40 @@ body.body--dark {
   .empty-materials {
     border-color: rgba(255, 255, 255, 0.12);
     background-color: rgba(255, 255, 255, 0.05);
+  }
+}
+
+// Estilos para la sección de evaluación
+.evaluation-section {
+  transition: all 0.3s ease;
+
+  &.evaluation-warning {
+    border: 2px solid rgba(var(--q-warning-rgb), 0.3);
+    background-color: rgba(var(--q-warning-rgb), 0.05);
+  }
+
+  &.evaluation-selected {
+    border: 2px solid rgba(var(--q-primary-rgb), 0.3);
+    background-color: rgba(var(--q-primary-rgb), 0.02);
+  }
+}
+
+// Mejoras visuales para el banner de advertencia
+.bg-warning-1 {
+  background-color: rgba(var(--q-warning-rgb), 0.1) !important;
+}
+
+body.body--dark {
+  .evaluation-section {
+    &.evaluation-warning {
+      border-color: rgba(var(--q-warning-rgb), 0.4);
+      background-color: rgba(var(--q-warning-rgb), 0.08);
+    }
+
+    &.evaluation-selected {
+      border-color: rgba(var(--q-primary-rgb), 0.4);
+      background-color: rgba(var(--q-primary-rgb), 0.05);
+    }
   }
 }
 </style>

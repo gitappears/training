@@ -53,6 +53,7 @@ export interface CertificateStatistics {
 export interface CertificateFilters {
   search?: string;
   courseId?: string | null;
+  studentId?: string | null;
   status?: CertificateStatus | null;
   dateFrom?: string | null;
   dateTo?: string | null;

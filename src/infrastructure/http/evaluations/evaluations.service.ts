@@ -1,7 +1,7 @@
 // Implementación HTTP del repositorio de evaluaciones
 // Adaptador que conecta la capa de aplicación con la API REST
 
-// import { api } from '../../../boot/axios'; // TODO: Descomentar cuando backend esté listo
+import { api } from '../../../boot/axios';
 import type { AxiosError } from 'axios';
 import type {
   IEvaluationRepository,
@@ -11,6 +11,8 @@ import type {
   EvaluationListParams,
   EvaluationFilters,
   EvaluationStatistics,
+  CreateQuestionDto,
+  CreateQuestionOptionDto,
 } from '../../../application/evaluation/evaluation.repository.port';
 import type {
   Evaluation,
@@ -20,35 +22,49 @@ import type {
 import type { PaginatedResponse } from '../../../application/training/training.repository.port';
 
 /**
- * Tipos para las respuestas del backend (mock por ahora)
+ * Tipos para las respuestas del backend
  */
-interface BackendEvaluation {
+interface BackendTipoPregunta {
   id: number;
-  courseId: number;
-  courseName: string;
-  description: string;
-  durationMinutes: number;
-  minimumScore: number;
-  attemptsAllowed: number;
-  questions: BackendQuestion[];
-  createdAt: string;
-  updatedAt?: string;
+  nombre: string;
 }
 
-interface BackendQuestion {
+interface BackendOpcionRespuesta {
   id: number;
-  text: string;
-  type: string;
-  options: BackendQuestionOption[];
-  imageUrl?: string;
-  order: number;
+  texto: string;
+  esCorrecta: boolean;
+  puntajeParcial?: number;
+  orden: number;
 }
 
-interface BackendQuestionOption {
+interface BackendPregunta {
   id: number;
-  text: string;
-  imageUrl?: string;
-  isCorrect: boolean;
+  tipoPregunta: BackendTipoPregunta;
+  enunciado: string;
+  imagenUrl?: string;
+  puntaje: number;
+  orden: number;
+  requerida: boolean;
+  opciones: BackendOpcionRespuesta[];
+}
+
+interface BackendEvaluacion {
+  id: number;
+  capacitacion?: {
+    id: number;
+  };
+  titulo: string;
+  descripcion?: string;
+  tiempoLimiteMinutos?: number;
+  intentosPermitidos: number;
+  mostrarResultados: boolean;
+  mostrarRespuestasCorrectas: boolean;
+  puntajeTotal: number;
+  minimoAprobacion: number;
+  orden: number;
+  activo: boolean;
+  fechaCreacion: string;
+  preguntas?: BackendPregunta[];
 }
 
 // interface BackendPaginatedResponse { // TODO: Usar cuando backend esté listo
@@ -62,13 +78,13 @@ interface BackendQuestionOption {
 /**
  * Mapea la respuesta del backend al modelo de dominio
  */
-function mapBackendToDomain(backendData: BackendEvaluation): Evaluation {
+function mapBackendToDomain(backendData: BackendEvaluacion): Evaluation {
   const evaluation: Evaluation = {
     id: backendData.id?.toString() ?? '',
-    courseId: backendData.courseId?.toString() ?? '',
-    courseName: backendData.courseName ?? '',
-    description: backendData.description ?? '',
-    questions: backendData.questions?.map((q: BackendQuestion) => {
+    courseId: backendData.capacitacion?.id?.toString() ?? '',
+    courseName: '',
+    description: backendData.descripcion ?? '',
+    questions: backendData.preguntas?.map((q: BackendPregunta) => {
       const question: {
         id: string;
         text: string;
@@ -83,9 +99,9 @@ function mapBackendToDomain(backendData: BackendEvaluation): Evaluation {
         imageUrl?: string;
       } = {
         id: q.id?.toString() ?? '',
-        text: q.text ?? '',
-        type: mapQuestionType(q.type),
-        options: q.options?.map((opt: BackendQuestionOption) => {
+        text: q.enunciado ?? '',
+        type: mapTipoPreguntaToQuestionType(q.tipoPregunta),
+        options: q.opciones?.map((opt: BackendOpcionRespuesta) => {
           const option: {
             id: string;
             text: string;
@@ -93,41 +109,53 @@ function mapBackendToDomain(backendData: BackendEvaluation): Evaluation {
             imageUrl?: string;
           } = {
             id: opt.id?.toString() ?? '',
-            text: opt.text ?? '',
-            isCorrect: opt.isCorrect ?? false,
+            text: opt.texto ?? '',
+            isCorrect: opt.esCorrecta ?? false,
           };
-          if (opt.imageUrl) {
-            option.imageUrl = opt.imageUrl;
-          }
           return option;
         }) ?? [],
-        order: q.order ?? 0,
+        order: q.orden ?? 0,
       };
-      if (q.imageUrl) {
-        question.imageUrl = q.imageUrl;
+      if (q.imagenUrl) {
+        question.imageUrl = q.imagenUrl;
       }
       return question;
     }) ?? [],
-    questionsCount: backendData.questions?.length ?? 0,
-    durationMinutes: backendData.durationMinutes ?? 0,
-    minimumScore: backendData.minimumScore ?? 70,
-    attemptsAllowed: backendData.attemptsAllowed ?? 2,
+    questionsCount: backendData.preguntas?.length ?? 0,
+    durationMinutes: backendData.tiempoLimiteMinutos ?? 0,
+    minimumScore: backendData.minimoAprobacion ?? 70,
+    attemptsAllowed: backendData.intentosPermitidos ?? 2,
     status: 'pending',
-    createdAt: backendData.createdAt ?? new Date().toISOString(),
+    createdAt: backendData.fechaCreacion ?? new Date().toISOString(),
   };
-  if (backendData.updatedAt) {
-    evaluation.updatedAt = backendData.updatedAt;
-  }
   return evaluation;
 }
 
-function mapQuestionType(type: string): QuestionType {
-  const normalized = type?.toLowerCase() ?? 'single';
-  if (normalized.includes('multiple')) return 'multiple';
-  if (normalized.includes('image')) return 'image';
-  if (normalized.includes('true') || normalized.includes('false')) return 'true_false';
-  if (normalized.includes('yes') || normalized.includes('no')) return 'yes_no';
+/**
+ * Mapea el tipo de pregunta del backend al tipo del dominio
+ */
+function mapTipoPreguntaToQuestionType(tipoPregunta: BackendTipoPregunta): QuestionType {
+  const nombre = tipoPregunta?.nombre?.toLowerCase() ?? '';
+  if (nombre.includes('única') || nombre.includes('unica') || nombre.includes('single')) return 'single';
+  if (nombre.includes('múltiple') || nombre.includes('multiple')) return 'multiple';
+  if (nombre.includes('imagen') || nombre.includes('image')) return 'image';
+  if (nombre.includes('falso') || nombre.includes('verdadero') || nombre.includes('true') || nombre.includes('false')) return 'true_false';
+  if (nombre.includes('sí') || nombre.includes('no') || nombre.includes('yes') || nombre.includes('no')) return 'yes_no';
   return 'single';
+}
+
+/**
+ * Mapea el tipo de pregunta del dominio al ID del tipo en el backend
+ */
+function mapQuestionTypeToTipoPreguntaId(type: QuestionType): number {
+  const map: Record<QuestionType, number> = {
+    single: 1, // Única respuesta
+    multiple: 2, // Respuesta múltiple
+    image: 3, // Selección de imagen
+    true_false: 4, // Falso o Verdadero
+    yes_no: 5, // Sí o No
+  };
+  return map[type] ?? 1;
 }
 
 /**
@@ -142,17 +170,22 @@ export class EvaluationsService implements IEvaluationRepository {
   async findAll(params: EvaluationListParams): Promise<PaginatedResponse<Evaluation>> {
     try {
       // Mock por ahora
-      const mockEvaluations: BackendEvaluation[] = [
+      const mockEvaluations: BackendEvaluacion[] = [
         {
           id: 1,
-          courseId: 1,
-          courseName: 'Primeros Auxilios',
-          description: 'Evaluación sobre primeros auxilios básicos',
-          durationMinutes: 30,
-          minimumScore: 70,
-          attemptsAllowed: 2,
-          questions: [],
-          createdAt: '2025-01-15T10:00:00Z',
+          capacitacion: { id: 1 },
+          titulo: 'Primeros Auxilios',
+          descripcion: 'Evaluación sobre primeros auxilios básicos',
+          tiempoLimiteMinutos: 30,
+          minimoAprobacion: 70,
+          intentosPermitidos: 2,
+          mostrarResultados: true,
+          mostrarRespuestasCorrectas: false,
+          puntajeTotal: 100,
+          orden: 0,
+          activo: true,
+          fechaCreacion: '2025-01-15T10:00:00Z',
+          preguntas: [],
         },
       ];
 
@@ -177,35 +210,10 @@ export class EvaluationsService implements IEvaluationRepository {
     }
   }
 
-  // eslint-disable-next-line @typescript-eslint/require-await
   async findOne(id: string): Promise<Evaluation> {
     try {
-      // Mock por ahora
-      const mockEvaluation: BackendEvaluation = {
-        id: Number.parseInt(id),
-        courseId: 1,
-        courseName: 'Primeros Auxilios',
-        description: 'Evaluación sobre primeros auxilios básicos',
-        durationMinutes: 30,
-        minimumScore: 70,
-        attemptsAllowed: 2,
-        questions: [
-          {
-            id: 1,
-            text: '¿Cuál es el primer paso en primeros auxilios?',
-            type: 'single',
-            options: [
-              { id: 1, text: 'Llamar al 911', isCorrect: false },
-              { id: 2, text: 'Evaluar la escena', isCorrect: true },
-              { id: 3, text: 'Iniciar RCP', isCorrect: false },
-            ],
-            order: 1,
-          },
-        ],
-        createdAt: '2025-01-15T10:00:00Z',
-      };
-
-      return mapBackendToDomain(mockEvaluation);
+      const response = await api.get<BackendEvaluacion>(`${this.baseUrl}/${id}`);
+      return mapBackendToDomain(response.data);
     } catch (error) {
       const axiosError = error as AxiosError<{ message?: string }>;
       throw new Error(
@@ -234,38 +242,44 @@ export class EvaluationsService implements IEvaluationRepository {
   async create(dto: CreateEvaluationDto): Promise<Evaluation> {
     try {
       // Mock por ahora
-      const mockEvaluation: BackendEvaluation = {
+      const mockEvaluation: BackendEvaluacion = {
         id: Date.now(),
-        courseId: Number.parseInt(dto.courseId),
-        courseName: 'Curso',
-        description: dto.description,
-        durationMinutes: dto.durationMinutes,
-        minimumScore: dto.minimumScore,
-        attemptsAllowed: dto.attemptsAllowed,
-        questions: dto.questions.map((q, idx) => {
-          const question: BackendQuestion = {
+        capacitacion: { id: Number.parseInt(dto.courseId) },
+        titulo: 'Evaluación',
+        descripcion: dto.description,
+        tiempoLimiteMinutos: dto.durationMinutes,
+        minimoAprobacion: dto.minimumScore,
+        intentosPermitidos: dto.attemptsAllowed,
+        mostrarResultados: true,
+        mostrarRespuestasCorrectas: false,
+        puntajeTotal: 100,
+        orden: 0,
+        activo: true,
+        fechaCreacion: new Date().toISOString(),
+        preguntas: dto.questions.map((q, idx) => {
+          const question: BackendPregunta = {
             id: idx + 1,
-            text: q.text,
-            type: q.type,
-            options: q.options.map((opt, optIdx) => {
-              const option: BackendQuestionOption = {
+            tipoPregunta: { id: mapQuestionTypeToTipoPreguntaId(q.type), nombre: q.type },
+            enunciado: q.text,
+            puntaje: 1,
+            orden: q.order,
+            requerida: true,
+            opciones: q.options.map((opt, optIdx) => {
+              const option: BackendOpcionRespuesta = {
                 id: optIdx + 1,
-                text: opt.text,
-                isCorrect: opt.isCorrect,
+                texto: opt.text,
+                esCorrecta: opt.isCorrect,
+                puntajeParcial: 0,
+                orden: optIdx,
               };
-              if (opt.imageUrl) {
-                option.imageUrl = opt.imageUrl;
-              }
               return option;
             }),
-            order: q.order,
           };
           if (q.imageUrl) {
-            question.imageUrl = q.imageUrl;
+            question.imagenUrl = q.imageUrl;
           }
           return question;
         }),
-        createdAt: new Date().toISOString(),
       };
 
       return mapBackendToDomain(mockEvaluation);
@@ -279,44 +293,118 @@ export class EvaluationsService implements IEvaluationRepository {
 
   async update(id: string, dto: UpdateEvaluationDto): Promise<Evaluation> {
     try {
-      // Mock por ahora
-      const existing = await this.findOne(id);
-      const mockEvaluation: BackendEvaluation = {
-        id: Number.parseInt(id),
-        courseId: Number.parseInt(existing.courseId),
-        courseName: existing.courseName,
-        description: dto.description ?? existing.description,
-        durationMinutes: dto.durationMinutes ?? existing.durationMinutes,
-        minimumScore: dto.minimumScore ?? existing.minimumScore,
-        attemptsAllowed: dto.attemptsAllowed ?? existing.attemptsAllowed,
-        questions: existing.questions.map((q) => {
-          const question: BackendQuestion = {
-            id: Number.parseInt(q.id),
-            text: q.text,
-            type: q.type,
-            options: q.options.map((opt) => {
-              const option: BackendQuestionOption = {
-                id: Number.parseInt(opt.id),
-                text: opt.text,
-                isCorrect: opt.isCorrect,
-              };
-              if (opt.imageUrl) {
-                option.imageUrl = opt.imageUrl;
-              }
-              return option;
-            }),
-            order: q.order,
-          };
-          if (q.imageUrl) {
-            question.imageUrl = q.imageUrl;
-          }
-          return question;
-        }),
-        updatedAt: new Date().toISOString(),
-        createdAt: existing.createdAt,
-      };
+      // Mapear DTO del dominio al formato del backend
+      const backendDto: {
+        titulo?: string;
+        descripcion?: string;
+        tiempoLimiteMinutos?: number;
+        intentosPermitidos?: number;
+        mostrarResultados?: boolean;
+        mostrarRespuestasCorrectas?: boolean;
+        puntajeTotal?: number;
+        minimoAprobacion?: number;
+        orden?: number;
+        preguntas?: Array<{
+          id?: number;
+          tipoPreguntaId: number;
+          enunciado: string;
+          imagenUrl?: string;
+          puntaje?: number;
+          orden?: number;
+          requerida?: boolean;
+          opciones: Array<{
+            id?: number;
+            texto: string;
+            esCorrecta: boolean;
+            puntajeParcial?: number;
+            orden?: number;
+          }>;
+        }>;
+      } = {};
 
-      return mapBackendToDomain(mockEvaluation);
+      if (dto.description !== undefined) {
+        backendDto.descripcion = dto.description;
+      }
+      if (dto.durationMinutes !== undefined) {
+        backendDto.tiempoLimiteMinutos = dto.durationMinutes;
+      }
+      if (dto.attemptsAllowed !== undefined) {
+        backendDto.intentosPermitidos = dto.attemptsAllowed;
+      }
+      if (dto.minimumScore !== undefined) {
+        backendDto.minimoAprobacion = dto.minimumScore;
+      }
+      if (dto.questions !== undefined) {
+        backendDto.preguntas = dto.questions.map((q) => {
+          // Tipo extendido para permitir id opcional en actualización
+          type QuestionWithId = CreateQuestionDto & { id?: string | number };
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const questionWithId = q as any as QuestionWithId;
+
+          const pregunta: {
+            id?: number;
+            tipoPreguntaId: number;
+            enunciado: string;
+            imagenUrl?: string;
+            puntaje?: number;
+            orden?: number;
+            requerida?: boolean;
+            opciones: Array<{
+              id?: number;
+              texto: string;
+              esCorrecta: boolean;
+              puntajeParcial?: number;
+              orden?: number;
+            }>;
+          } = {
+            tipoPreguntaId: mapQuestionTypeToTipoPreguntaId(q.type),
+            enunciado: q.text,
+            puntaje: 1,
+            orden: q.order,
+            requerida: true,
+            opciones: q.options.map((opt, idx) => {
+              // Tipo extendido para permitir id opcional en actualización
+              type OptionWithId = CreateQuestionOptionDto & { id?: string | number };
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const optionWithId = opt as any as OptionWithId;
+
+              const opcion: {
+                id?: number;
+                texto: string;
+                esCorrecta: boolean;
+                puntajeParcial?: number;
+                orden?: number;
+              } = {
+                texto: opt.text,
+                esCorrecta: opt.isCorrect,
+                puntajeParcial: 0,
+                orden: idx,
+              };
+
+              // Si la opción tiene id, incluirlo para actualización
+              if (optionWithId.id !== undefined) {
+                opcion.id = typeof optionWithId.id === 'string' ? parseInt(optionWithId.id) : optionWithId.id;
+              }
+
+              return opcion;
+            }),
+          };
+
+          // Si la pregunta tiene id, incluirla para actualización
+          if (questionWithId.id !== undefined) {
+            pregunta.id = typeof questionWithId.id === 'string' ? parseInt(questionWithId.id) : questionWithId.id;
+          }
+
+          if (q.imageUrl) {
+            pregunta.imagenUrl = q.imageUrl;
+          }
+
+          return pregunta;
+        });
+      }
+
+      const response = await api.patch<BackendEvaluacion>(`${this.baseUrl}/${id}`, backendDto);
+      return mapBackendToDomain(response.data);
     } catch (error) {
       const axiosError = error as AxiosError<{ message?: string }>;
       throw new Error(

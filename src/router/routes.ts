@@ -43,6 +43,11 @@ const routes: RouteRecordRaw[] = [
         component: () => import('../presentation/trainings/pages/TrainingCreatePage.vue'),
       },
       {
+        path: 'trainings/:id/edit',
+        name: 'training-edit',
+        component: () => import('../presentation/trainings/pages/TrainingEditPage.vue'),
+      },
+      {
         path: 'trainings/:id',
         component: () => import('../presentation/trainings/pages/TrainingDetailPage.vue'),
       },

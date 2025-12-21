@@ -4,7 +4,7 @@
 **Fecha:** 18 de diciembre de 2025 (Actualizado)  
 **Objetivo:** MVP en producción en 8 días  
 **Versión del SRS:** 4.0  
-**Última actualización:** Después de completar Fase 1, Fase 2, Fase 3 y Fase 4 (Día 1 y Día 2) de la Guía de Implementación Frontend (Servicios HTTP, Componentes Reutilizables, Mejoras UI/UX, Material Multimedia, Políticas, Evaluaciones Avanzadas y Certificados)
+**Última actualización:** Después de completar la implementación completa del módulo de Certificados (Backend + Frontend) - RF-22 a RF-34 completamente implementados
 
 ---
 
@@ -444,11 +444,13 @@ training_api/src/
   - ❌ **Lógica:** Control de intentos (RF-21) - Falta lógica de negocio
 - **Certificados:**
   - ⚠️ **Estructura DB:** ✅ Entidad completa (con todos los campos: fecha_retroactiva, codigo_qr, url_verificacion_publica, firma_digital, etc.)
-  - ❌ **Servicio:** Generación de PDF (RF-22, RF-23) - Falta servicio de generación
-  - ❌ **Servicio:** Código QR con UUID (RF-24) - Falta servicio de generación
-  - ⚠️ **Estructura DB:** ✅ Campos para fecha retroactiva (RF-25 a RF-31)
-  - ⚠️ **Estructura DB:** ✅ Entidad AuditoriaCertificadoRetroactivo (RF-29, RF-30)
-  - ❌ **Módulo:** Lógica de fecha retroactiva - Falta controlador y casos de uso
+  - ✅ **Servicio:** Generación de PDF (RF-22, RF-23) - Implementado con PdfGeneratorService
+  - ✅ **Servicio:** Código QR con UUID (RF-24) - Implementado con QrGeneratorService
+  - ✅ **Estructura DB:** ✅ Campos para fecha retroactiva (RF-25 a RF-31)
+  - ✅ **Estructura DB:** ✅ Entidad AuditoriaCertificadoRetroactivo (RF-29, RF-30)
+  - ✅ **Módulo Backend:** Módulo completo de certificados implementado (controladores, casos de uso, repositorio)
+  - ✅ **Frontend:** Servicio HTTP conectado con backend real (mocks eliminados)
+  - ✅ **Módulo:** Lógica de fecha retroactiva - Implementado (UpdateCertificadoRetroactivoUseCase con auditoría)
 - **Vigencias y alertas:**
   - ⚠️ **Estructura DB:** ✅ Campo duracion_vigencia_dias en capacitaciones (RF-35)
   - ⚠️ **Estructura DB:** ✅ Entidades ConfiguracionAlerta y AlertaVencimiento (RF-37, RF-38)
@@ -461,8 +463,9 @@ training_api/src/
   - ❌ **Módulo:** Reportes con filtros (RF-40) - Falta controlador y casos de uso
   - ❌ **Módulo:** Reporte de certificados retroactivos (RF-42) - Falta controlador y casos de uso
 - **Verificación externa:**
-  - ⚠️ **Estructura DB:** ✅ Campo url_verificacion_publica en certificados (RF-32, RF-33, RF-34)
-  - ❌ **Módulo:** Endpoint público de verificación - Falta controlador público
+  - ✅ **Estructura DB:** ✅ Campo url_verificacion_publica en certificados (RF-32, RF-33, RF-34)
+  - ✅ **Backend:** Endpoint público de verificación implementado (`/public/verify/:token`)
+  - ✅ **Módulo:** Controlador público de verificación implementado (PublicCertificadosController)
 - **Cumplimiento normativo:**
   - ⚠️ **Estructura DB:** ✅ Entidades DocumentoLegal y AceptacionPolitica (RF-43, RF-44)
   - ❌ **Módulo:** Gestión de políticas - Falta controlador y casos de uso
@@ -530,9 +533,9 @@ training_api/src/
 | **Gestión de Cursos** | RF-08 a RF-10 | 2 (RF-08, RF-10) | 0 | 1 (RF-09 validación) | 70% |
 | **Material Multimedia** | RF-11 a RF-15 | 0 | 2 (RF-11 DB, RF-15 Frontend) | 3 (RF-12, RF-13, RF-14 validaciones) | 20% |
 | **Evaluaciones** | RF-16 a RF-21 | 0 | 2 (RF-16 DB+Frontend, RF-17-21 Frontend) | 4 (RF-17-21 Backend) | 25% |
-| **Certificados** | RF-22 a RF-24 | 0 | 2 (RF-22-24 DB+Frontend) | 1 (RF-22-24 servicios PDF/QR) | 30% |
-| **Certificados Retroactivos** | RF-25 a RF-31 | 0 | 1 (DB lista) | 6 (lógica) | 10% |
-| **Verificación Externa** | RF-32 a RF-34 | 0 | 2 (RF-32-34 DB+Frontend) | 1 (RF-32-34 endpoint) | 30% |
+| **Certificados** | RF-22 a RF-24 | 3 (Backend completo) | 2 (RF-22-24 DB+Frontend) | 1 (RF-22-24 servicios PDF/QR) | **100%** ✅ |
+| **Certificados Retroactivos** | RF-25 a RF-31 | 6 (Backend completo) | 1 (DB lista) | 6 (lógica) | **100%** ✅ |
+| **Verificación Externa** | RF-32 a RF-34 | 1 (Endpoint público) | 2 (RF-32-34 DB+Frontend) | 1 (RF-32-34 endpoint) | **100%** ✅ |
 | **Vigencias y Alertas** | RF-35 a RF-39 | 0 | 1 (RF-35 DB) | 4 (RF-36-39 servicios) | 10% |
 | **Reportes** | RF-40 a RF-42 | 0 | 2 (RF-40-42 DB+Frontend) | 1 (RF-40-42 Backend) | 30% |
 | **Cumplimiento Normativo** | RF-43 a RF-45 | 0 | 2 (RF-43-44 Frontend+DB) | 2 (RF-43-45 Backend, RF-43 Frontend modal) | 25% |
@@ -576,9 +579,9 @@ training_api/src/
 - **RF-15:** ✅ Frontend: UI completa para edición/eliminación de materiales con preview y validación | ❌ Backend: Falta lógica de actualización/eliminación de materiales
 - **RF-16:** ✅ DB: Pregunta con imagen_url, catálogo tipo_pregunta | ✅ Frontend: UI lista con 5 tipos de preguntas | ❌ Validación: Falta validación de 5 tipos específicos en backend
 - **RF-17 a RF-21:** ✅ Frontend: UI completa para evaluaciones | ❌ Backend: Falta lógica de calificación automática, control de intentos
-- **RF-22, RF-23, RF-24:** ✅ DB: Certificado con todos los campos (QR, firma, URL verificación) | ✅ Frontend: UI lista para visualización | ❌ Servicio: Falta generación de PDF y QR
-- **RF-25 a RF-31:** ✅ DB: Campos fecha_retroactiva, justificacion, entidad AuditoriaCertificadoRetroactivo | ❌ Módulo: Falta controlador y casos de uso
-- **RF-32, RF-33, RF-34:** ✅ DB: Campo url_verificacion_publica | ✅ Frontend: Página pública de verificación implementada | ❌ Backend: Falta endpoint público
+- **RF-22, RF-23, RF-24:** ✅ DB: Certificado con todos los campos (QR, firma, URL verificación) | ✅ Frontend: UI completa conectada con backend | ✅ Backend: Generación de PDF y QR implementada (PdfGeneratorService, QrGeneratorService)
+- **RF-25 a RF-31:** ✅ DB: Campos fecha_retroactiva, justificacion, entidad AuditoriaCertificadoRetroactivo | ✅ Backend: Módulo completo implementado (controlador, casos de uso, auditoría inmutable)
+- **RF-32, RF-33, RF-34:** ✅ DB: Campo url_verificacion_publica | ✅ Frontend: Página pública de verificación implementada | ✅ Backend: Endpoint público de verificación implementado (`/public/verify/:token`)
 - **RF-35:** ✅ DB: Campo duracion_vigencia_dias | ❌ Lógica: Falta cálculo de vencimiento
 - **RF-36:** ❌ Lógica: Falta cálculo de fecha de vencimiento
 - **RF-37, RF-38:** ✅ DB: Entidades ConfiguracionAlerta y AlertaVencimiento | ❌ Servicio: Falta cron job y envío de emails
@@ -595,9 +598,9 @@ training_api/src/
 - RF-09: Validación obligatoria de evaluación antes de publicar curso (Backend)
 - RF-12 a RF-14: Validación de URLs de video (Backend)
 - RF-17 a RF-21: Lógica completa de evaluaciones (Backend - calificación automática, control de intentos)
-- RF-22, RF-23, RF-24: Generación de certificado PDF con QR (Backend - servicios externos)
-- RF-25 a RF-31: Fecha retroactiva y auditoría (Backend)
-- RF-32 a RF-34: Endpoint público de verificación (Backend)
+- ✅ RF-22, RF-23, RF-24: Generación de certificado PDF con QR (Backend - COMPLETADO)
+- ✅ RF-25 a RF-31: Fecha retroactiva y auditoría (Backend - COMPLETADO)
+- ✅ RF-32 a RF-34: Endpoint público de verificación (Backend - COMPLETADO)
 - RF-35 a RF-39: Vigencias y alertas (Backend - cálculo, cron jobs, emails)
 - RF-40 a RF-42: Reportes backend (Backend)
 - RF-43: Modal/página para visualizar políticas completas (Frontend)
@@ -640,8 +643,8 @@ training_api/src/
 - ✅ **Frontend - Integración API:** ~60% completo - Módulo de Capacitaciones integrado + Servicios HTTP listos para otros módulos
 - ✅ **Frontend - Autenticación:** 100% completo - Sistema completo con JWT, guards y stores
 - ✅ **Frontend - Mejoras UI/UX:** ~90% completo - Páginas mejoradas con wizard multi-paso, timeline, gráficos, filtros avanzados, etc.
-- ⚠️ **Módulos/Controladores/Casos de Uso Backend:** ~15% implementado (solo Auth y Capacitaciones)
-- ❌ **Servicios Externos:** 0% (Email, PDF, Storage)
+- ✅ **Módulos/Controladores/Casos de Uso Backend:** ~35% implementado (Auth, Capacitaciones, Certificados completos)
+- ✅ **Servicios Externos:** ~30% (PDF y QR implementados, falta Email y Storage S3)
 - ❌ **Tareas Programadas:** 0% (Cron jobs)
 
 ### 4.3. Estimación para MVP
@@ -649,13 +652,13 @@ training_api/src/
 Para un MVP funcional en producción, necesitamos al menos:
 
 - ✅ **Backend - Base de Datos:** 100% ✅ **COMPLETO**
-- ⚠️ **Backend - Módulos:** 15% → **Necesita llegar a 70%** (prioridad alta)
-- ✅ **Backend - Servicios Externos:** 0% → **Necesita llegar a 50%** (PDF, Email básico)
+- ✅ **Backend - Módulos:** 35% → **Necesita llegar a 70%** (prioridad alta) - Certificados completado ✅
+- ✅ **Backend - Servicios Externos:** 30% → **Necesita llegar a 50%** (PDF y QR ✅, falta Email básico)
 - ✅ **Frontend:** 20% → **Necesita llegar a 60%**
 - ✅ **Integración:** 0% → **Necesita llegar a 80%**
 - ✅ **Testing básico:** 0% → **Necesita llegar a 30%**
 
-**Avance actual estimado: ~82% del MVP** (mejorado desde 78% gracias a la implementación completa de evaluaciones avanzadas, certificados mejorados, verificación externa y dashboard personalizable)
+**Avance actual estimado: ~85% del MVP** (mejorado desde 82% gracias a la implementación completa del módulo de Certificados en backend: generación de PDF, QR, verificación pública y certificados retroactivos con auditoría)
 
 ---
 
@@ -670,8 +673,8 @@ Para un MVP funcional en producción, necesitamos al menos:
 3. ✅ CRUD completo de cursos
 4. ✅ Material multimedia básico (PDF, imágenes, videos vía URL)
 5. ✅ Sistema de evaluaciones funcional (5 tipos de preguntas)
-6. ✅ Generación de certificados PDF con QR
-7. ✅ Verificación externa de certificados
+6. ✅ Generación de certificados PDF con QR - **COMPLETADO** ✅
+7. ✅ Verificación externa de certificados - **COMPLETADO** ✅
 8. ✅ Dashboard básico para administrador
 9. ✅ Asignación de cursos a conductores
 
@@ -721,22 +724,25 @@ Para un MVP funcional en producción, necesitamos al menos:
 
 ---
 
-#### **DÍA 3: Backend - Certificados y Verificación** 🎯
+#### **DÍA 3: Backend - Certificados y Verificación** 🎯 ✅ **COMPLETADO**
 **Objetivo:** Generación de certificados PDF con QR
 
 **Tareas:**
-- [ ] Integrar librería de generación PDF (PDFKit o similar)
-- [ ] Generar certificado con todos los campos (RF-23)
-- [ ] Generar código QR con UUID (RF-24)
-- [ ] Endpoint público de verificación (RF-32, RF-33)
-- [ ] Almacenar certificados (S3 o local)
-- [ ] Endpoint de descarga de certificado
+- [x] Integrar librería de generación PDF (PDFKit) ✅
+- [x] Generar certificado con todos los campos (RF-23) ✅
+- [x] Generar código QR con UUID (RF-24) ✅
+- [x] Endpoint público de verificación (RF-32, RF-33) ✅
+- [x] Almacenar certificados (local, configurable para S3) ✅
+- [x] Endpoint de descarga de certificado ✅
+- [x] Certificados retroactivos con auditoría (RF-25 a RF-31) ✅
 
 **Entregables:**
-- Generación de certificados PDF funcional
-- Verificación externa operativa
+- ✅ Generación de certificados PDF funcional
+- ✅ Verificación externa operativa
+- ✅ Módulo completo de certificados (arquitectura hexagonal)
+- ✅ Frontend conectado con backend real
 
-**Tiempo estimado:** 8 horas
+**Tiempo estimado:** 8 horas - **COMPLETADO**
 
 ---
 
@@ -1083,23 +1089,24 @@ Para maximizar la eficiencia, sigue este orden:
 
 ### 7.1. Resumen Ejecutivo
 
-- **Avance actual:** ~82% del MVP (mejorado desde 78% gracias a Fase 4 Día 2)
+- **Avance actual:** ~85% del MVP (mejorado desde 82% gracias a la implementación completa del módulo de Certificados en backend)
 - **Base de datos:** ✅ **100% completa** según SRS (todas las entidades y campos necesarios)
 - **Frontend UI:** ✅ **98% completo** - Todas las páginas del MVP implementadas y mejoradas siguiendo arquitectura hexagonal
 - **Frontend - Componentes Reutilizables:** ✅ **100% completo** - 20+ componentes creados y listos para uso
 - **Frontend - Servicios HTTP:** ✅ **100% completo** - Todos los servicios HTTP implementados (6 módulos: Capacitaciones, Usuarios, Evaluaciones, Certificados, Reportes, Inscripciones)
-- **Frontend - Integración API:** ✅ **60% completo** - Módulo de Capacitaciones completamente integrado + Servicios HTTP listos para otros módulos
+- **Frontend - Integración API:** ✅ **70% completo** - Módulo de Capacitaciones y Certificados completamente integrados + Servicios HTTP listos para otros módulos
 - **Frontend - Autenticación:** ✅ **100% completo** - Sistema completo con JWT, guards, stores y registro público
 - **Frontend - Validaciones:** ✅ **Completas según SRS** - Registro con todas las validaciones requeridas
 - **Frontend - Mejoras UI/UX:** ✅ **98% completo** - Páginas mejoradas + visualizador de materiales, sistema de políticas, evaluaciones avanzadas y certificados completos
 - **Frontend - Evaluaciones:** ✅ **100% completo** - Sistema completo con 5 tipos de preguntas, indicadores visuales, animaciones y desglose de resultados (RF-16 a RF-21)
-- **Frontend - Certificados:** ✅ **100% completo** - Preview, generación de QR, descarga y verificación externa mejorada (RF-22 a RF-24, RF-32 a RF-34)
+- **Frontend - Certificados:** ✅ **100% completo** - Preview, generación de QR, descarga y verificación externa mejorada (RF-22 a RF-24, RF-32 a RF-34) - **Conectado con backend real**
+- **Backend - Certificados:** ✅ **100% completo** - Módulo completo implementado: generación PDF, QR, verificación pública, certificados retroactivos con auditoría (RF-22 a RF-34)
 - **Frontend - Dashboard:** ✅ **100% completo** - Widgets personalizables, gráficos de progreso y acceso rápido mejorado
 - **Frontend - Material Multimedia:** ✅ **100% completo** - Visualizador unificado implementado (RF-11 a RF-15)
 - **Frontend - Políticas:** ✅ **100% completo** - Modal y página de políticas implementados e integrados (RF-43, RF-44)
-- **Módulos backend:** ⚠️ **15% implementado** (solo Auth y Capacitaciones, faltan 8+ módulos)
+- **Módulos backend:** ✅ **35% implementado** (Auth, Capacitaciones y Certificados completos, faltan 6+ módulos)
 - **Tiempo estimado para MVP:** 8 días (62 horas de trabajo)
-- **Riesgo principal:** Implementación de módulos backend faltantes y servicios externos (PDF, Email)
+- **Riesgo principal:** Implementación de módulos backend faltantes y servicios externos (Email, Storage S3 opcional)
 - **Fortalezas:**
   - ✅ **Estructura de base de datos 100% completa** - La base está sólida
   - ✅ **Frontend UI completo y mejorado del MVP** - Todas las páginas mejoradas con filtros avanzados, estadísticas, exportación, etc.
@@ -1107,6 +1114,7 @@ Para maximizar la eficiencia, sigue este orden:
   - ✅ **Servicios HTTP completos** - Todos los módulos tienen servicios HTTP listos para integración
   - ✅ **Arquitectura hexagonal bien implementada** - Separación clara de capas en todos los módulos
   - ✅ **Módulo de Capacitaciones integrado** - CRUD completo funcional con backend
+  - ✅ **Módulo de Certificados completo** - Generación PDF, QR, verificación pública y certificados retroactivos con auditoría
   - ✅ **Sistema de autenticación completo** - Login, registro, JWT, guards funcionales
   - ✅ **Validaciones según SRS** - Registro público con todas las validaciones requeridas
   - ✅ **Modo oscuro implementado** - Mejora de UX/UI a nivel corporativo
@@ -1639,8 +1647,8 @@ Para maximizar la eficiencia, sigue este orden:
 - **RF-05:** ✅ Frontend: Validaciones implementadas | ✅ Frontend: Nota sobre habilitación requerida | ❌ Backend: Falta lógica de habilitación y validación en login
 - **RF-16:** ✅ DB: Pregunta con imagen_url | ✅ Frontend: UI lista con 5 tipos de preguntas | ❌ Backend: Falta validación de tipos
 - **RF-17 a RF-21:** ✅ Frontend: UI completa para evaluaciones | ❌ Backend: Falta lógica de calificación automática, control de intentos
-- **RF-22 a RF-24:** ✅ DB: Certificado con todos los campos | ✅ Frontend: UI completa con visualizador PDF, zoom, compartir, historial | ❌ Backend: Falta generación de PDF y QR
-- **RF-32 a RF-34:** ✅ DB: Campo url_verificacion_publica | ✅ Frontend: Página pública de verificación rediseñada con mejor branding y UX | ❌ Backend: Falta endpoint público
+- **RF-22 a RF-24:** ✅ DB: Certificado con todos los campos | ✅ Frontend: UI completa con visualizador PDF, zoom, compartir, historial | ✅ Backend: Generación de PDF y QR implementada
+- **RF-32 a RF-34:** ✅ DB: Campo url_verificacion_publica | ✅ Frontend: Página pública de verificación rediseñada con mejor branding y UX | ✅ Backend: Endpoint público de verificación implementado
 - **RF-40 a RF-42:** ✅ DB: Log de reportes | ✅ Frontend: Dashboard de reportes mejorado con gráficos interactivos, más KPIs, filtros avanzados y exportación | ❌ Backend: Falta controlador y casos de uso
 - **RF-43, RF-44:** ✅ DB: Entidades DocumentoLegal y AceptacionPolitica | ✅ Frontend: Aceptación obligatoria implementada (checkboxes con validación) | ✅ Frontend: Modal y página de políticas implementados e integrados (`PoliciesModal.vue`, `PoliciesPage.vue`) | ❌ Backend: Falta controlador y casos de uso para gestión de documentos legales
 
@@ -1650,7 +1658,7 @@ Para maximizar la eficiencia, sigue este orden:
 - **RF-06, RF-07:** Gestión de pagos manuales (Backend)
 - **RF-09:** Validación obligatoria de evaluación antes de publicar (Backend)
 - **RF-12 a RF-14:** Validación de URLs de video (Backend)
-- **RF-25 a RF-31:** Fecha retroactiva y auditoría (Backend)
+- **RF-25 a RF-31:** ✅ Fecha retroactiva y auditoría (Backend) - Implementado
 - **RF-35 a RF-39:** Vigencias y alertas (Backend)
 - **RF-45:** Gestión de políticas de tratamiento de datos (Backend)
 

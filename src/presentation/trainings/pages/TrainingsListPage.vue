@@ -203,7 +203,7 @@ import { useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 import { TrainingUseCasesFactory } from '../../../application/training/training.use-cases.factory';
 import { trainingsService } from '../../../infrastructure/http/trainings/trainings.service';
-import type { Training, TrainingStatus } from '../../../domain/training/models';
+import type { Training } from '../../../domain/training/models';
 
 const router = useRouter();
 const $q = useQuasar();
@@ -263,12 +263,45 @@ async function loadTrainings() {
     pagination.value.total = response.total;
     pagination.value.totalPages = response.totalPages;
   } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : 'Error al cargar las capacitaciones';
+    // Mejorar mensajes de error con más contexto
+    let errorMessage = 'Error al cargar las capacitaciones';
+
+    if (error instanceof Error) {
+      const errorStr = error.message.toLowerCase();
+
+      if (errorStr.includes('network') || errorStr.includes('timeout')) {
+        errorMessage = 'Error de conexión: Verifique su conexión a internet e intente nuevamente';
+      } else if (errorStr.includes('401') || errorStr.includes('unauthorized')) {
+        errorMessage = 'Error de autenticación: Su sesión ha expirado. Por favor, inicie sesión nuevamente';
+        void router.push('/auth/login');
+      } else if (errorStr.includes('403') || errorStr.includes('forbidden')) {
+        errorMessage = 'Error de permisos: No tiene permisos para ver capacitaciones';
+      } else if (errorStr.includes('500') || errorStr.includes('server')) {
+        errorMessage = 'Error del servidor: Por favor, intente más tarde o contacte al administrador';
+      } else {
+        errorMessage = error.message;
+      }
+    }
+
     $q.notify({
       type: 'negative',
       message: errorMessage,
+      icon: 'error',
       position: 'top',
+      timeout: 7000,
+      actions: [
+        {
+          label: 'Reintentar',
+          color: 'white',
+          handler: () => {
+            void loadTrainings();
+          },
+        },
+        {
+          label: 'Cerrar',
+          color: 'white',
+        },
+      ],
     });
   } finally {
     loading.value = false;
@@ -293,38 +326,84 @@ function viewStatistics() {
   // void router.push(`/trainings/${id}/statistics`);
 }
 
-function toggleStatus(training: Training) {
+function toggleStatus(training: Training): void {
   const currentStatus = training.status || 'active';
-  const newStatus: TrainingStatus = currentStatus === 'active' ? 'inactive' : 'active';
-  const action = newStatus === 'active' ? 'activada' : 'desactivada';
+  const action = currentStatus === 'active' ? 'desactivar' : 'activar';
+  const actionPast = currentStatus === 'active' ? 'desactivada' : 'activada';
 
-  try {
-    // TODO: Implementar actualización de estado en el backend
-    // await trainingsService.updateStatus(training.id, newStatus);
-    
-    // Actualizar el estado localmente
-    const trainingIndex = trainings.value.findIndex((t) => t.id === training.id);
-    if (trainingIndex !== -1) {
-      const foundTraining = trainings.value[trainingIndex];
-      if (foundTraining) {
-        foundTraining.status = newStatus;
+  $q.dialog({
+    title: 'Confirmar cambio de estado',
+    message: `¿Está seguro de que desea ${action} esta capacitación? Los certificados ya emitidos no se afectarán (RF-10).`,
+    cancel: true,
+    persistent: true,
+    ok: {
+      label: 'Confirmar',
+      color: 'primary',
+    },
+  }).onOk(() => {
+    void (async () => {
+    try {
+      // Importar servicio de toggle
+      const { trainingsToggleStatusService } = await import(
+        '../../../infrastructure/http/trainings/trainings-toggle-status.service'
+      );
+
+      // Llamar al endpoint de toggle
+      await trainingsToggleStatusService.toggleActivoInactivo(
+        parseInt(training.id),
+      );
+
+      // Actualizar el estado localmente
+      const trainingIndex = trainings.value.findIndex((t) => t.id === training.id);
+      if (trainingIndex !== -1) {
+        const foundTraining = trainings.value[trainingIndex];
+        if (foundTraining) {
+          // Mapear estado del backend al frontend
+          // El backend retorna el estado actualizado, pero necesitamos mapearlo
+          foundTraining.status = currentStatus === 'active' ? 'inactive' : 'active';
+        }
       }
-    }
 
-    $q.notify({
-      type: 'positive',
-      message: `Capacitación ${action} exitosamente`,
-      position: 'top',
-    });
-  } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : 'Error al cambiar el estado';
-    $q.notify({
-      type: 'negative',
-      message: errorMessage,
-      position: 'top',
-    });
-  }
+      $q.notify({
+        type: 'positive',
+        message: `Capacitación ${actionPast} exitosamente`,
+        icon: 'check_circle',
+        position: 'top',
+      });
+    } catch (error) {
+      // Mejorar mensajes de error para toggle
+      let errorMessage = 'Error al cambiar el estado';
+
+      if (error instanceof Error) {
+        const errorStr = error.message.toLowerCase();
+
+        if (errorStr.includes('evaluación') || errorStr.includes('evaluation')) {
+          errorMessage = 'No se puede activar: Debe vincular una evaluación primero (RF-09)';
+        } else if (errorStr.includes('certificado') || errorStr.includes('certificate')) {
+          errorMessage = 'Los certificados existentes no se afectarán al cambiar el estado (RF-10)';
+        } else if (errorStr.includes('network') || errorStr.includes('timeout')) {
+          errorMessage = 'Error de conexión: Verifique su conexión e intente nuevamente';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+
+      $q.notify({
+        type: 'negative',
+        message: errorMessage,
+        icon: 'error',
+        position: 'top',
+        timeout: 7000,
+        actions: [
+          {
+            label: 'Cerrar',
+            color: 'white',
+          },
+        ],
+      });
+    }
+    })();
+  });
 }
 
 onMounted(() => {

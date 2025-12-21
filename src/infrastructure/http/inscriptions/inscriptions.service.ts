@@ -1,7 +1,7 @@
 // Implementación HTTP del repositorio de inscripciones
 // Adaptador que conecta la capa de aplicación con la API REST
 
-// import { api } from '../../../boot/axios'; // TODO: Descomentar cuando backend esté listo
+import { api } from '../../../boot/axios';
 import type { AxiosError } from 'axios';
 import type {
   IInscriptionRepository,
@@ -12,67 +12,111 @@ import type {
 } from '../../../application/inscription/inscription.repository.port';
 
 /**
- * Tipos para las respuestas del backend (mock por ahora)
+ * Tipos para las respuestas del backend
  */
-interface BackendInscription {
+interface BackendCapacitacion {
   id: number;
-  courseId: number;
-  courseName: string;
-  userId: number;
-  userName: string;
-  enrolledDate: string;
-  progress: number;
-  status: string;
-  completedDate?: string;
-  score?: number;
-  certificateId?: number;
+  titulo: string;
+}
+
+interface BackendPersona {
+  id: number;
+  nombres: string;
+  apellidos: string;
+  numeroDocumento?: string;
+  email?: string;
+}
+
+interface BackendInscripcion {
+  id: number;
+  capacitacion: BackendCapacitacion;
+  estudiante: BackendPersona;
+  fechaInscripcion: string;
+  fechaInicio?: string | null;
+  fechaFinalizacion?: string | null;
+  progresoPorcentaje: number;
+  estado: 'inscrito' | 'en_progreso' | 'completado' | 'abandonado';
+  calificacionFinal?: number | null;
+  aprobado?: boolean | null;
+  pago?: {
+    id: number;
+  } | null;
+}
+
+interface BackendPaginatedResponse {
+  data: BackendInscripcion[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+/**
+ * Mapea el estado del backend al modelo del frontend
+ */
+function mapStatus(
+  estado: 'inscrito' | 'en_progreso' | 'completado' | 'abandonado',
+): 'enrolled' | 'in_progress' | 'completed' | 'cancelled' {
+  const estadoMap: Record<string, 'enrolled' | 'in_progress' | 'completed' | 'cancelled'> = {
+    inscrito: 'enrolled',
+    en_progreso: 'in_progress',
+    completado: 'completed',
+    abandonado: 'cancelled',
+  };
+  return estadoMap[estado] || 'enrolled';
+}
+
+/**
+ * Mapea el estado del frontend al backend
+ */
+function mapStatusToBackend(
+  status: 'enrolled' | 'in_progress' | 'completed' | 'cancelled',
+): 'inscrito' | 'en_progreso' | 'completado' | 'abandonado' {
+  const statusMap: Record<string, 'inscrito' | 'en_progreso' | 'completado' | 'abandonado'> = {
+    enrolled: 'inscrito',
+    in_progress: 'en_progreso',
+    completed: 'completado',
+    cancelled: 'abandonado',
+  };
+  return statusMap[status] || 'inscrito';
 }
 
 /**
  * Mapea la respuesta del backend al modelo de dominio
  */
-function mapBackendToDomain(backendData: BackendInscription): Inscription {
+function mapBackendToDomain(backendData: BackendInscripcion): Inscription {
+  const estudiante = backendData.estudiante;
+  const nombreCompleto = `${estudiante.nombres || ''} ${estudiante.apellidos || ''}`.trim();
+
   const inscription: Inscription = {
     id: backendData.id?.toString() ?? '',
-    courseId: backendData.courseId?.toString() ?? '',
-    courseName: backendData.courseName ?? '',
-    userId: backendData.userId?.toString() ?? '',
-    userName: backendData.userName ?? '',
-    enrolledDate: backendData.enrolledDate ?? new Date().toISOString(),
-    progress: backendData.progress ?? 0,
-    status: mapStatus(backendData.status),
+    courseId: backendData.capacitacion?.id?.toString() ?? '',
+    courseName: backendData.capacitacion?.titulo ?? '',
+    userId: backendData.estudiante?.id?.toString() ?? '',
+    userName: nombreCompleto || estudiante.numeroDocumento || '',
+    enrolledDate: backendData.fechaInscripcion ?? new Date().toISOString(),
+    progress: backendData.progresoPorcentaje ? backendData.progresoPorcentaje / 100 : 0,
+    status: mapStatus(backendData.estado),
   };
 
-  if (backendData.completedDate) {
-    inscription.completedDate = backendData.completedDate;
+  if (backendData.fechaFinalizacion) {
+    inscription.completedDate = backendData.fechaFinalizacion;
   }
-  if (backendData.score !== undefined) {
-    inscription.score = backendData.score;
-  }
-  if (backendData.certificateId) {
-    inscription.certificateId = backendData.certificateId.toString();
+
+  if (backendData.calificacionFinal !== null && backendData.calificacionFinal !== undefined) {
+    inscription.score = backendData.calificacionFinal;
   }
 
   return inscription;
 }
 
-function mapStatus(status: string): 'enrolled' | 'in_progress' | 'completed' | 'cancelled' {
-  const normalized = status?.toLowerCase() ?? 'enrolled';
-  if (normalized.includes('progress')) return 'in_progress';
-  if (normalized.includes('complete')) return 'completed';
-  if (normalized.includes('cancel')) return 'cancelled';
-  return 'enrolled';
-}
-
 /**
  * Servicio HTTP para inscripciones
  * Implementa el puerto IInscriptionRepository usando axios
- * Por ahora usa datos mock, pero está listo para conectarse al backend
  */
 export class InscriptionsService implements IInscriptionRepository {
   private readonly baseUrl = '/inscripciones';
 
-  // eslint-disable-next-line @typescript-eslint/require-await
   async findAll(params: InscriptionListParams): Promise<{
     data: Inscription[];
     total: number;
@@ -81,32 +125,49 @@ export class InscriptionsService implements IInscriptionRepository {
     totalPages: number;
   }> {
     try {
-      // Mock por ahora
-      const mockInscriptions: BackendInscription[] = [
-        {
-          id: 1,
-          courseId: 1,
-          courseName: 'Primeros Auxilios',
-          userId: 1,
-          userName: 'Juan Pérez',
-          enrolledDate: '2025-01-10T10:00:00Z',
-          progress: 0.75,
-          status: 'in_progress',
-        },
-      ];
+      const requestBody: {
+        page: number;
+        limit: number;
+        filters?: {
+          capacitacionId?: number;
+          estudianteId?: number;
+          estado?: string;
+        };
+        sortField?: string;
+        sortOrder?: string;
+      } = {
+        page: params.page ?? 1,
+        limit: params.limit ?? 10,
+      };
 
-      const page = params.page ?? 1;
-      const limit = params.limit ?? 10;
-      const start = (page - 1) * limit;
-      const end = start + limit;
-      const paginated = mockInscriptions.slice(start, end);
+      // Agregar filtros si existen
+      if (params.courseId || params.userId || params.status) {
+        requestBody.filters = {};
+        if (params.courseId) {
+          requestBody.filters.capacitacionId = Number.parseInt(params.courseId);
+        }
+        if (params.userId) {
+          requestBody.filters.estudianteId = Number.parseInt(params.userId);
+        }
+        if (params.status) {
+          requestBody.filters.estado = mapStatusToBackend(params.status);
+        }
+      }
+
+      // Agregar ordenamiento
+      if (params.sortBy) {
+        requestBody.sortField = params.sortBy;
+        requestBody.sortOrder = params.sortOrder?.toUpperCase() || 'ASC';
+      }
+
+      const response = await api.post<BackendPaginatedResponse>(`${this.baseUrl}/list`, requestBody);
 
       return {
-        data: paginated.map(mapBackendToDomain),
-        total: mockInscriptions.length,
-        page,
-        limit,
-        totalPages: Math.ceil(mockInscriptions.length / limit),
+        data: response.data.data.map(mapBackendToDomain),
+        total: response.data.total,
+        page: response.data.page,
+        limit: response.data.limit,
+        totalPages: response.data.totalPages,
       };
     } catch (error) {
       const axiosError = error as AxiosError<{ message?: string }>;
@@ -116,22 +177,10 @@ export class InscriptionsService implements IInscriptionRepository {
     }
   }
 
-  // eslint-disable-next-line @typescript-eslint/require-await
   async findOne(id: string): Promise<Inscription> {
     try {
-      // Mock por ahora
-      const mockInscription: BackendInscription = {
-        id: Number.parseInt(id),
-        courseId: 1,
-        courseName: 'Primeros Auxilios',
-        userId: 1,
-        userName: 'Juan Pérez',
-        enrolledDate: '2025-01-10T10:00:00Z',
-        progress: 0.75,
-        status: 'in_progress',
-      };
-
-      return mapBackendToDomain(mockInscription);
+      const response = await api.get<BackendInscripcion>(`${this.baseUrl}/${id}`);
+      return mapBackendToDomain(response.data);
     } catch (error) {
       const axiosError = error as AxiosError<{ message?: string }>;
       throw new Error(
@@ -142,9 +191,14 @@ export class InscriptionsService implements IInscriptionRepository {
 
   async findByUser(userId: string): Promise<Inscription[]> {
     try {
-      // Mock por ahora
-      const result = await this.findAll({ page: 1, limit: 100 });
-      return result.data.filter((ins) => ins.userId === userId);
+      const response = await api.post<BackendPaginatedResponse>(
+        `${this.baseUrl}/estudiante/${userId}`,
+        {
+          page: 1,
+          limit: 1000, // Límite alto para obtener todas
+        },
+      );
+      return response.data.data.map(mapBackendToDomain);
     } catch (error) {
       const axiosError = error as AxiosError<{ message?: string }>;
       throw new Error(
@@ -155,9 +209,14 @@ export class InscriptionsService implements IInscriptionRepository {
 
   async findByCourse(courseId: string): Promise<Inscription[]> {
     try {
-      // Mock por ahora
-      const result = await this.findAll({ page: 1, limit: 100 });
-      return result.data.filter((ins) => ins.courseId === courseId);
+      const response = await api.post<BackendPaginatedResponse>(
+        `${this.baseUrl}/capacitacion/${courseId}`,
+        {
+          page: 1,
+          limit: 1000, // Límite alto para obtener todas
+        },
+      );
+      return response.data.data.map(mapBackendToDomain);
     } catch (error) {
       const axiosError = error as AxiosError<{ message?: string }>;
       throw new Error(
@@ -166,49 +225,53 @@ export class InscriptionsService implements IInscriptionRepository {
     }
   }
 
-  // eslint-disable-next-line @typescript-eslint/require-await
   async create(dto: CreateInscriptionDto): Promise<Inscription> {
     try {
-      // Mock por ahora
-      const mockInscription: BackendInscription = {
-        id: Date.now(),
-        courseId: Number.parseInt(dto.courseId),
-        courseName: 'Curso',
-        userId: Number.parseInt(dto.userId),
-        userName: 'Usuario',
-        enrolledDate: new Date().toISOString(),
-        progress: 0,
-        status: 'enrolled',
+      const requestBody: {
+        capacitacionId: number;
+        estudianteId: number;
+        pagoId?: number;
+      } = {
+        capacitacionId: Number.parseInt(dto.courseId),
+        estudianteId: Number.parseInt(dto.userId),
       };
 
-      return mapBackendToDomain(mockInscription);
+      if (dto.paymentId) {
+        requestBody.pagoId = Number.parseInt(dto.paymentId);
+      }
+
+      const response = await api.post<BackendInscripcion>(this.baseUrl, requestBody);
+      return mapBackendToDomain(response.data);
     } catch (error) {
       const axiosError = error as AxiosError<{ message?: string }>;
-      throw new Error(
-        axiosError.response?.data?.message ?? 'Error al crear la inscripción',
-      );
+      const errorMessage =
+        axiosError.response?.data?.message ?? 'Error al crear la inscripción';
+      throw new Error(errorMessage);
     }
   }
 
   async update(id: string, dto: UpdateInscriptionDto): Promise<Inscription> {
     try {
-      // Mock por ahora
-      const existing = await this.findOne(id);
-      const mockInscription: BackendInscription = {
-        id: Number.parseInt(id),
-        courseId: Number.parseInt(existing.courseId),
-        courseName: existing.courseName,
-        userId: Number.parseInt(existing.userId),
-        userName: existing.userName,
-        enrolledDate: existing.enrolledDate,
-        progress: dto.progress ?? existing.progress,
-        status: dto.status ?? existing.status,
-        ...(dto.score !== undefined && { score: dto.score }),
-        ...(existing.score !== undefined && { score: existing.score }),
-        ...(existing.completedDate && { completedDate: existing.completedDate }),
-      };
+      const requestBody: {
+        estado?: string;
+        progresoPorcentaje?: number;
+        calificacionFinal?: number;
+      } = {};
 
-      return mapBackendToDomain(mockInscription);
+      if (dto.status) {
+        requestBody.estado = mapStatusToBackend(dto.status);
+      }
+
+      if (dto.progress !== undefined) {
+        requestBody.progresoPorcentaje = dto.progress * 100; // Convertir de 0-1 a 0-100
+      }
+
+      if (dto.score !== undefined) {
+        requestBody.calificacionFinal = dto.score;
+      }
+
+      const response = await api.patch<BackendInscripcion>(`${this.baseUrl}/${id}`, requestBody);
+      return mapBackendToDomain(response.data);
     } catch (error) {
       const axiosError = error as AxiosError<{ message?: string }>;
       throw new Error(
@@ -219,8 +282,7 @@ export class InscriptionsService implements IInscriptionRepository {
 
   async remove(id: string): Promise<void> {
     try {
-      // Mock por ahora
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      await api.delete(`${this.baseUrl}/${id}`);
     } catch (error) {
       const axiosError = error as AxiosError<{ message?: string }>;
       throw new Error(
@@ -240,4 +302,3 @@ export class InscriptionsService implements IInscriptionRepository {
 
 // Exportar instancia singleton
 export const inscriptionsService = new InscriptionsService();
-
