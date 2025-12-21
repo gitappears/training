@@ -9,6 +9,7 @@ import type {
   RegisterDto,
   TokenResponse,
   UserProfile,
+  RegisterResponse,
 } from '../../../application/auth/auth.repository.port';
 
 /**
@@ -30,9 +31,9 @@ export class AuthService implements IAuthRepository {
     }
   }
 
-  async register(dto: RegisterDto): Promise<TokenResponse> {
+  async register(dto: RegisterDto): Promise<RegisterResponse> {
     try {
-      const response = await api.post<TokenResponse>(`${this.baseUrl}/register`, dto);
+      const response = await api.post<RegisterResponse>(`${this.baseUrl}/register`, dto);
       return response.data;
     } catch (error) {
       const axiosError = error as AxiosError<{ message?: string }>;
@@ -62,6 +63,17 @@ export class AuthService implements IAuthRepository {
       const axiosError = error as AxiosError<{ message?: string }>;
       throw new Error(
         axiosError.response?.data?.message ?? 'Error al refrescar el token',
+      );
+    }
+  }
+
+  async updateProfile(data: any): Promise<void> {
+    try {
+      await api.patch(`${this.baseUrl}/profile`, data);
+    } catch (error) {
+      const axiosError = error as AxiosError<{ message?: string }>;
+      throw new Error(
+        axiosError.response?.data?.message ?? 'Error al actualizar el perfil',
       );
     }
   }

@@ -24,13 +24,20 @@
         <q-input
           v-model="form.password"
           label="Contraseña"
-          type="password"
+          :type="isPasswordVisible ? 'text' : 'password'"
           outlined
           :rules="[(val) => !!val || 'La contraseña es requerida']"
           :disable="loading"
         >
           <template #prepend>
             <q-icon name="lock" />
+          </template>
+          <template #append>
+            <q-icon
+              :name="isPasswordVisible ? 'visibility_off' : 'visibility'"
+              class="cursor-pointer"
+              @click="isPasswordVisible = !isPasswordVisible"
+            />
           </template>
         </q-input>
 
@@ -41,6 +48,7 @@
             label="¿Olvidaste tu contraseña?"
             no-caps
             size="sm"
+            :to="{ name: 'forgot-password' }"
             :disable="loading"
           />
         </div>
@@ -88,6 +96,7 @@ const form = ref<LoginDto>({
   password: '',
 });
 const rememberMe = ref(false);
+const isPasswordVisible = ref(false);
 const loading = computed(() => authStore.loading);
 
 async function handleSubmit() {
@@ -101,6 +110,7 @@ async function handleSubmit() {
     const redirect = route.query.redirect as string | undefined;
     void router.push(redirect || '/');
   } catch (error) {
+    console.error('Login error caught in component:', error);
     const errorMessage =
       error instanceof Error ? error.message : 'Error al iniciar sesión';
     $q.notify({

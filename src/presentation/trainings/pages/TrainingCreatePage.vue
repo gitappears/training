@@ -54,7 +54,7 @@ const authStore = useAuthStore();
 async function handleSubmit(payload: TrainingFormModel, formMaterials: Material[]) {
   try {
     // Obtener el usuario actual para usuario_creacion
-    const usuarioCreacion = authStore.profile?.email || authStore.profile?.username || 'system';
+    const usuarioCreacion = authStore.profile?.persona.email || authStore.profile?.username || 'system';
 
     // Mapear el formulario al DTO del backend
     const dto: CreateTrainingDto = {

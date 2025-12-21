@@ -28,8 +28,8 @@ export const useAuthStore = defineStore('auth', () => {
   // Getters
   const isAuthenticated = computed(() => !!token.value);
   const userFullName = computed(() => {
-    if (!profile.value) return '';
-    return `${profile.value.nombres} ${profile.value.apellidos}`.trim();
+    if (!profile.value?.nombres) return '';
+    return `${profile.value.nombres} ${profile.value.apellidos ?? ''}`.trim();
   });
 
   // Actions - Usando casos de uso en lugar de llamar directamente a infrastructure
@@ -48,15 +48,24 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  async function register(dto: RegisterDto): Promise<void> {
+  async function register(dto: RegisterDto): Promise<RegisterResponse> {
     loading.value = true;
     try {
       const registerUseCase = AuthUseCasesFactory.getRegisterUseCase(authService);
-      const response: TokenResponse = await registerUseCase.execute(dto);
-      token.value = response.access_token;
-      localStorage.setItem(TOKEN_KEY, response.access_token);
+      return await registerUseCase.execute(dto);
+    } finally {
+      loading.value = false;
+    }
+  }
 
-      // Obtener perfil después del registro
+  async function updateProfile(data: Partial<RegisterDto>): Promise<void> {
+    loading.value = true;
+    console.log('Updating profile with payload:', data);
+    try {
+      const updateProfileUseCase = AuthUseCasesFactory.getUpdateProfileUseCase(authService);
+      await updateProfileUseCase.execute(data);
+      // Refresh profile data
+      console.log('Profile updated on backend, refetching...');
       await fetchProfile();
     } finally {
       loading.value = false;
@@ -67,8 +76,10 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       const getProfileUseCase = AuthUseCasesFactory.getGetProfileUseCase(authService);
       const userProfile = await getProfileUseCase.execute();
+      console.log('Fetched profile from backend:', userProfile);
       profile.value = userProfile;
       localStorage.setItem(PROFILE_KEY, JSON.stringify(userProfile));
+      console.log('Profile saved to localStorage.');
     } catch (error) {
       // Si falla obtener el perfil, hacer logout
       logout();
@@ -114,6 +125,7 @@ export const useAuthStore = defineStore('auth', () => {
     // Actions
     login,
     register,
+    updateProfile,
     fetchProfile,
     refreshToken,
     logout,

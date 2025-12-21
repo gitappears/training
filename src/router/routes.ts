@@ -17,6 +17,16 @@ const routes: RouteRecordRaw[] = [
         component: () => import('../presentation/auth/pages/RegisterPage.vue'),
       },
       {
+        path: 'forgot-password',
+        name: 'forgot-password',
+        component: () => import('../presentation/auth/pages/ForgotPasswordPage.vue'),
+      },
+      {
+        path: 'reset-password',
+        name: 'reset-password',
+        component: () => import('../presentation/auth/pages/ResetPasswordPage.vue'),
+      },
+      {
         path: 'policies/:type',
         name: 'policies',
         component: () => import('../presentation/auth/pages/PoliciesPage.vue'),
@@ -85,6 +95,25 @@ const routes: RouteRecordRaw[] = [
         path: 'certificates/:id',
         component: () => import('../presentation/certificates/pages/CertificateDetailPage.vue'),
       },
+      
+      // Certificados - Vigencias y Alertas (RF-35 a RF-39)
+      {
+        path: 'certificates/expiring',
+        name: 'expiring-certificates',
+        component: () => import('../presentation/certificates/pages/ExpiringCertificatesPage.vue'),
+      },
+      {
+        path: 'admin/alert-config',
+        name: 'alert-configuration',
+        component: () => import('../presentation/admin/pages/AlertConfigurationPage.vue'),
+      },
+
+      // Perfil
+      {
+        path: 'profile',
+        name: 'profile',
+        component: () => import('../presentation/users/pages/ProfilePage.vue'),
+      },
 
       // Reportes (RF-40 a RF-42)
       {
@@ -102,10 +131,10 @@ const routes: RouteRecordRaw[] = [
 
   // Always leave this as last one,
   // but you can also remove it
-  {
-    path: '/:catchAll(.*)*',
-    component: () => import('../presentation/system/pages/ErrorNotFound.vue'),
-  },
+  // {
+  //   path: '/:catchAll(.*)*',
+  //   component: () => import('../presentation/system/pages/ErrorNotFound.vue'),
+  // },
 ];
 
 export default routes;

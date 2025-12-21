@@ -9,83 +9,62 @@
       </div>
 
       <q-form @submit="handleSubmit" class="q-gutter-md">
-        <q-tabs v-model="tipoRegistro" class="q-mb-md">
-          <q-tab name="ALUMNO" label="Alumno" />
-          <q-tab name="INSTRUCTOR" label="Instructor" />
-        </q-tabs>
-
-        <q-separator />
-
-        <!-- Información Personal -->
-        <div class="text-subtitle2 q-mt-md">Información Personal</div>
-
-        <div class="row q-gutter-sm">
-        <q-input
-          v-model="form.nombres"
-          label="Nombres *"
-          outlined
-          class="col"
-          :rules="[
-            (val) => !!val || 'Los nombres son requeridos',
-            (val) => val.trim().length >= 2 || 'Mínimo 2 caracteres',
-            (val) => /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/.test(val) || 'Solo se permiten letras y espacios',
-          ]"
-          :disable="loading"
-          hint="Solo letras, mínimo 2 caracteres"
-        />
-        <q-input
-          v-model="form.apellidos"
-          label="Apellidos *"
-          outlined
-          class="col"
-          :rules="[
-            (val) => !!val || 'Los apellidos son requeridos',
-            (val) => val.trim().length >= 2 || 'Mínimo 2 caracteres',
-            (val) => /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/.test(val) || 'Solo se permiten letras y espacios',
-          ]"
-          :disable="loading"
-          hint="Solo letras, mínimo 2 caracteres"
-        />
+        <!-- Identificación -->
+        <div class="row q-col-gutter-sm">
+          <div class="col-12 col-md-6">
+            <q-select
+              v-model="form.tipoDocumento"
+              label="Tipo Doc *"
+              outlined
+              :options="tiposDocumento"
+              emit-value
+              map-options
+              :disable="loading"
+              :rules="[val => !!val || 'Requerido']"
+            />
+          </div>
+          <div class="col-12 col-md-6">
+            <q-input
+              v-model="form.numeroDocumento"
+              label="No. Documento *"
+              outlined
+              :disable="loading"
+              :rules="[
+                val => !!val || 'Requerido',
+                val => /^[0-9]+$/.test(val) || 'Solo se permiten números'
+              ]"
+            />
+          </div>
         </div>
 
-        <div class="row q-gutter-sm">
-          <q-select
-            v-model="form.tipoDocumento"
-            label="Tipo de Documento"
-            outlined
-            :options="tiposDocumento"
-            class="col-4"
-            :rules="[(val) => !!val || 'El tipo de documento es requerido']"
-            :disable="loading"
-          />
-          <q-input
-            v-model="form.numeroDocumento"
-            label="Número de Documento *"
-            outlined
-            class="col-8"
-            :rules="[
-              (val) => !!val || 'El número de documento es requerido',
-              (val) => /^[0-9]+$/.test(val) || 'Solo se permiten números',
-              (val) => val.length >= 7 || 'Mínimo 7 dígitos',
-              (val) => val.length <= 15 || 'Máximo 15 dígitos',
-            ]"
-            :disable="loading"
-            hint="Solo números, entre 7 y 15 dígitos"
-          />
+        <!-- Nombres y Apellidos -->
+        <div class="row q-col-gutter-sm">
+          <div class="col-12 col-md-6">
+            <q-input
+              v-model="form.nombres"
+              label="Nombres *"
+              outlined
+              :disable="loading"
+              :rules="[val => !!val || 'Requerido']"
+            />
+          </div>
+          <div class="col-12 col-md-6">
+            <q-input
+              v-model="form.apellidos"
+              label="Apellidos (Opcional)"
+              outlined
+              :disable="loading"
+            />
+          </div>
         </div>
 
+        <!-- Contacto -->
         <q-input
           v-model="form.email"
-          label="Email *"
+          label="Email (Opcional)"
           type="email"
           outlined
-          :rules="[
-            (val) => !!val || 'El email es requerido',
-            (val) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val) || 'Email inválido',
-            (val) => val.length <= 100 || 'Máximo 100 caracteres',
-          ]"
           :disable="loading"
-          hint="Formato: usuario@dominio.com"
         >
           <template #prepend>
             <q-icon name="email" />
@@ -96,131 +75,112 @@
           v-model="form.telefono"
           label="Teléfono (Opcional)"
           outlined
-          :rules="[
-            (val) => !val || /^[0-9+\-\s()]+$/.test(val) || 'Formato inválido',
-            (val) => !val || val.length <= 20 || 'Máximo 20 caracteres',
-          ]"
           :disable="loading"
-          hint="Formato: +57 300 1234567"
+          :rules="[
+             val => !val || /^[0-9]+$/.test(val) || 'Solo se permiten números'
+          ]"
         >
           <template #prepend>
             <q-icon name="phone" />
           </template>
         </q-input>
 
-        <!-- Credenciales -->
-        <div class="text-subtitle2 q-mt-md">Credenciales de Acceso</div>
+        <!-- Datos Demográficos -->
+        <div class="row q-col-gutter-sm">
+          <div class="col-12 col-md-6">
+             <q-input
+              v-model="form.fechaNacimiento"
+              label="Fecha Nacimiento (Opcional)"
+              type="date"
+              outlined
+              stack-label
+              :disable="loading"
+            />
+          </div>
+          <div class="col-12 col-md-6">
+            <q-select
+              v-model="form.genero"
+              label="Género (Opcional)"
+              outlined
+              :options="generos"
+              emit-value
+              map-options
+              :disable="loading"
+            />
+          </div>
+        </div>
 
         <q-input
-          v-model="form.username"
-          label="Nombre de Usuario *"
+          v-model="form.direccion"
+          label="Dirección de Residencia (Opcional)"
           outlined
-          :rules="[
-            (val) => !!val || 'El nombre de usuario es requerido',
-            (val) => val.length >= 3 || 'Mínimo 3 caracteres',
-            (val) => val.length <= 30 || 'Máximo 30 caracteres',
-            (val) => /^[a-zA-Z0-9_]+$/.test(val) || 'Solo letras, números y guión bajo',
-            (val) => !val.startsWith('_') || 'No puede comenzar con guión bajo',
-            (val) => !val.endsWith('_') || 'No puede terminar con guión bajo',
-          ]"
           :disable="loading"
-          hint="3-30 caracteres, letras, números y guión bajo"
+        >
+           <template #prepend>
+            <q-icon name="place" />
+          </template>
+        </q-input>
+
+        <q-file
+          v-model="photoFile"
+          label="Foto de Perfil (Opcional)"
+          outlined
+          :disable="loading"
+          accept=".jpg, .png, .jpeg"
+          @update:model-value="handleFileUpload"
+        >
+           <template #prepend>
+            <q-icon name="attach_file" />
+          </template>
+        </q-file>
+
+        <q-separator class="q-my-md" />
+        <div class="text-subtitle2 q-mb-sm text-primary">Datos de Cuenta</div>
+
+        <!-- Usuario -->
+        <q-input
+          v-model="form.username"
+          label="Usuario *"
+          outlined
+          :disable="loading"
+          :rules="[
+            val => !!val || 'Requerido',
+            val => val.length >= 3 || 'Mínimo 3 caracteres'
+          ]"
         >
           <template #prepend>
             <q-icon name="person" />
           </template>
         </q-input>
 
-        <q-input
-          v-model="form.password"
-          label="Contraseña *"
-          type="password"
-          outlined
-          :rules="[
-            (val) => !!val || 'La contraseña es requerida',
-            (val) => val.length >= 8 || 'Mínimo 8 caracteres',
-            (val) => val.length <= 50 || 'Máximo 50 caracteres',
-            (val) => /[A-Z]/.test(val) || 'Debe contener al menos una mayúscula',
-            (val) => /[a-z]/.test(val) || 'Debe contener al menos una minúscula',
-            (val) => /[0-9]/.test(val) || 'Debe contener al menos un número',
-          ]"
-          :disable="loading"
-          hint="Mínimo 8 caracteres, mayúscula, minúscula y número"
-        >
-          <template #prepend>
-            <q-icon name="lock" />
-          </template>
-        </q-input>
-
-        <q-input
-          v-model="confirmPassword"
-          label="Confirmar Contraseña *"
-          type="password"
-          outlined
-          :rules="[
-            (val) => !!val || 'Confirma tu contraseña',
-            (val) => val === form.password || 'Las contraseñas no coinciden',
-          ]"
-          :disable="loading"
-          hint="Debe coincidir con la contraseña"
-        >
-          <template #prepend>
-            <q-icon name="lock" />
-          </template>
-        </q-input>
-
-        <!-- Campos específicos por tipo -->
-        <template v-if="tipoRegistro === 'ALUMNO'">
-          <q-input
-            v-model="form.codigoEstudiante"
-            label="Código de Estudiante (Opcional)"
-            outlined
-            :rules="[
-              (val) => !val || val.length <= 20 || 'Máximo 20 caracteres',
-              (val) => !val || /^[A-Z0-9-]+$/.test(val) || 'Solo mayúsculas, números y guiones',
-            ]"
-            :disable="loading"
-            hint="Formato: ABC123 o ABC-123"
-          >
-            <template #prepend>
-              <q-icon name="badge" />
-            </template>
-          </q-input>
-        </template>
-
-        <template v-if="tipoRegistro === 'INSTRUCTOR'">
-          <q-input
-            v-model="form.especialidad"
-            label="Especialidad (Opcional)"
-            outlined
-            :rules="[
-              (val) => !val || val.length >= 3 || 'Mínimo 3 caracteres',
-              (val) => !val || val.length <= 100 || 'Máximo 100 caracteres',
-            ]"
-            :disable="loading"
-            hint="Área de especialización del instructor"
-          >
-            <template #prepend>
-              <q-icon name="workspace_premium" />
-            </template>
-          </q-input>
-          <q-input
-            v-model="form.biografia"
-            label="Biografía (Opcional)"
-            type="textarea"
-            outlined
-            rows="3"
-            :rules="[
-              (val) => !val || val.length <= 500 || 'Máximo 500 caracteres',
-            ]"
-            :disable="loading"
-            hint="Descripción profesional (máximo 500 caracteres)"
-          >
-            <template #prepend>
-              <q-icon name="description" />
-            </template>
-          </q-input>
-        </template>
+        <div class="row q-col-gutter-sm">
+          <div class="col-12 col-md-6">
+            <q-input
+              v-model="form.password"
+              label="Contraseña *"
+              type="password"
+              outlined
+              :disable="loading"
+              :rules="[
+                val => !!val || 'Requerido',
+                val => val.length >= 6 || 'Mínimo 6 caracteres'
+              ]"
+            />
+          </div>
+           <div class="col-12 col-md-6">
+            <q-input
+              v-model="confirmPassword"
+              label="Confirmar Contraseña *"
+              type="password"
+              outlined
+              :disable="loading"
+              :rules="[
+                val => !!val || 'Requerido',
+                val => val === form.password || 'Las contraseñas no coinciden'
+              ]"
+            />
+          </div>
+        </div>
 
         <!-- Aceptación de Políticas (RF-43, RF-44) -->
         <q-separator class="q-my-md" />
@@ -303,7 +263,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
+import { ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 import { useAuthStore } from '../../../stores/auth.store';
@@ -314,38 +274,51 @@ const router = useRouter();
 const $q = useQuasar();
 const authStore = useAuthStore();
 
-const tipoRegistro = ref<'ALUMNO' | 'INSTRUCTOR'>('ALUMNO');
-const confirmPassword = ref('');
 const aceptaPoliticaDatos = ref(false);
 const aceptaTerminos = ref(false);
+
+const generos = [
+  { label: 'Masculino', value: 'M' },
+  { label: 'Femenino', value: 'F' },
+  { label: 'Otro', value: 'O' },
+];
 
 const tiposDocumento = [
   { label: 'Cédula de Ciudadanía', value: 'CC' },
   { label: 'Cédula de Extranjería', value: 'CE' },
   { label: 'Pasaporte', value: 'PA' },
-  { label: 'Tarjeta de Identidad', value: 'TI' },
   { label: 'NIT', value: 'NIT' },
 ];
+
+// Campos adicionales para formulario
+const confirmPassword = ref('');
+const photoFile = ref<File | null>(null);
+
+function handleFileUpload(file: File) {
+  // TODO: Implementar subida de archivo real cuando exista endpoint
+  // Por ahora solo tomamos el nombre como URL simulada si se requiere
+  console.log('Archivo seleccionado:', file.name);
+  form.value.fotoUrl = 'https://placeholder.com/' + file.name;
+}
 
 const form = ref<RegisterDto>({
   numeroDocumento: '',
   tipoDocumento: 'CC',
   nombres: '',
   apellidos: '',
+  razonSocial: '', // Vacío por defecto
   email: '',
   telefono: '',
+  fechaNacimiento: '',
+  genero: '',
+  direccion: '',
+  fotoUrl: '',
   username: '',
   password: '',
-  tipoRegistro: 'ALUMNO',
+  tipoRegistro: 'OPERADOR', // Por defecto OPERADOR
 });
 
 const loading = computed(() => authStore.loading);
-
-// Actualizar tipoRegistro en el form cuando cambia
-watch(tipoRegistro, (newValue) => {
-  form.value.tipoRegistro = newValue;
-});
-
 const showPoliticaModal = ref(false);
 const showTerminosModal = ref(false);
 
@@ -365,8 +338,13 @@ function onPolicyAccepted() {
   });
 }
 
+function isValidEmail(email: string) {
+  const emailPattern = /^(?=[a-zA-Z0-9@._%+-]{6,254}$)[a-zA-Z0-9._%+-]{1,64}@(?:[a-zA-Z0-9-]{1,63}\.){1,8}[a-zA-Z]{2,63}$/;
+  return emailPattern.test(email);
+}
+
 async function handleSubmit() {
-  // Validar aceptación de políticas (RF-43, RF-44)
+  // Validaciones
   if (!aceptaPoliticaDatos.value || !aceptaTerminos.value) {
     $q.notify({
       type: 'negative',
@@ -376,19 +354,66 @@ async function handleSubmit() {
     return;
   }
 
-  try {
-    await authStore.register(form.value);
+  if (form.value.password !== confirmPassword.value) {
     $q.notify({
-      type: 'positive',
-      message: 'Registro exitoso. Bienvenido!',
+      type: 'negative',
+      message: 'Las contraseñas no coinciden',
+      position: 'top',
     });
-    void router.push('/');
-  } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : 'Error al registrar usuario';
+    return;
+  }
+
+  if (form.value.email && !isValidEmail(form.value.email)) {
+    $q.notify({
+      type: 'negative',
+      message: 'Por favor ingrese un correo válido',
+    });
+    return;
+  }
+
+  try {
+    // Aseguramos que valores opcionales sean undefined si están vacíos string
+    const payload: RegisterDto = {
+      ...form.value,
+      razonSocial: '', // Siempre vacío según requerimiento
+      telefono: form.value.telefono || undefined,
+      fechaNacimiento: form.value.fechaNacimiento || undefined,
+      genero: form.value.genero || undefined,
+      direccion: form.value.direccion || undefined,
+      fotoUrl: form.value.fotoUrl || undefined,
+    };
+
+    await authStore.register(payload);
+    $q.notify({
+      color: 'positive',
+      message: 'Registro exitoso; espere aprobación del administrador. Su cuenta está deshabilitada temporalmente.',
+      icon: 'check',
+      timeout: 5000,
+    });
+    await router.push({ name: 'login' });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } catch (error: any) {
+    console.error('Registration error:', error);
+    let errorMessage = 'Error al registrar usuario';
+
+    if (error.response && error.response.data) {
+      const data = error.response.data;
+      // Backend might return { message: '...' } or { error: '...', message: ... }
+      if (data.message) {
+        errorMessage = Array.isArray(data.message)
+          ? data.message.join(', ')
+          : data.message;
+      } else if (data.error) {
+        errorMessage = data.error;
+      }
+    } else if (error instanceof Error) {
+      errorMessage = error.message;
+    }
+
     $q.notify({
       type: 'negative',
       message: errorMessage,
+      timeout: 5000,
     });
   }
 }
