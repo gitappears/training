@@ -390,6 +390,118 @@ export class CertificatesService implements ICertificateRepository {
       );
     }
   }
+
+  async getExpiringCertificatesReport(params: {
+    fechaVencimientoDesde?: string;
+    fechaVencimientoHasta?: string;
+    estado?: 'ACTIVE' | 'EXPIRING_SOON' | 'EXPIRED';
+    busqueda?: string;
+    pagina?: number;
+    limite?: number;
+  }): Promise<{
+    certificados: Certificate[];
+    total: number;
+    pagina: number;
+    totalPaginas: number;
+  }> {
+    try {
+      const queryParams = new URLSearchParams();
+      if (params.fechaVencimientoDesde) {
+        queryParams.append('fechaVencimientoDesde', params.fechaVencimientoDesde);
+      }
+      if (params.fechaVencimientoHasta) {
+        queryParams.append('fechaVencimientoHasta', params.fechaVencimientoHasta);
+      }
+      if (params.estado) {
+        queryParams.append('estado', params.estado);
+      }
+      if (params.busqueda) {
+        queryParams.append('busqueda', params.busqueda);
+      }
+      if (params.pagina) {
+        queryParams.append('pagina', params.pagina.toString());
+      }
+      if (params.limite) {
+        queryParams.append('limite', params.limite.toString());
+      }
+
+      const response = await api.get<{
+        certificados: BackendCertificate[];
+        total: number;
+        pagina: number;
+        totalPaginas: number;
+      }>(`/certificates/expiring-report?${queryParams.toString()}`);
+
+      return {
+        certificados: response.data.certificados.map(mapBackendToDomain),
+        total: response.data.total,
+        pagina: response.data.pagina,
+        totalPaginas: response.data.totalPaginas,
+      };
+    } catch (error) {
+      const axiosError = error as AxiosError<{ message?: string }>;
+      throw new Error(
+        axiosError.response?.data?.message ?? 'Error al obtener el reporte de certificados próximos a vencer',
+      );
+    }
+  }
+
+  async getAlertConfigurations(): Promise<Array<{
+    id: number;
+    diasAntesVencimiento: number;
+    activo: boolean;
+  }>> {
+    try {
+      const response = await api.get<Array<{
+        id: number;
+        diasAntesVencimiento: number;
+        activo: boolean;
+      }>>('/certificates/alert-configurations');
+      return response.data;
+    } catch (error) {
+      const axiosError = error as AxiosError<{ message?: string }>;
+      throw new Error(
+        axiosError.response?.data?.message ?? 'Error al obtener configuraciones de alertas',
+      );
+    }
+  }
+
+  async updateAlertConfiguration(
+    id: number,
+    dto: { diasAntesVencimiento: number; activo: boolean },
+  ): Promise<{
+    id: number;
+    diasAntesVencimiento: number;
+    activo: boolean;
+  }> {
+    try {
+      const response = await api.patch<{
+        id: number;
+        diasAntesVencimiento: number;
+        activo: boolean;
+      }>(`/certificates/alert-configurations/${id}`, dto);
+      return response.data;
+    } catch (error) {
+      const axiosError = error as AxiosError<{ message?: string }>;
+      throw new Error(
+        axiosError.response?.data?.message ?? `Error al actualizar la configuración de alerta con ID ${id}`,
+      );
+    }
+  }
+
+  async checkExpirationsManually(): Promise<{ success: boolean; message: string }> {
+    try {
+      const response = await api.get<{ success: boolean; message: string }>(
+        '/certificates/check-expirations-manual',
+      );
+      return response.data;
+    } catch (error) {
+      const axiosError = error as AxiosError<{ message?: string }>;
+      throw new Error(
+        axiosError.response?.data?.message ?? 'Error al ejecutar la verificación de vencimientos',
+      );
+    }
+  }
 }
 
 // Exportar instancia singleton

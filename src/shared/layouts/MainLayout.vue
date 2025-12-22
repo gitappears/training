@@ -141,7 +141,9 @@
             </q-tooltip>
           </q-item>
 
+          <!-- Cursos - Visible para todos los roles autenticados -->
           <q-item
+            v-if="canViewTrainings"
             v-ripple
             clickable
             to="/trainings"
@@ -153,14 +155,18 @@
             </q-item-section>
             <q-item-section v-if="!miniState">
               <q-item-label class="text-weight-medium">Cursos</q-item-label>
-              <q-item-label caption class="text-grey-6">Gestión de catálogo</q-item-label>
+              <q-item-label caption class="text-grey-6">
+                {{ canManageTrainings ? 'Gestión de catálogo' : 'Ver capacitaciones' }}
+              </q-item-label>
             </q-item-section>
             <q-tooltip v-if="miniState" anchor="center right" self="center left" :offset="[10, 0]">
               Cursos
             </q-tooltip>
           </q-item>
 
+          <!-- Usuarios - Solo ADMIN -->
           <q-item
+            v-if="canManageUsers"
             v-ripple
             clickable
             to="/users"
@@ -179,7 +185,9 @@
             </q-tooltip>
           </q-item>
 
+          <!-- Evaluaciones - Visible para todos los roles autenticados -->
           <q-item
+            v-if="canViewEvaluations"
             v-ripple
             clickable
             to="/evaluations"
@@ -198,7 +206,9 @@
             </q-tooltip>
           </q-item>
 
+          <!-- Certificados - Visible para todos los roles autenticados -->
           <q-item
+            v-if="canViewCertificates"
             v-ripple
             clickable
             to="/certificates"
@@ -217,15 +227,20 @@
             </q-tooltip>
           </q-item>
 
-          <!-- Separator -->
-          <q-separator class="q-my-md" />
+          <!-- Separator - Solo si hay sección de métricas visible -->
+          <q-separator v-if="canViewReports" class="q-my-md" />
 
-          <!-- Metrics Section -->
-          <div v-if="!miniState" class="text-uppercase text-caption text-grey-6 q-px-md q-py-sm text-weight-medium">
+          <!-- Metrics Section - Solo ADMIN, CLIENTE, OPERADOR -->
+          <div
+            v-if="canViewReports && !miniState"
+            class="text-uppercase text-caption text-grey-6 q-px-md q-py-sm text-weight-medium"
+          >
             Métricas
           </div>
 
+          <!-- Reportes - Solo ADMIN, CLIENTE, OPERADOR -->
           <q-item
+            v-if="canViewReports"
             v-ripple
             clickable
             to="/reports"
@@ -297,12 +312,21 @@ import { useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 import { useAuthStore } from '../../stores/auth.store';
 import { useThemeStore } from '../../stores/theme.store';
+import { useRole } from '../composables/useRole';
 import { api } from 'boot/axios';
 
 const router = useRouter();
 const $q = useQuasar();
 const authStore = useAuthStore();
 const themeStore = useThemeStore();
+const {
+  canViewTrainings,
+  canManageTrainings,
+  canManageUsers,
+  canViewEvaluations,
+  canViewCertificates,
+  canViewReports,
+} = useRole();
 
 const userImageUrl = computed(() => {
   const fotoUrl = authStore.profile?.fotoUrl;

@@ -31,7 +31,7 @@
               :disable="loading"
               :rules="[
                 val => !!val || 'Requerido',
-                val => /^[0-9]+$/.test(val) || 'Solo se permiten números'
+                val => !val || /^[0-9]+$/.test(val) || 'Solo se permiten números'
               ]"
             />
           </div>
@@ -127,7 +127,7 @@
           outlined
           :disable="loading"
           accept=".jpg, .png, .jpeg"
-          @update:model-value="handleFileUpload"
+          @update:model-value="(file) => handleFileUpload(file as File | null)"
         >
            <template #prepend>
             <q-icon name="attach_file" />
@@ -263,19 +263,23 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
-import { useRouter } from 'vue-router';
-import { useQuasar } from 'quasar';
-import { useAuthStore } from '../../../stores/auth.store';
+import { ref } from 'vue';
+import { useAuth, useForm, useFileUpload, useNotifications } from '../../../shared/composables';
 import type { RegisterDto } from '../../../application/auth/auth.repository.port';
 import PoliciesModal from '../../../shared/components/PoliciesModal.vue';
 
-const router = useRouter();
-const $q = useQuasar();
-const authStore = useAuthStore();
+const { register, loading } = useAuth();
+const { success, error: showError } = useNotifications();
+const { file: photoFile, handleFileSelect } = useFileUpload({
+  accept: 'image/jpeg,image/png,image/jpg',
+  maxSize: 5 * 1024 * 1024, // 5MB
+});
 
 const aceptaPoliticaDatos = ref(false);
 const aceptaTerminos = ref(false);
+const confirmPassword = ref('');
+const showPoliticaModal = ref(false);
+const showTerminosModal = ref(false);
 
 const generos = [
   { label: 'Masculino', value: 'M' },
@@ -290,23 +294,12 @@ const tiposDocumento = [
   { label: 'NIT', value: 'NIT' },
 ];
 
-// Campos adicionales para formulario
-const confirmPassword = ref('');
-const photoFile = ref<File | null>(null);
-
-function handleFileUpload(file: File) {
-  // TODO: Implementar subida de archivo real cuando exista endpoint
-  // Por ahora solo tomamos el nombre como URL simulada si se requiere
-  console.log('Archivo seleccionado:', file.name);
-  form.value.fotoUrl = 'https://placeholder.com/' + file.name;
-}
-
-const form = ref<RegisterDto>({
+const initialForm: RegisterDto = {
   numeroDocumento: '',
   tipoDocumento: 'CC',
   nombres: '',
   apellidos: '',
-  razonSocial: '', // Vacío por defecto
+  razonSocial: '',
   email: '',
   telefono: '',
   fechaNacimiento: '',
@@ -315,12 +308,22 @@ const form = ref<RegisterDto>({
   fotoUrl: '',
   username: '',
   password: '',
-  tipoRegistro: 'OPERADOR', // Por defecto OPERADOR
-});
+  tipoRegistro: 'OPERADOR',
+};
 
-const loading = computed(() => authStore.loading);
-const showPoliticaModal = ref(false);
-const showTerminosModal = ref(false);
+const { form, validateForm, validateEmail, validatePassword, validatePasswordMatch, validateRequired, validateNumeric, validateMinLength } = useForm(initialForm);
+
+function handleFileUpload(file: File | null) {
+  if (file) {
+    handleFileSelect(file);
+    // TODO: Implementar subida de archivo real cuando exista endpoint
+    // Por ahora solo tomamos el nombre como URL simulada si se requiere
+    form.value.fotoUrl = 'https://placeholder.com/' + file.name;
+  } else {
+    handleFileSelect(null);
+    form.value.fotoUrl = '';
+  }
+}
 
 function verPoliticaDatos() {
   showPoliticaModal.value = true;
@@ -331,90 +334,68 @@ function verTerminos() {
 }
 
 function onPolicyAccepted() {
-  $q.notify({
-    type: 'positive',
-    message: 'Política aceptada correctamente',
-    position: 'top',
-  });
-}
-
-function isValidEmail(email: string) {
-  const emailPattern = /^(?=[a-zA-Z0-9@._%+-]{6,254}$)[a-zA-Z0-9._%+-]{1,64}@(?:[a-zA-Z0-9-]{1,63}\.){1,8}[a-zA-Z]{2,63}$/;
-  return emailPattern.test(email);
+  success('Política aceptada correctamente');
 }
 
 async function handleSubmit() {
-  // Validaciones
+  // Validaciones de políticas
   if (!aceptaPoliticaDatos.value || !aceptaTerminos.value) {
-    $q.notify({
-      type: 'negative',
-      message: 'Debes aceptar las políticas y términos para continuar',
-      position: 'top',
-    });
+    showError('Debes aceptar las políticas y términos para continuar');
     return;
   }
 
-  if (form.value.password !== confirmPassword.value) {
-    $q.notify({
-      type: 'negative',
-      message: 'Las contraseñas no coinciden',
-      position: 'top',
-    });
+  // Validaciones de formulario
+  const isValid = validateForm({
+    tipoDocumento: (val) => validateRequired(val, 'Tipo de documento'),
+    numeroDocumento: (val) => {
+      const required = validateRequired(val, 'Número de documento');
+      if (required !== true) return required;
+      return validateNumeric(val);
+    },
+    nombres: (val) => validateRequired(val, 'Nombres'),
+    username: (val) => {
+      const required = validateRequired(val, 'Usuario');
+      if (required !== true) return required;
+      return validateMinLength(val, 3, 'Usuario');
+    },
+    password: (val) => validatePassword(val, 6),
+  });
+
+  if (!isValid) {
     return;
   }
 
-  if (form.value.email && !isValidEmail(form.value.email)) {
-    $q.notify({
-      type: 'negative',
-      message: 'Por favor ingrese un correo válido',
-    });
+  // Validar confirmación de contraseña
+  const passwordMatch = validatePasswordMatch(form.value.password, confirmPassword.value);
+  if (passwordMatch !== true) {
+    showError(passwordMatch);
     return;
   }
+
+  // Validar email si está presente
+  if (form.value.email) {
+    const emailValid = validateEmail(form.value.email);
+    if (emailValid !== true) {
+      showError(emailValid);
+      return;
+    }
+  }
+
+  // Preparar payload
+  const payload: RegisterDto = {
+    ...form.value,
+    razonSocial: '',
+    telefono: form.value.telefono || undefined,
+    fechaNacimiento: form.value.fechaNacimiento || undefined,
+    genero: form.value.genero || undefined,
+    direccion: form.value.direccion || undefined,
+    fotoUrl: form.value.fotoUrl || undefined,
+  };
 
   try {
-    // Aseguramos que valores opcionales sean undefined si están vacíos string
-    const payload: RegisterDto = {
-      ...form.value,
-      razonSocial: '', // Siempre vacío según requerimiento
-      telefono: form.value.telefono || undefined,
-      fechaNacimiento: form.value.fechaNacimiento || undefined,
-      genero: form.value.genero || undefined,
-      direccion: form.value.direccion || undefined,
-      fotoUrl: form.value.fotoUrl || undefined,
-    };
-
-    await authStore.register(payload);
-    $q.notify({
-      color: 'positive',
-      message: 'Registro exitoso; espere aprobación del administrador. Su cuenta está deshabilitada temporalmente.',
-      icon: 'check',
-      timeout: 5000,
-    });
-    await router.push({ name: 'login' });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  } catch (error: any) {
-    console.error('Registration error:', error);
-    let errorMessage = 'Error al registrar usuario';
-
-    if (error.response && error.response.data) {
-      const data = error.response.data;
-      // Backend might return { message: '...' } or { error: '...', message: ... }
-      if (data.message) {
-        errorMessage = Array.isArray(data.message)
-          ? data.message.join(', ')
-          : data.message;
-      } else if (data.error) {
-        errorMessage = data.error;
-      }
-    } else if (error instanceof Error) {
-      errorMessage = error.message;
-    }
-
-    $q.notify({
-      type: 'negative',
-      message: errorMessage,
-      timeout: 5000,
-    });
+    await register(payload);
+  } catch (err) {
+    // El error ya se maneja en el composable useAuth
   }
 }
 </script>
