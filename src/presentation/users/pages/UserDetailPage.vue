@@ -29,7 +29,7 @@
           :color="user.enabled ? 'negative' : 'positive'"
           :icon="user.enabled ? 'block' : 'check_circle'"
           :label="user.enabled ? 'Deshabilitar' : 'Habilitar'"
-          @click="toggleUserStatus"
+          @click="handleToggleUserStatus"
         />
         <q-btn
           flat
@@ -456,6 +456,7 @@
 import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
+import { useUsers } from '../../../shared/composables';
 import type { User } from '../../../domain/user/models';
 import EmptyState from '../../../shared/components/EmptyState.vue';
 
@@ -463,25 +464,13 @@ const route = useRoute();
 const router = useRouter();
 const $q = useQuasar();
 
+const { loading, currentUser, getUser, toggleUserStatus, updateUser } = useUsers();
+
 // Estado
-const loading = ref(false);
 const tab = ref<'info' | 'courses' | 'certificates' | 'activity'>('info');
 const userId = route.params.id as string;
 
-const user = ref<User>({
-  id: userId,
-  name: 'Juan Pérez',
-  email: 'juan.perez@example.com',
-  document: '12345678',
-  documentType: 'CC',
-  phone: '+57 300 123 4567',
-  role: 'driver',
-  personType: 'natural',
-  enabled: true,
-  isExternal: false,
-  company: 'Transportes ABC',
-  createdAt: '2025-01-15',
-});
+const user = computed(() => currentUser.value || ({} as User));
 
 interface Course {
   id: string;
@@ -630,20 +619,20 @@ function getCourseStatusColor(status: string): string {
   return colors[status] ?? 'grey';
 }
 
-function toggleUserStatus() {
+async function handleToggleUserStatus() {
+  if (!user.value.id) return;
   const action = user.value.enabled ? 'deshabilitar' : 'habilitar';
   $q.dialog({
     title: 'Confirmar acción',
     message: `¿Está seguro de ${action} a ${user.value.name}?`,
     cancel: true,
     persistent: true,
-  }).onOk(() => {
-    user.value.enabled = !user.value.enabled;
-    $q.notify({
-      type: 'positive',
-      message: `Usuario ${action}do exitosamente`,
-      position: 'top',
-    });
+  }).onOk(async () => {
+    try {
+      await toggleUserStatus(user.value.id, !user.value.enabled);
+    } catch (error) {
+      console.error('Error toggling user status:', error);
+    }
   });
 }
 
@@ -677,12 +666,16 @@ function goBack() {
 
 // Lifecycle
 onMounted(() => {
-  loading.value = true;
-  // Simular carga de datos
-  setTimeout(() => {
-    loading.value = false;
-  }, 500);
+  void loadUser();
 });
+
+async function loadUser() {
+  try {
+    await getUser(userId);
+  } catch (error) {
+    console.error('Error loading user:', error);
+  }
+}
 </script>
 
 <style scoped lang="scss">

@@ -62,6 +62,14 @@ export function useRole() {
   const isOperador = computed(() => hasRole('OPERADOR'));
 
   /**
+   * Verifica si el usuario puede ver el dashboard
+   * Todos los usuarios autenticados pueden ver el dashboard
+   */
+  const canViewDashboard = computed(() => {
+    return hasRole('ADMIN', 'INSTRUCTOR', 'ALUMNO', 'CLIENTE', 'OPERADOR');
+  });
+
+  /**
    * Verifica si el usuario puede ver capacitaciones
    * ADMIN, INSTRUCTOR, ALUMNO, CLIENTE, OPERADOR pueden ver
    */
@@ -125,6 +133,30 @@ export function useRole() {
     return hasRole('ADMIN', 'CLIENTE');
   });
 
+  /**
+   * Verifica si el usuario puede gestionar alertas de certificados
+   * Solo ADMIN puede gestionar alertas
+   */
+  const canManageAlerts = computed(() => {
+    return hasRole('ADMIN');
+  });
+
+  /**
+   * Verifica si el usuario puede crear conductores externos
+   * Solo ADMIN puede crear conductores externos
+   */
+  const canCreateExternalDrivers = computed(() => {
+    return hasRole('ADMIN');
+  });
+
+  /**
+   * Verifica si el usuario puede gestionar pagos
+   * Solo ADMIN puede gestionar pagos
+   */
+  const canManagePayments = computed(() => {
+    return hasRole('ADMIN');
+  });
+
   return {
     userRole,
     hasRole,
@@ -133,6 +165,7 @@ export function useRole() {
     isInstructor,
     isAlumno,
     isOperador,
+    canViewDashboard,
     canViewTrainings,
     canManageTrainings,
     canManageUsers,
@@ -141,6 +174,9 @@ export function useRole() {
     canViewReports,
     canCreateInscriptions,
     canBulkUploadDrivers,
+    canManageAlerts,
+    canCreateExternalDrivers,
+    canManagePayments,
   };
 }
 
