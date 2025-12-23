@@ -439,6 +439,8 @@ import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 import type { QForm } from 'quasar';
+import { PeopleUseCasesFactory } from '../../../application/people/people.use-cases.factory';
+import { peopleService } from '../../../infrastructure/http/people/people.service';
 import type { UserRole, PersonType } from '../../../domain/user/models';
 
 const router = useRouter();
@@ -544,17 +546,35 @@ async function handleSubmit() {
     ]);
 
     if (validations.every((v) => v !== false)) {
-      // Aquí se llamaría al servicio HTTP para crear el usuario
-      console.log('Crear usuario:', form.value);
+      // Si es conductor externo, usar el servicio de personas
+      if (form.value.role === 'driver' && form.value.isExternal) {
+        const createExternalDriverUseCase =
+          PeopleUseCasesFactory.getCreateExternalDriverUseCase(peopleService);
+        await createExternalDriverUseCase.execute({
+          numeroDocumento: form.value.document,
+          tipoDocumento: form.value.documentType || 'CC',
+          nombres: form.value.name.split(' ')[0] || form.value.name,
+          apellidos: form.value.name.split(' ').slice(1).join(' ') || '',
+          email: form.value.email,
+          telefono: form.value.phone || undefined,
+        });
 
-      // Simular creación
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      $q.notify({
-        type: 'positive',
-        message: 'Usuario creado exitosamente',
-        position: 'top',
-      });
+        $q.notify({
+          type: 'positive',
+          message: 'Conductor externo creado exitosamente. Debe ser habilitado después del pago.',
+          position: 'top',
+        });
+      } else {
+        // Para otros tipos de usuarios, usar el servicio de registro
+        // Nota: El backend no tiene endpoint directo de creación de usuarios por ADMIN
+        // Se debe usar el registro o crear conductores externos
+        $q.notify({
+          type: 'info',
+          message:
+            'La creación de usuarios debe realizarse a través del registro o creación de conductores externos.',
+          position: 'top',
+        });
+      }
 
       void router.push('/users');
     } else {

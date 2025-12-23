@@ -24,7 +24,24 @@ export class AuthService implements IAuthRepository {
       const response = await api.post<TokenResponse>(`${this.baseUrl}/login`, dto);
       return response.data;
     } catch (error) {
-      const axiosError = error as AxiosError<{ message?: string }>;
+      const axiosError = error as AxiosError<{ 
+        message?: string;
+        error?: string;
+        requiereAceptacionTerminos?: boolean;
+      }>;
+      
+      // Verificar si el error es TERMS_NOT_ACCEPTED
+      if (
+        axiosError.response?.status === 401 &&
+        (axiosError.response?.data?.error === 'TERMS_NOT_ACCEPTED' ||
+         axiosError.response?.data?.requiereAceptacionTerminos === true)
+      ) {
+        const error = new Error('TERMS_NOT_ACCEPTED');
+        (error as any).code = 'TERMS_NOT_ACCEPTED';
+        (error as any).requiereAceptacionTerminos = true;
+        throw error;
+      }
+      
       throw new Error(
         axiosError.response?.data?.message ?? 'Error al iniciar sesión',
       );

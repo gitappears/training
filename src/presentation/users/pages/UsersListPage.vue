@@ -85,7 +85,6 @@
           dense
           placeholder="Buscar por nombre, email o documento..."
           clearable
-          @update:model-value="debouncedSearch"
         >
           <template #prepend>
             <q-icon name="search" />
@@ -194,7 +193,7 @@
     <q-card flat bordered>
       <q-table
         v-model:selected="selectedUsers"
-        :rows="filteredUsers"
+        :rows="users"
         :columns="columns"
         row-key="id"
         :loading="loading"
@@ -349,18 +348,26 @@
 import { ref, computed, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
-import { debounce } from 'quasar';
+import { useUsers, useDebounce } from '../../../shared/composables';
 import type { QTableColumn, QTableProps } from 'quasar';
-import type { User, UserFilters, UserStatistics } from '../../../domain/user/models';
+import type { User, UserFilters } from '../../../domain/user/models';
 import EmptyState from '../../../shared/components/EmptyState.vue';
 import FiltersPanel from '../../../shared/components/FiltersPanel.vue';
 
 const router = useRouter();
 const $q = useQuasar();
 
-// Estado
-const loading = ref(false);
-const users = ref<User[]>([]);
+const {
+  loading,
+  users,
+  statistics,
+  listUsers,
+  toggleUserStatus: toggleUserStatusUseCase,
+  bulkEnable: bulkEnableUseCase,
+  bulkDisable: bulkDisableUseCase,
+  getStatistics,
+} = useUsers();
+
 const selectedUsers = ref<User[]>([]);
 const filters = ref<UserFilters>({
   search: '',
@@ -376,21 +383,10 @@ const pagination = ref<QTableProps['pagination']>({
   rowsNumber: 0,
 });
 
-const statistics = ref<UserStatistics>({
-  total: 0,
-  enabled: 0,
-  disabled: 0,
-  external: 0,
-  byRole: {
-    admin: 0,
-    institutional: 0,
-    driver: 0,
-  },
-  byType: {
-    natural: 0,
-    juridica: 0,
-  },
-});
+const { debouncedValue: debouncedSearch } = useDebounce(
+  computed(() => filters.value.search || ''),
+  300,
+);
 
 // Opciones de filtros
 const roleOptions = [
@@ -466,43 +462,7 @@ const columns: QTableColumn<User>[] = [
 ];
 
 // Computed
-const filteredUsers = computed(() => {
-  let result = [...users.value];
-
-  // Filtro de búsqueda
-  if (filters.value.search) {
-    const search = filters.value.search.toLowerCase();
-    result = result.filter(
-      (user) =>
-        user.name.toLowerCase().includes(search) ||
-        user.email.toLowerCase().includes(search) ||
-        user.document.includes(search),
-    );
-  }
-
-  // Filtro por rol
-  if (filters.value.role) {
-    result = result.filter((user) => user.role === filters.value.role);
-  }
-
-  // Filtro por estado
-  if (filters.value.status) {
-    const enabled = filters.value.status === 'enabled';
-    result = result.filter((user) => user.enabled === enabled);
-  }
-
-  // Filtro por tipo de persona
-  if (filters.value.personType) {
-    result = result.filter((user) => user.personType === filters.value.personType);
-  }
-
-  // Filtro por externo
-  if (filters.value.isExternal !== null) {
-    result = result.filter((user) => user.isExternal === filters.value.isExternal);
-  }
-
-  return result;
-});
+const filteredUsers = computed(() => users);
 
 const activeFiltersCount = computed(() => {
   let count = 0;
@@ -517,119 +477,42 @@ const activeFiltersCount = computed(() => {
 const hasActiveFilters = computed(() => activeFiltersCount.value > 0);
 
 // Funciones
-function loadUsers() {
-  loading.value = true;
-  // Simular carga de datos (mock)
-  setTimeout(() => {
-    users.value = [
-      {
-        id: '1',
-        name: 'Juan Pérez',
-        email: 'juan.perez@example.com',
-        document: '12345678',
-        documentType: 'CC',
-        phone: '+57 300 123 4567',
-        role: 'driver',
-        personType: 'natural',
-        enabled: true,
-        isExternal: false,
-        company: 'Transportes ABC',
-        createdAt: '2025-01-15',
+async function loadUsers() {
+  try {
+      const params = {
+        page: (pagination.value.page as number) || 1,
+        limit: (pagination.value.rowsPerPage as number) || 10,
+      filters: {
+        search: filters.value.search || undefined,
+        role: filters.value.role || undefined,
+        status: filters.value.status || undefined,
+        personType: filters.value.personType || undefined,
+        isExternal: filters.value.isExternal || undefined,
       },
-      {
-        id: '2',
-        name: 'María González',
-        email: 'maria.gonzalez@example.com',
-        document: '87654321',
-        documentType: 'CC',
-        phone: '+57 300 987 6543',
-        role: 'driver',
-        personType: 'natural',
-        enabled: true,
-        isExternal: true,
-        createdAt: '2025-01-10',
-      },
-      {
-        id: '3',
-        name: 'Empresa Transportes XYZ',
-        email: 'contacto@transportesxyz.com',
-        document: '900123456',
-        documentType: 'NIT',
-        phone: '+57 1 234 5678',
-        role: 'institutional',
-        personType: 'juridica',
-        enabled: true,
-        companyName: 'Transportes XYZ S.A.S.',
-        createdAt: '2025-01-05',
-      },
-      {
-        id: '4',
-        name: 'Carlos Rodríguez',
-        email: 'carlos.rodriguez@example.com',
-        document: '11223344',
-        documentType: 'CC',
-        phone: '+57 300 555 1234',
-        role: 'driver',
-        personType: 'natural',
-        enabled: false,
-        isExternal: false,
-        createdAt: '2025-01-20',
-      },
-      {
-        id: '5',
-        name: 'Ana Martínez',
-        email: 'ana.martinez@example.com',
-        document: '55667788',
-        documentType: 'CE',
-        phone: '+57 300 777 8888',
-        role: 'driver',
-        personType: 'natural',
-        enabled: true,
-        isExternal: true,
-        createdAt: '2025-01-18',
-      },
-    ];
-
-    calculateStatistics();
-    pagination.value = {
-      ...pagination.value,
-      rowsNumber: filteredUsers.value.length,
+      sortBy: 'fechaCreacion',
+      sortOrder: 'desc' as const,
     };
-    loading.value = false;
-  }, 500);
+
+    const response = await listUsers(params);
+    pagination.value = {
+      page: response.page,
+      rowsPerPage: response.limit,
+      rowsNumber: response.total,
+    };
+
+    // Cargar estadísticas
+    await getStatistics(filters.value);
+  } catch (error) {
+    console.error('Error loading users:', error);
+  }
 }
 
-function calculateStatistics() {
-  statistics.value = {
-    total: users.value.length,
-    enabled: users.value.filter((u) => u.enabled).length,
-    disabled: users.value.filter((u) => !u.enabled).length,
-    external: users.value.filter((u) => u.isExternal).length,
-    byRole: {
-      admin: users.value.filter((u) => u.role === 'admin').length,
-      institutional: users.value.filter((u) => u.role === 'institutional').length,
-      driver: users.value.filter((u) => u.role === 'driver').length,
-    },
-    byType: {
-      natural: users.value.filter((u) => u.personType === 'natural').length,
-      juridica: users.value.filter((u) => u.personType === 'juridica').length,
-    },
-  };
-}
-
-const debouncedSearch = debounce(() => {
-  pagination.value = {
-    ...pagination.value,
-    page: 1,
-  };
-}, 300);
-
-function onRequest(props: { pagination: QTableProps['pagination'] }) {
+async function onRequest(props: { pagination: QTableProps['pagination'] }) {
   pagination.value = props.pagination;
-  // Aquí se haría la petición al backend con los filtros y paginación
+  await loadUsers();
 }
 
-function clearAllFilters() {
+async function clearAllFilters() {
   filters.value = {
     search: '',
     role: null,
@@ -641,13 +524,14 @@ function clearAllFilters() {
     ...pagination.value,
     page: 1,
   };
+  await loadUsers();
 }
 
 function clearSelection() {
   selectedUsers.value = [];
 }
 
-function bulkEnable() {
+async function bulkEnable() {
   if (selectedUsers.value.length === 0) return;
 
   $q.dialog({
@@ -655,21 +539,19 @@ function bulkEnable() {
     message: `¿Está seguro de habilitar ${selectedUsers.value.length} usuario(s)?`,
     cancel: true,
     persistent: true,
-  }).onOk(() => {
-    selectedUsers.value.forEach((user) => {
-      user.enabled = true;
-    });
-    calculateStatistics();
-    clearSelection();
-    $q.notify({
-      type: 'positive',
-      message: `${selectedUsers.value.length} usuario(s) habilitado(s) exitosamente`,
-      position: 'top',
-    });
+  }).onOk(async () => {
+    try {
+      const ids = selectedUsers.value.map((u) => u.id);
+      await bulkEnableUseCase(ids);
+      clearSelection();
+      await loadUsers();
+    } catch (error) {
+      console.error('Error enabling users:', error);
+    }
   });
 }
 
-function bulkDisable() {
+async function bulkDisable() {
   if (selectedUsers.value.length === 0) return;
 
   $q.dialog({
@@ -677,35 +559,32 @@ function bulkDisable() {
     message: `¿Está seguro de deshabilitar ${selectedUsers.value.length} usuario(s)?`,
     cancel: true,
     persistent: true,
-  }).onOk(() => {
-    selectedUsers.value.forEach((user) => {
-      user.enabled = false;
-    });
-    calculateStatistics();
-    clearSelection();
-    $q.notify({
-      type: 'info',
-      message: `${selectedUsers.value.length} usuario(s) deshabilitado(s) exitosamente`,
-      position: 'top',
-    });
+  }).onOk(async () => {
+    try {
+      const ids = selectedUsers.value.map((u) => u.id);
+      await bulkDisableUseCase(ids);
+      clearSelection();
+      await loadUsers();
+    } catch (error) {
+      console.error('Error disabling users:', error);
+    }
   });
 }
 
-function toggleUserStatus(user: User) {
+async function toggleUserStatus(user: User) {
   const action = user.enabled ? 'deshabilitar' : 'habilitar';
   $q.dialog({
     title: 'Confirmar acción',
     message: `¿Está seguro de ${action} a ${user.name}?`,
     cancel: true,
     persistent: true,
-  }).onOk(() => {
-    user.enabled = !user.enabled;
-    calculateStatistics();
-    $q.notify({
-      type: 'positive',
-      message: `Usuario ${action}do exitosamente`,
-      position: 'top',
-    });
+  }).onOk(async () => {
+    try {
+      await toggleUserStatusUseCase(user.id, !user.enabled);
+      await loadUsers();
+    } catch (error) {
+      console.error('Error toggling user status:', error);
+    }
   });
 }
 
@@ -778,19 +657,31 @@ function getRoleColor(role: string): string {
 
 // Watchers
 watch(
-  () => filters.value,
+  debouncedSearch,
   () => {
     pagination.value = {
       ...pagination.value,
       page: 1,
     };
+    void loadUsers();
+  },
+);
+
+watch(
+  () => [filters.value.role, filters.value.status, filters.value.personType, filters.value.isExternal],
+  () => {
+    pagination.value = {
+      ...pagination.value,
+      page: 1,
+    };
+    void loadUsers();
   },
   { deep: true },
 );
 
 // Lifecycle
 onMounted(() => {
-  loadUsers();
+  void loadUsers();
 });
 </script>
 
