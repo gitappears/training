@@ -278,35 +278,63 @@
                     </div>
                   </div>
 
-                  <q-list v-else separator class="resources-list">
-                    <q-item
-                      v-for="att in allAttachments"
-                      :key="att.id"
-                      clickable
-                      tag="a"
-                      :href="att.url"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      class="resource-item"
-                    >
-                      <q-item-section avatar>
-                        <q-avatar
-                          :color="att.type === 'file' ? 'primary' : 'secondary'"
-                          text-color="white"
-                          size="40px"
-                        >
-                          <q-icon :name="att.type === 'file' ? 'attach_file' : 'link'" />
-                        </q-avatar>
-                      </q-item-section>
-                      <q-item-section>
-                        <q-item-label class="text-weight-medium">{{ att.label }}</q-item-label>
-                        <q-item-label caption class="text-grey-6">{{ att.url }}</q-item-label>
-                      </q-item-section>
-                      <q-item-section side>
-                        <q-icon name="open_in_new" color="grey-6" />
-                      </q-item-section>
-                    </q-item>
-                  </q-list>
+                  <div v-else class="resources-container">
+                    <q-list separator class="resources-list">
+                      <q-item
+                        v-for="att in allAttachments"
+                        :key="att.id"
+                        class="resource-item"
+                        :class="{ 'resource-item--video': att.type === 'video' }"
+                      >
+                        <!-- Videos: mostrar como iframe -->
+                        <template v-if="att.type === 'video'">
+                          <q-item-section class="full-width">
+                            <div class="video-container q-mb-md">
+                              <div class="text-subtitle2 q-mb-sm text-weight-medium">{{ att.label }}</div>
+                              <div class="video-wrapper">
+                                <iframe
+                                  :src="getVideoEmbedUrl(att.url)"
+                                  frameborder="0"
+                                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                  allowfullscreen
+                                  class="video-iframe"
+                                />
+                              </div>
+                            </div>
+                          </q-item-section>
+                        </template>
+
+                        <!-- Archivos y enlaces: mostrar como antes -->
+                        <template v-else>
+                          <q-item-section avatar>
+                            <q-avatar
+                              :color="att.type === 'file' ? 'primary' : 'secondary'"
+                              text-color="white"
+                              size="40px"
+                            >
+                              <q-icon :name="att.type === 'file' ? 'attach_file' : 'link'" />
+                            </q-avatar>
+                          </q-item-section>
+                          <q-item-section>
+                            <q-item-label class="text-weight-medium">{{ att.label }}</q-item-label>
+                            <q-item-label caption class="text-grey-6">{{ att.url }}</q-item-label>
+                          </q-item-section>
+                          <q-item-section side>
+                            <q-btn
+                              flat
+                              round
+                              dense
+                              icon="open_in_new"
+                              color="grey-6"
+                              :href="att.url"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            />
+                          </q-item-section>
+                        </template>
+                      </q-item>
+                    </q-list>
+                  </div>
                 </div>
               </q-tab-panel>
 
@@ -534,12 +562,22 @@ function mapMaterialToAttachment(material: Material): TrainingAttachment {
   const tipoNombre = material.tipoMaterial?.nombre?.toLowerCase() || '';
   const tipoCodigo = material.tipoMaterial?.codigo?.toUpperCase() || '';
 
+  // Detectar si es un video
+  if (tipoNombre === 'video' || tipoCodigo === 'VIDEO') {
+    return {
+      id: material.id,
+      type: 'video',
+      label: material.nombre,
+      url: material.url,
+    };
+  }
+
   // Determinar si es un enlace o un archivo
   const isLink =
     tipoNombre.includes('enlace') ||
     tipoNombre.includes('link') ||
     tipoCodigo === 'LINK' ||
-    material.url.startsWith('http') && !material.url.match(/\.(pdf|doc|docx|ppt|pptx|jpg|jpeg|png|gif|mp4|webm|mp3|wav)$/i);
+    (material.url.startsWith('http') && !material.url.match(/\.(pdf|doc|docx|ppt|pptx|jpg|jpeg|png|gif|mp4|webm|mp3|wav)$/i));
 
   return {
     id: material.id,
@@ -703,6 +741,16 @@ function handleEnrollStudent() {
     return;
   }
 
+  // Verificar si $q.dialog está disponible, si no usar prompt nativo
+  if (typeof $q.dialog !== 'function') {
+    // Fallback si dialog no está disponible
+    const estudianteId = prompt('Ingresa el ID del estudiante que deseas inscribir en esta capacitación:');
+    if (estudianteId && !isNaN(Number(estudianteId)) && Number(estudianteId) > 0) {
+      void handleEnrollStudentConfirm(estudianteId);
+    }
+    return;
+  }
+
   $q.dialog({
     title: 'Inscribir Estudiante',
     message: 'Ingresa el ID del estudiante que deseas inscribir en esta capacitación',
@@ -723,40 +771,42 @@ function handleEnrollStudent() {
       flat: true,
     },
   }).onOk((estudianteId: string) => {
-    void (async () => {
-      try {
-        const { inscriptionsService } = await import(
-          '../../../infrastructure/http/inscriptions/inscriptions.service'
-        );
-
-        // Crear la inscripción
-        await inscriptionsService.create({
-          courseId: training.value!.id,
-          userId: estudianteId,
-        });
-
-        $q.notify({
-          type: 'positive',
-          message: 'Estudiante inscrito exitosamente',
-          icon: 'check_circle',
-          position: 'top',
-        });
-
-        // Recargar la capacitación para actualizar el contador de estudiantes
-        await loadTraining();
-      } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : 'Error al inscribir el estudiante';
-        $q.notify({
-          type: 'negative',
-          message: errorMessage,
-          icon: 'error',
-          position: 'top',
-          timeout: 5000,
-        });
-      }
-    })();
+    void handleEnrollStudentConfirm(estudianteId);
   });
+}
+
+async function handleEnrollStudentConfirm(estudianteId: string): Promise<void> {
+  try {
+    const { inscriptionsService } = await import(
+      '../../../infrastructure/http/inscriptions/inscriptions.service'
+    );
+
+    // Crear la inscripción
+    await inscriptionsService.create({
+      courseId: training.value!.id,
+      userId: estudianteId,
+    });
+
+    $q.notify({
+      type: 'positive',
+      message: 'Estudiante inscrito exitosamente',
+      icon: 'check_circle',
+      position: 'top',
+    });
+
+    // Recargar la capacitación para actualizar el contador de estudiantes
+    await loadTraining();
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : 'Error al inscribir el estudiante';
+    $q.notify({
+      type: 'negative',
+      message: errorMessage,
+      icon: 'error',
+      position: 'top',
+      timeout: 5000,
+    });
+  }
 }
 
 function handleEditTraining() {
@@ -774,6 +824,15 @@ function handleToggleStatus(): void {
   const action = currentStatus === 'active' ? 'desactivar' : 'activar';
   const actionPast = currentStatus === 'active' ? 'desactivada' : 'activada';
 
+  // Verificar si $q.dialog está disponible, si no usar confirm nativo
+  if (typeof $q.dialog !== 'function') {
+    // Fallback si dialog no está disponible
+    if (confirm(`¿Está seguro de que desea ${action} esta capacitación? Los certificados ya emitidos no se afectarán (RF-10).`)) {
+      void handleToggleStatusConfirm();
+    }
+    return;
+  }
+
   $q.dialog({
     title: 'Confirmar cambio de estado',
     message: `¿Está seguro de que desea ${action} esta capacitación? Los certificados ya emitidos no se afectarán (RF-10).`,
@@ -784,40 +843,45 @@ function handleToggleStatus(): void {
       color: 'primary',
     },
   }).onOk(() => {
-    void (async () => {
-      try {
-        // Importar servicio de toggle
-        const { trainingsToggleStatusService } = await import(
-          '../../../infrastructure/http/trainings/trainings-toggle-status.service'
-        );
-
-        // Llamar al endpoint de toggle
-        await trainingsToggleStatusService.toggleActivoInactivo(trainingId);
-
-        // Actualizar el estado localmente
-        if (training.value) {
-          training.value.status = currentStatus === 'active' ? 'inactive' : 'active';
-        }
-
-        $q.notify({
-          type: 'positive',
-          message: `Capacitación ${actionPast} exitosamente`,
-          icon: 'check_circle',
-          position: 'top',
-        });
-      } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : 'Error al cambiar el estado';
-        $q.notify({
-          type: 'negative',
-          message: errorMessage,
-          icon: 'error',
-          position: 'top',
-          timeout: 5000,
-        });
-      }
-    })();
+    void handleToggleStatusConfirm();
   });
+}
+
+async function handleToggleStatusConfirm(): Promise<void> {
+  try {
+    const currentStatus = trainingStatus.value;
+    const actionPast = currentStatus === 'active' ? 'desactivada' : 'activada';
+
+    // Importar servicio de toggle
+    const { trainingsToggleStatusService } = await import(
+      '../../../infrastructure/http/trainings/trainings-toggle-status.service'
+    );
+
+    // Llamar al endpoint de toggle
+    await trainingsToggleStatusService.toggleActivoInactivo(trainingId);
+
+    // Actualizar el estado localmente
+    if (training.value) {
+      training.value.status = currentStatus === 'active' ? 'inactive' : 'active';
+    }
+
+    $q.notify({
+      type: 'positive',
+      message: `Capacitación ${actionPast} exitosamente`,
+      icon: 'check_circle',
+      position: 'top',
+    });
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : 'Error al cambiar el estado';
+    $q.notify({
+      type: 'negative',
+      message: errorMessage,
+      icon: 'error',
+      position: 'top',
+      timeout: 5000,
+    });
+  }
 }
 
 const trainingModalityLabel = computed(() =>
@@ -865,6 +929,30 @@ const studentColumns: QTableColumn<TrainingStudent>[] = [
     align: 'left',
   },
 ];
+
+/**
+ * Convierte URLs de YouTube, Vimeo, etc. a URLs de embed para iframes
+ */
+function getVideoEmbedUrl(url: string): string {
+  if (!url) return '';
+
+  // YouTube
+  const youtubeRegex = /(?:youtube\.com\/(?:[^/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?/\s]{11})/;
+  const youtubeMatch = url.match(youtubeRegex);
+  if (youtubeMatch) {
+    return `https://www.youtube.com/embed/${youtubeMatch[1]}`;
+  }
+
+  // Vimeo
+  const vimeoRegex = /(?:vimeo\.com\/)(\d+)/;
+  const vimeoMatch = url.match(vimeoRegex);
+  if (vimeoMatch) {
+    return `https://player.vimeo.com/video/${vimeoMatch[1]}`;
+  }
+
+  // Si no es YouTube ni Vimeo, devolver la URL original (podría ser un iframe directo)
+  return url;
+}
 </script>
 
 <style scoped lang="scss">
@@ -1230,5 +1318,35 @@ body.body--dark .sidebar-watermark {
   .main-content {
     padding: 16px !important;
   }
+}
+
+.video-container {
+  width: 100%;
+}
+
+.video-wrapper {
+  position: relative;
+  padding-bottom: 56.25%; /* 16:9 aspect ratio */
+  height: 0;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #000;
+}
+
+.video-iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+.resource-item--video {
+  padding: 16px;
+}
+
+.resources-container {
+  width: 100%;
 }
 </style>

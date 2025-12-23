@@ -159,12 +159,22 @@ function mapBackendToDomain(backendData: BackendCapacitacion): Training {
         }
         return section;
       }) ?? [],
-    attachments: backendData.materiales?.filter((m: BackendMaterial) => m.tipoMaterial?.nombre === 'archivo').map((m: BackendMaterial) => ({
-      id: m.id?.toString() ?? '',
-      type: 'file' as const,
-      label: m.nombre ?? '',
-      url: m.url ?? '',
-    })) ?? [],
+    attachments: backendData.materiales
+      ?.filter((m: BackendMaterial) => {
+        const tipoNombre = m.tipoMaterial?.nombre?.toLowerCase() || '';
+        // Incluir archivos (PDF, Word, etc.) y videos
+        return tipoNombre.includes('archivo') || tipoNombre === 'video';
+      })
+      .map((m: BackendMaterial) => {
+        const tipoNombre = m.tipoMaterial?.nombre?.toLowerCase() || '';
+        const isVideo = tipoNombre === 'video';
+        return {
+          id: m.id?.toString() ?? '',
+          type: (isVideo ? 'video' : 'file') as const,
+          label: m.nombre ?? '',
+          url: m.url ?? '',
+        };
+      }) ?? [],
     images: backendData.materiales?.filter((m: BackendMaterial) => m.tipoMaterial?.nombre === 'imagen').map((m: BackendMaterial) => ({
       id: m.id?.toString() ?? '',
       url: m.url ?? '',
@@ -285,11 +295,23 @@ export class TrainingsService implements ITrainingRepository {
   }
 
   async findOne(id: number): Promise<Training> {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/794b7ee2-a122-493a-b76e-867daeb9e2ee',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'trainings.service.ts:287',message:'findOne entry',data:{id,url:`${this.baseUrl}/${id}`},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
     try {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/794b7ee2-a122-493a-b76e-867daeb9e2ee',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'trainings.service.ts:289',message:'before api.get',data:{id,url:`${this.baseUrl}/${id}`},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+      // #endregion
       const response = await api.get<BackendCapacitacion>(`${this.baseUrl}/${id}`);
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/794b7ee2-a122-493a-b76e-867daeb9e2ee',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'trainings.service.ts:290',message:'api.get success',data:{id,status:response.status,hasData:!!response.data,dataKeys:response.data?Object.keys(response.data):null},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+      // #endregion
       return mapBackendToDomain(response.data);
     } catch (error) {
       const axiosError = error as AxiosError<{ message?: string }>;
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/794b7ee2-a122-493a-b76e-867daeb9e2ee',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'trainings.service.ts:292',message:'api.get error',data:{id,status:axiosError.response?.status,statusText:axiosError.response?.statusText,errorMessage:axiosError.response?.data?.message,hasResponse:!!axiosError.response,errorCode:axiosError.code},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A,C'})}).catch(()=>{});
+      // #endregion
       throw new Error(
         axiosError.response?.data?.message ?? `Error al obtener la capacitación con ID ${id}`,
       );
@@ -310,13 +332,26 @@ export class TrainingsService implements ITrainingRepository {
 
   async update(id: number, dto: UpdateTrainingDto): Promise<Training> {
     try {
+      console.log(`[TrainingsService] Updating training ${id} with DTO:`, JSON.stringify(dto, null, 2));
       const response = await api.patch<BackendCapacitacion>(`${this.baseUrl}/${id}`, dto);
+      console.log(`[TrainingsService] Update successful for training ${id}`);
       return mapBackendToDomain(response.data);
     } catch (error) {
-      const axiosError = error as AxiosError<{ message?: string }>;
-      throw new Error(
-        axiosError.response?.data?.message ?? `Error al actualizar la capacitación con ID ${id}`,
-      );
+      const axiosError = error as AxiosError<{ message?: string; error?: string }>;
+      const errorMessage = axiosError.response?.data?.message 
+        ?? axiosError.response?.data?.error 
+        ?? axiosError.message
+        ?? `Error al actualizar la capacitación con ID ${id}`;
+      
+      console.error(`[TrainingsService] Error updating training ${id}:`, {
+        message: errorMessage,
+        status: axiosError.response?.status,
+        statusText: axiosError.response?.statusText,
+        data: axiosError.response?.data,
+        dto: JSON.stringify(dto, null, 2),
+      });
+      
+      throw new Error(errorMessage);
     }
   }
 
