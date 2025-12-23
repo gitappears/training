@@ -82,5 +82,48 @@ export interface ICertificateRepository {
    * Obtener estadísticas de certificados
    */
   getStatistics(filters?: CertificateFilters): Promise<CertificateStatistics>;
+
+  /**
+   * Obtener reporte de certificados próximos a vencer
+   */
+  getExpiringCertificatesReport(params: {
+    fechaVencimientoDesde?: string;
+    fechaVencimientoHasta?: string;
+    estado?: 'ACTIVE' | 'EXPIRING_SOON' | 'EXPIRED';
+    busqueda?: string;
+    pagina?: number;
+    limite?: number;
+  }): Promise<{
+    certificados: Certificate[];
+    total: number;
+    pagina: number;
+    totalPaginas: number;
+  }>;
+
+  /**
+   * Obtener configuraciones de alertas
+   */
+  getAlertConfigurations(): Promise<Array<{
+    id: number;
+    diasAntesVencimiento: number;
+    activo: boolean;
+  }>>;
+
+  /**
+   * Actualizar configuración de alerta
+   */
+  updateAlertConfiguration(
+    id: number,
+    dto: { diasAntesVencimiento: number; activo: boolean },
+  ): Promise<{
+    id: number;
+    diasAntesVencimiento: number;
+    activo: boolean;
+  }>;
+
+  /**
+   * Ejecutar verificación de vencimientos manualmente (testing)
+   */
+  checkExpirationsManually(): Promise<{ success: boolean; message: string }>;
 }
 

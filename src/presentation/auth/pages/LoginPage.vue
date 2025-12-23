@@ -3,9 +3,7 @@
     <q-card class="q-pa-xl">
       <div class="text-center q-mb-lg">
         <div class="text-h4 q-mb-xs">Iniciar Sesión</div>
-        <div class="text-body2 text-grey-7">
-          Ingresa tus credenciales para acceder al sistema
-        </div>
+        <div class="text-body2 text-grey-7">Ingresa tus credenciales para acceder al sistema</div>
       </div>
 
       <q-form @submit="handleSubmit" class="q-gutter-md">
@@ -24,7 +22,7 @@
         <q-input
           v-model="form.password"
           label="Contraseña"
-          :type="isPasswordVisible ? 'text' : 'password'"
+          :type="inputType"
           outlined
           :rules="[(val) => !!val || 'La contraseña es requerida']"
           :disable="loading"
@@ -33,11 +31,7 @@
             <q-icon name="lock" />
           </template>
           <template #append>
-            <q-icon
-              :name="isPasswordVisible ? 'visibility_off' : 'visibility'"
-              class="cursor-pointer"
-              @click="isPasswordVisible = !isPasswordVisible"
-            />
+            <q-icon :name="icon" class="cursor-pointer" @click="toggle" />
           </template>
         </q-input>
 
@@ -80,44 +74,20 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
-import { useRouter, useRoute } from 'vue-router';
-import { useQuasar } from 'quasar';
-import { useAuthStore } from '../../../stores/auth.store';
+import { ref } from 'vue';
+import { useAuth, usePasswordVisibility } from '../../../shared/composables';
 import type { LoginDto } from '../../../application/auth/auth.repository.port';
 
-const router = useRouter();
-const route = useRoute();
-const $q = useQuasar();
-const authStore = useAuthStore();
+const { login, loading } = useAuth();
+const { inputType, icon, toggle } = usePasswordVisibility();
+const rememberMe = ref(false);
 
 const form = ref<LoginDto>({
   username: '',
   password: '',
 });
-const rememberMe = ref(false);
-const isPasswordVisible = ref(false);
-const loading = computed(() => authStore.loading);
 
 async function handleSubmit() {
-  try {
-    await authStore.login(form.value);
-    $q.notify({
-      type: 'positive',
-      message: 'Sesión iniciada exitosamente',
-    });
-    // Redirigir a la ruta original o al home
-    const redirect = route.query.redirect as string | undefined;
-    void router.push(redirect || '/');
-  } catch (error) {
-    console.error('Login error caught in component:', error);
-    const errorMessage =
-      error instanceof Error ? error.message : 'Error al iniciar sesión';
-    $q.notify({
-      type: 'negative',
-      message: errorMessage,
-    });
-  }
+  await login(form.value);
 }
 </script>
-

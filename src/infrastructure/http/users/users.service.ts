@@ -1,7 +1,7 @@
 // Implementación HTTP del repositorio de usuarios
 // Adaptador que conecta la capa de aplicación con la API REST
 
-// import { api } from '../../../boot/axios'; // TODO: Descomentar cuando backend esté listo
+import { api } from '../../../boot/axios';
 import type { AxiosError } from 'axios';
 import type {
   IUserRepository,
@@ -15,65 +15,79 @@ import type { User } from '../../../domain/user/models';
 import type { PaginatedResponse } from '../../../application/training/training.repository.port';
 
 /**
- * Tipos para las respuestas del backend (mock por ahora)
+ * Tipos para las respuestas del backend
  */
-interface BackendUser {
+interface BackendPersona {
   id: number;
-  name: string;
-  email: string;
-  document: string;
-  documentType: string;
-  phone?: string;
-  role: string;
-  personType: string;
-  enabled: boolean;
-  isExternal?: boolean;
-  company?: string;
-  companyName?: string;
-  createdAt: string;
-  updatedAt?: string;
-  lastLoginAt?: string;
+  numeroDocumento: string;
+  tipoDocumento: string;
+  nombres: string;
+  apellidos?: string;
+  email?: string;
+  telefono?: string;
+  fechaNacimiento?: string;
+  genero?: string;
+  direccion?: string;
+  activo: boolean;
+  fechaCreacion: string;
+  fechaActualizacion: string;
 }
 
-// interface BackendPaginatedResponse { // TODO: Usar cuando backend esté listo
-//   data: BackendUser[];
-//   total: number;
-//   page: number;
-//   limit: number;
-//   totalPages: number;
-// }
+interface BackendRol {
+  id: number;
+  codigo: string;
+  nombre: string;
+  activo: boolean;
+}
+
+interface BackendUser {
+  id: number;
+  persona: BackendPersona;
+  username: string;
+  rolPrincipal?: BackendRol;
+  habilitado: boolean;
+  activo: boolean;
+  debeCambiarPassword: boolean;
+  ultimoAcceso?: string;
+  fechaCreacion: string;
+  fechaActualizacion: string;
+}
+
+interface BackendPaginatedResponse {
+  data: BackendUser[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
 
 /**
  * Mapea la respuesta del backend al modelo de dominio
  */
 function mapBackendToDomain(backendData: BackendUser): User {
+  const persona = backendData.persona;
+  const nombres = persona.nombres || '';
+  const apellidos = persona.apellidos || '';
+  const fullName = `${nombres} ${apellidos}`.trim() || persona.nombres || 'Sin nombre';
+
   const user: User = {
-    id: backendData.id?.toString() ?? '',
-    name: backendData.name ?? '',
-    email: backendData.email ?? '',
-    document: backendData.document ?? '',
-    documentType: mapDocumentType(backendData.documentType),
-    phone: backendData.phone ?? '',
-    role: mapRole(backendData.role),
-    personType: mapPersonType(backendData.personType),
-    enabled: backendData.enabled ?? false,
-    createdAt: backendData.createdAt ?? new Date().toISOString(),
+    id: backendData.id.toString(),
+    name: fullName,
+    email: persona.email || '',
+    document: persona.numeroDocumento || '',
+    documentType: mapDocumentType(persona.tipoDocumento),
+    phone: persona.telefono || '',
+    role: mapRole(backendData.rolPrincipal?.codigo || ''),
+    personType: 'natural', // El backend no expone tipoPersona directamente, asumimos natural por defecto
+    enabled: backendData.habilitado,
+    createdAt: backendData.fechaCreacion || new Date().toISOString(),
   };
 
-  if (backendData.isExternal !== undefined) {
-    user.isExternal = backendData.isExternal;
+  if (backendData.ultimoAcceso) {
+    user.lastLoginAt = backendData.ultimoAcceso;
   }
-  if (backendData.company) {
-    user.company = backendData.company;
-  }
-  if (backendData.companyName) {
-    user.companyName = backendData.companyName;
-  }
-  if (backendData.updatedAt) {
-    user.updatedAt = backendData.updatedAt;
-  }
-  if (backendData.lastLoginAt) {
-    user.lastLoginAt = backendData.lastLoginAt;
+  if (backendData.fechaActualizacion) {
+    user.updatedAt = backendData.fechaActualizacion;
   }
 
   return user;
@@ -89,9 +103,12 @@ function mapDocumentType(type: string): 'CC' | 'CE' | 'PA' | 'TI' | 'NIT' {
 }
 
 function mapRole(role: string): 'admin' | 'institutional' | 'driver' {
-  const normalized = role?.toLowerCase() ?? 'driver';
-  if (normalized.includes('admin')) return 'admin';
-  if (normalized.includes('institutional') || normalized.includes('cliente')) return 'institutional';
+  const normalized = role?.toUpperCase() ?? '';
+  if (normalized === 'ADMIN') return 'admin';
+  if (normalized === 'CLIENTE') return 'institutional';
+  if (normalized === 'INSTRUCTOR') return 'admin'; // Los instructores se tratan como admin en el frontend
+  if (normalized === 'ALUMNO') return 'driver'; // Los alumnos se tratan como drivers
+  if (normalized === 'OPERADOR') return 'driver'; // Los operadores se tratan como drivers
   return 'driver';
 }
 
@@ -107,76 +124,51 @@ function mapPersonType(type: string): 'natural' | 'juridica' {
  * Por ahora usa datos mock, pero está listo para conectarse al backend
  */
 export class UsersService implements IUserRepository {
-  private readonly baseUrl = '/usuarios';
+  private readonly baseUrl = '/users';
 
-  // eslint-disable-next-line @typescript-eslint/require-await
   async findAll(params: UserListParams): Promise<PaginatedResponse<User>> {
     try {
-      // Por ahora, simular respuesta con datos mock
-      // Cuando el backend esté listo, cambiar a:
-      // const response = await api.post<BackendPaginatedResponse>(`${this.baseUrl}/list`, { ... });
-      
-      // Mock data
-      const mockUsers: BackendUser[] = [
-        {
-          id: 1,
-          name: 'Juan Pérez',
-          email: 'juan.perez@example.com',
-          document: '12345678',
-          documentType: 'CC',
-          phone: '+57 300 123 4567',
-          role: 'driver',
-          personType: 'natural',
-          enabled: true,
-          isExternal: false,
-          createdAt: '2025-01-15T10:00:00Z',
-        },
-        {
-          id: 2,
-          name: 'María González',
-          email: 'maria.gonzalez@example.com',
-          document: '87654321',
-          documentType: 'CC',
-          phone: '+57 300 987 6543',
-          role: 'driver',
-          personType: 'natural',
-          enabled: true,
-          isExternal: true,
-          createdAt: '2025-01-10T08:00:00Z',
-        },
-      ];
+      const queryParams: Record<string, string | number | boolean> = {
+        page: params.page || 1,
+        limit: params.limit || 10,
+      };
 
-      // Aplicar filtros mock
-      let filtered = [...mockUsers];
+      // Agregar filtros
       if (params.filters?.search) {
-        const search = params.filters.search.toLowerCase();
-        filtered = filtered.filter(
-          (u) =>
-            u.name.toLowerCase().includes(search) ||
-            u.email.toLowerCase().includes(search) ||
-            u.document.includes(search),
-        );
+        queryParams.search = params.filters.search;
       }
       if (params.filters?.role) {
-        filtered = filtered.filter((u) => mapRole(u.role) === params.filters?.role);
+        // Mapear roles del frontend al backend
+        const roleMap: Record<string, string> = {
+          admin: 'ADMIN',
+          institutional: 'CLIENTE',
+          driver: 'ALUMNO',
+        };
+        queryParams.role = roleMap[params.filters.role] || params.filters.role.toUpperCase();
       }
       if (params.filters?.status) {
-        const enabled = params.filters.status === 'enabled';
-        filtered = filtered.filter((u) => u.enabled === enabled);
+        queryParams.habilitado = params.filters.status === 'enabled';
+      }
+      if (params.filters?.personType) {
+        // El backend no tiene filtro directo por tipo de persona, se puede agregar si es necesario
+      }
+      if (params.sortBy) {
+        queryParams.sortBy = params.sortBy;
+      }
+      if (params.sortOrder) {
+        queryParams.sortOrder = params.sortOrder.toUpperCase();
       }
 
-      const page = params.page ?? 1;
-      const limit = params.limit ?? 10;
-      const start = (page - 1) * limit;
-      const end = start + limit;
-      const paginated = filtered.slice(start, end);
+      const response = await api.get<BackendPaginatedResponse>(this.baseUrl, {
+        params: queryParams,
+      });
 
       return {
-        data: paginated.map(mapBackendToDomain),
-        total: filtered.length,
-        page,
-        limit,
-        totalPages: Math.ceil(filtered.length / limit),
+        data: response.data.data.map(mapBackendToDomain),
+        total: response.data.total,
+        page: response.data.page,
+        limit: response.data.limit,
+        totalPages: response.data.totalPages,
       };
     } catch (error) {
       const axiosError = error as AxiosError<{ message?: string }>;
@@ -186,27 +178,10 @@ export class UsersService implements IUserRepository {
     }
   }
 
-  // eslint-disable-next-line @typescript-eslint/require-await
   async findOne(id: string): Promise<User> {
     try {
-      // Mock por ahora
-      // Cuando el backend esté listo: const response = await api.get<BackendUser>(`${this.baseUrl}/${id}`);
-      
-      const mockUser: BackendUser = {
-        id: Number.parseInt(id),
-        name: 'Juan Pérez',
-        email: 'juan.perez@example.com',
-        document: '12345678',
-        documentType: 'CC',
-        phone: '+57 300 123 4567',
-        role: 'driver',
-        personType: 'natural',
-        enabled: true,
-        isExternal: false,
-        createdAt: '2025-01-15T10:00:00Z',
-      };
-
-      return mapBackendToDomain(mockUser);
+      const response = await api.get<BackendUser>(`${this.baseUrl}/${id}`);
+      return mapBackendToDomain(response.data);
     } catch (error) {
       const axiosError = error as AxiosError<{ message?: string }>;
       throw new Error(
@@ -215,28 +190,14 @@ export class UsersService implements IUserRepository {
     }
   }
 
-  // eslint-disable-next-line @typescript-eslint/require-await
   async create(dto: CreateUserDto): Promise<User> {
     try {
-      // Mock por ahora
-      // Cuando el backend esté listo: const response = await api.post<BackendUser>(this.baseUrl, dto);
-      
-      const mockUser: BackendUser = {
-        id: Date.now(),
-        name: dto.name,
-        email: dto.email,
-        document: dto.document,
-        documentType: dto.documentType,
-        role: dto.role,
-        personType: dto.personType,
-        enabled: false, // RF-05: Por defecto deshabilitado si es externo
-        createdAt: new Date().toISOString(),
-        ...(dto.phone && { phone: dto.phone }),
-        ...(dto.isExternal !== undefined && { isExternal: dto.isExternal }),
-        ...(dto.companyName && { companyName: dto.companyName }),
-      };
-
-      return mapBackendToDomain(mockUser);
+      // El backend no tiene endpoint de creación de usuarios directamente
+      // Se debe usar el endpoint de registro o el de creación de conductores externos
+      // Por ahora, lanzamos un error indicando que se debe usar el registro
+      throw new Error(
+        'La creación de usuarios debe realizarse a través del registro o creación de conductores externos',
+      );
     } catch (error) {
       const axiosError = error as AxiosError<{ message?: string }>;
       throw new Error(
@@ -245,29 +206,23 @@ export class UsersService implements IUserRepository {
     }
   }
 
-  // eslint-disable-next-line @typescript-eslint/require-await
   async update(id: string, dto: UpdateUserDto): Promise<User> {
     try {
-      // Mock por ahora
-      // Cuando el backend esté listo: const response = await api.patch<BackendUser>(`${this.baseUrl}/${id}`, dto);
-      
-      const mockUser: BackendUser = {
-        id: Number.parseInt(id),
-        name: dto.name ?? 'Usuario Actualizado',
-        email: dto.email ?? 'usuario@example.com',
-        document: dto.document ?? '12345678',
-        documentType: dto.documentType ?? 'CC',
-        role: dto.role ?? 'driver',
-        personType: dto.personType ?? 'natural',
-        enabled: dto.enabled ?? true,
-        ...(dto.phone && { phone: dto.phone }),
-        ...(dto.isExternal !== undefined && { isExternal: dto.isExternal }),
-        ...(dto.companyName && { companyName: dto.companyName }),
-        updatedAt: new Date().toISOString(),
-        createdAt: '2025-01-15T10:00:00Z',
-      };
+      // Mapear DTO del frontend al formato del backend
+      const backendDto: Record<string, unknown> = {};
 
-      return mapBackendToDomain(mockUser);
+      if (dto.enabled !== undefined) {
+        backendDto.habilitado = dto.enabled;
+      }
+      if (dto.role) {
+        // Necesitamos el ID del rol, no el código
+        // Por ahora, el backend espera rolPrincipalId
+        // Esto requeriría una llamada adicional para obtener el ID del rol
+        // Por simplicidad, asumimos que el frontend puede pasar el ID directamente
+      }
+
+      const response = await api.put<BackendUser>(`${this.baseUrl}/${id}`, backendDto);
+      return mapBackendToDomain(response.data);
     } catch (error) {
       const axiosError = error as AxiosError<{ message?: string }>;
       throw new Error(
@@ -278,9 +233,7 @@ export class UsersService implements IUserRepository {
 
   async remove(id: string): Promise<void> {
     try {
-      // Mock por ahora
-      // Cuando el backend esté listo: await api.delete(`${this.baseUrl}/${id}`);
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      await api.delete(`${this.baseUrl}/${id}`);
     } catch (error) {
       const axiosError = error as AxiosError<{ message?: string }>;
       throw new Error(
@@ -290,29 +243,60 @@ export class UsersService implements IUserRepository {
   }
 
   async toggleStatus(id: string, enabled: boolean): Promise<User> {
-    return this.update(id, { enabled });
+    try {
+      const response = await api.put<BackendUser>(`${this.baseUrl}/${id}`, {
+        habilitado: enabled,
+      });
+      return mapBackendToDomain(response.data);
+    } catch (error) {
+      const axiosError = error as AxiosError<{ message?: string }>;
+      throw new Error(
+        axiosError.response?.data?.message ?? `Error al cambiar el estado del usuario con ID ${id}`,
+      );
+    }
   }
 
-  // eslint-disable-next-line @typescript-eslint/require-await, @typescript-eslint/no-unused-vars
   async getStatistics(filters?: UserFilters): Promise<UserStatistics> {
     try {
-      // Mock por ahora
-      // Cuando el backend esté listo: const response = await api.get<UserStatistics>(`${this.baseUrl}/statistics`, { params: filters });
-      
+      // Obtener todos los usuarios con los filtros aplicados y calcular estadísticas
+      const params: UserListParams = {
+        page: 1,
+        limit: 1000, // Obtener muchos para calcular estadísticas
+        filters,
+      };
+
+      const response = await this.findAll(params);
+      const users = response.data;
+
+      // Calcular estadísticas
+      const enabled = users.filter((u) => u.enabled).length;
+      const disabled = users.filter((u) => !u.enabled).length;
+      const external = users.filter((u) => u.isExternal).length;
+
+      const byRole: Record<string, number> = {
+        admin: 0,
+        institutional: 0,
+        driver: 0,
+      };
+      users.forEach((u) => {
+        byRole[u.role] = (byRole[u.role] || 0) + 1;
+      });
+
+      const byType: Record<string, number> = {
+        natural: 0,
+        juridica: 0,
+      };
+      users.forEach((u) => {
+        byType[u.personType] = (byType[u.personType] || 0) + 1;
+      });
+
       return {
-        total: 100,
-        enabled: 85,
-        disabled: 15,
-        external: 20,
-        byRole: {
-          admin: 5,
-          institutional: 10,
-          driver: 85,
-        },
-        byType: {
-          natural: 90,
-          juridica: 10,
-        },
+        total: response.total,
+        enabled,
+        disabled,
+        external,
+        byRole: byRole as UserStatistics['byRole'],
+        byType: byType as UserStatistics['byType'],
       };
     } catch (error) {
       const axiosError = error as AxiosError<{ message?: string }>;
@@ -322,12 +306,10 @@ export class UsersService implements IUserRepository {
     }
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async bulkEnable(ids: string[]): Promise<void> {
     try {
-      // Mock por ahora
-      // Cuando el backend esté listo: await api.post(`${this.baseUrl}/bulk-enable`, { ids });
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      // El backend no tiene endpoint bulk, hacer múltiples llamadas
+      await Promise.all(ids.map((id) => this.toggleStatus(id, true)));
     } catch (error) {
       const axiosError = error as AxiosError<{ message?: string }>;
       throw new Error(
@@ -336,12 +318,10 @@ export class UsersService implements IUserRepository {
     }
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async bulkDisable(ids: string[]): Promise<void> {
     try {
-      // Mock por ahora
-      // Cuando el backend esté listo: await api.post(`${this.baseUrl}/bulk-disable`, { ids });
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      // El backend no tiene endpoint bulk, hacer múltiples llamadas
+      await Promise.all(ids.map((id) => this.toggleStatus(id, false)));
     } catch (error) {
       const axiosError = error as AxiosError<{ message?: string }>;
       throw new Error(
