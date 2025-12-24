@@ -126,10 +126,15 @@ export function useUserList() {
   }
 
   // Watchers
-  watch(debouncedSearch, () => {
-    resetToFirstPage();
-    void loadUsers();
-  });
+  watch(
+    () => debouncedSearch.value,
+    (newValue) => {
+      if (newValue !== undefined) {
+        resetToFirstPage();
+        void loadUsers();
+      }
+    },
+  );
 
   watch(
     () => [

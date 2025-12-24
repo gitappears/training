@@ -195,7 +195,7 @@ export class InscriptionsService implements IInscriptionRepository {
         `${this.baseUrl}/estudiante/${userId}`,
         {
           page: 1,
-          limit: 1000, // Límite alto para obtener todas
+          limit: 100, // Máximo permitido por el backend
         },
       );
       return response.data.data.map(mapBackendToDomain);
@@ -213,7 +213,7 @@ export class InscriptionsService implements IInscriptionRepository {
         `${this.baseUrl}/capacitacion/${courseId}`,
         {
           page: 1,
-          limit: 1000, // Límite alto para obtener todas
+          limit: 100, // Máximo permitido por el backend
         },
       );
       return response.data.data.map(mapBackendToDomain);

@@ -7,10 +7,10 @@
     :breakpoint="1024"
     bordered
     class="app-drawer"
-    :mini="miniState"
+    :mini="localMiniState"
     @update:model-value="emit('update:modelValue', $event)"
-    @mouseover="miniState = false"
-    @mouseout="miniState = false"
+    @mouseover="localMiniState = false"
+    @mouseout="localMiniState = false"
   >
     <!-- Logo Section -->
     <div class="drawer-header q-pa-lg">
@@ -18,7 +18,7 @@
         <q-avatar size="40px" color="primary" text-color="white" class="q-mr-sm cursor-pointer">
           <span class="text-weight-bold logo-letter">TD</span>
         </q-avatar>
-        <div v-if="!miniState" class="column col">
+        <div v-if="!localMiniState" class="column col">
           <div class="text-body1 text-weight-bold logo-text">Formar 360</div>
           <div class="text-caption text-grey-6">Plataforma de capacitación</div>
         </div>
@@ -30,7 +30,7 @@
         <template v-for="(section, sectionIndex) in menuSections" :key="sectionIndex">
           <!-- Section Header -->
           <div
-            v-if="section.title && !miniState && section.visible"
+            v-if="section.title && !localMiniState && section.visible"
             class="text-uppercase text-caption text-grey-6 q-px-md q-py-md text-weight-bold section-header"
           >
             {{ section.title }}
@@ -54,14 +54,14 @@
                   :class="`icon-${item.iconColor || 'default'}`"
                 />
               </q-item-section>
-              <q-item-section v-if="!miniState">
+              <q-item-section v-if="!localMiniState">
                 <q-item-label class="text-weight-medium nav-label">{{ item.label }}</q-item-label>
                 <q-item-label v-if="item.caption" caption class="text-grey-6 nav-caption">
                   {{ typeof item.caption === 'function' ? item.caption() : item.caption }}
                 </q-item-label>
               </q-item-section>
               <q-tooltip
-                v-if="miniState"
+                v-if="localMiniState"
                 anchor="center right"
                 self="center left"
                 :offset="[10, 0]"
@@ -83,7 +83,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useRole, useAuth } from '../composables';
 import { api } from 'boot/axios';
@@ -103,6 +103,18 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const emit = defineEmits<Emits>();
+
+// Crear estado local reactivo para miniState
+const localMiniState = ref(props.miniState);
+
+// Sincronizar con cambios en la prop
+watch(
+  () => props.miniState,
+  (newValue) => {
+    localMiniState.value = newValue;
+  },
+  { immediate: true },
+);
 
 const router = useRouter();
 const { user, logout } = useAuth();

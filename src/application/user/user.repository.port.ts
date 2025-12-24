@@ -26,6 +26,19 @@ export interface CreateUserDto {
 export type UpdateUserDto = Partial<Omit<CreateUserDto, 'password'>> & {
   password?: string;
   enabled?: boolean; // RF-05: Habilitar/deshabilitar usuario
+  // Campos específicos del backend
+  username?: string;
+  rolPrincipalId?: number;
+  habilitado?: boolean;
+  activo?: boolean;
+  debeCambiarPassword?: boolean;
+  // Campos de persona (para actualización de datos personales)
+  name?: string; // Nombre completo (se separará en nombres y apellidos)
+  email?: string;
+  phone?: string;
+  birthDate?: string; // Fecha de nacimiento en formato ISO
+  gender?: 'M' | 'F' | 'O';
+  address?: string;
 };
 
 export interface IUserRepository {
