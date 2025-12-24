@@ -50,7 +50,14 @@
                 v-model="formData.role"
                 outlined
                 label="Rol"
-                :options="['ADMIN', 'CLIENTE', 'INSTRUCTOR', 'ALUMNO', 'OPERADOR']"
+                :options="[
+                  { label: 'ADMIN', value: 'ADMIN' },
+                  { label: 'CLIENTE', value: 'CLIENTE' },
+                  { label: 'INSTRUCTOR', value: 'INSTRUCTOR' },
+                  { label: 'ALUMNO', value: 'ALUMNO' },
+                  { label: 'OPERADOR', value: 'OPERADOR' },
+                  { label: 'CONDUCTOR', value: 'DRIVER' },
+                ]"
                 emit-value
                 map-options
               >

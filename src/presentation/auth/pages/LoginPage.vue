@@ -1,8 +1,8 @@
 <template>
-  <q-page class="q-pa-lg">
-    <q-card class="q-pa-xl">
+  <q-page class="q-pa-lg flex flex-center bg-grey-1">
+    <q-card class="q-pa-xl" style="max-width: 500px">
       <div class="text-center q-mb-lg">
-        <div class="text-h4 q-mb-xs">Iniciar Sesión</div>
+        <div class="text-h4 q-mb-md">Iniciar Sesión</div>
         <div class="text-body2 text-grey-7">Ingresa tus credenciales para acceder al sistema</div>
       </div>
 
@@ -47,15 +47,17 @@
           />
         </div>
 
-        <q-btn
-          type="submit"
-          label="Iniciar Sesión"
-          color="primary"
-          size="lg"
-          class="full-width"
-          :loading="loading"
-          :disable="loading"
-        />
+        <div class="q-gutter-md">
+          <q-btn
+            type="submit"
+            label="Iniciar Sesión"
+            color="primary"
+            size="lg"
+            class="full-width"
+            :loading="loading"
+            :disable="loading"
+          />
+        </div>
 
         <div class="text-center q-mt-md">
           <span class="text-body2 text-grey-7">¿No tienes una cuenta? </span>
