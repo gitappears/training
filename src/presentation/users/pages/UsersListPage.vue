@@ -15,7 +15,7 @@
         label="Nuevo Usuario"
         size="md"
         class="q-px-xl"
-        to="/users/new"
+        @click="createUser"
         no-caps
       />
     </div>
@@ -85,7 +85,6 @@
           dense
           placeholder="Buscar por nombre, email o documento..."
           clearable
-          @update:model-value="debouncedSearch"
         >
           <template #prepend>
             <q-icon name="search" />
@@ -162,7 +161,9 @@
     <q-card v-if="selectedUsers.length > 0" flat bordered class="q-mb-md q-pa-md">
       <div class="row items-center justify-between">
         <div class="text-body1 text-weight-medium">
-          {{ selectedUsers.length }} usuario{{ selectedUsers.length > 1 ? 's' : '' }} seleccionado{{ selectedUsers.length > 1 ? 's' : '' }}
+          {{ selectedUsers.length }} usuario{{ selectedUsers.length > 1 ? 's' : '' }} seleccionado{{
+            selectedUsers.length > 1 ? 's' : ''
+          }}
         </div>
         <div class="row q-gutter-sm">
           <q-btn
@@ -170,22 +171,16 @@
             color="positive"
             icon="check_circle"
             label="Habilitar"
-            @click="bulkEnable"
+            @click="handleBulkEnable"
           />
           <q-btn
             flat
             color="negative"
             icon="block"
             label="Deshabilitar"
-            @click="bulkDisable"
+            @click="handleBulkDisable"
           />
-          <q-btn
-            flat
-            color="grey-7"
-            icon="close"
-            label="Deseleccionar"
-            @click="clearSelection"
-          />
+          <q-btn flat color="grey-7" icon="close" label="Deseleccionar" @click="clearSelection" />
         </div>
       </div>
     </q-card>
@@ -194,7 +189,7 @@
     <q-card flat bordered>
       <q-table
         v-model:selected="selectedUsers"
-        :rows="filteredUsers"
+        :rows="users"
         :columns="columns"
         row-key="id"
         :loading="loading"
@@ -208,17 +203,10 @@
           <div class="row items-center justify-between full-width">
             <div class="text-subtitle1 text-weight-medium">Lista de Usuarios</div>
             <div class="row items-center q-gutter-sm">
-              <q-btn
-                flat
-                dense
-                icon="download"
-                color="primary"
-                label="Exportar"
-                @click="handleExport"
-              >
+              <q-btn flat dense icon="download" color="primary" label="Exportar">
                 <q-menu>
                   <q-list>
-                    <q-item clickable v-close-popup @click="exportToCSV">
+                    <q-item clickable v-close-popup @click="handleExportToCSV">
                       <q-item-section avatar>
                         <q-icon name="description" />
                       </q-item-section>
@@ -226,7 +214,7 @@
                         <q-item-label>Exportar a CSV</q-item-label>
                       </q-item-section>
                     </q-item>
-                    <q-item clickable v-close-popup @click="exportToExcel">
+                    <q-item clickable v-close-popup @click="handleExportToExcel">
                       <q-item-section avatar>
                         <q-icon name="table_chart" />
                       </q-item-section>
@@ -242,69 +230,72 @@
         </template>
 
         <template #body-cell-role="props">
-          <q-badge :color="getRoleColor(props.row.role)" outline>
-            {{ getRoleLabel(props.row.role) }}
-          </q-badge>
+          <q-td :props="props">
+            <q-badge :color="getRoleColor(props.row.role)" outline>
+              {{ getRoleLabel(props.row.role) }}
+            </q-badge>
+          </q-td>
         </template>
 
         <template #body-cell-status="props">
-          <q-badge :color="props.row.enabled ? 'positive' : 'negative'" outline>
-            {{ props.row.enabled ? 'Habilitado' : 'Deshabilitado' }}
-          </q-badge>
+          <q-td :props="props">
+            <q-badge :color="props.row.enabled ? 'positive' : 'negative'" outline>
+              {{ props.row.enabled ? 'Habilitado' : 'Deshabilitado' }}
+            </q-badge>
+          </q-td>
         </template>
 
         <template #body-cell-type="props">
-          <q-badge :color="props.row.personType === 'juridica' ? 'blue' : 'green'" outline>
-            {{ props.row.personType === 'juridica' ? 'Jurídica' : 'Natural' }}
-          </q-badge>
-          <q-badge
-            v-if="props.row.isExternal"
-            color="warning"
-            outline
-            class="q-ml-xs"
-          >
-            Externo
-          </q-badge>
+          <q-td :props="props">
+            <q-badge :color="props.row.personType === 'juridica' ? 'blue' : 'green'" outline>
+              {{ props.row.personType === 'juridica' ? 'Jurídica' : 'Natural' }}
+            </q-badge>
+            <q-badge v-if="props.row.isExternal" color="warning" outline class="q-ml-xs">
+              Externo
+            </q-badge>
+          </q-td>
         </template>
 
         <template #body-cell-actions="props">
-          <div class="row q-gutter-xs">
-            <q-btn
-              flat
-              dense
-              round
-              icon="visibility"
-              color="primary"
-              size="sm"
-              @click="viewUser(props.row.id)"
-            >
-              <q-tooltip>Ver detalles</q-tooltip>
-            </q-btn>
-            <q-btn
-              flat
-              dense
-              round
-              icon="edit"
-              color="primary"
-              size="sm"
-              @click="editUser(props.row.id)"
-            >
-              <q-tooltip>Editar</q-tooltip>
-            </q-btn>
-            <q-btn
-              flat
-              dense
-              round
-              :icon="props.row.enabled ? 'block' : 'check_circle'"
-              :color="props.row.enabled ? 'negative' : 'positive'"
-              size="sm"
-              @click="toggleUserStatus(props.row)"
-            >
-              <q-tooltip>
-                {{ props.row.enabled ? 'Deshabilitar' : 'Habilitar' }}
-              </q-tooltip>
-            </q-btn>
-          </div>
+          <q-td :props="props">
+            <div class="row q-gutter-xs">
+              <q-btn
+                flat
+                dense
+                round
+                icon="visibility"
+                color="primary"
+                size="sm"
+                @click="viewUser(props.row.id)"
+              >
+                <q-tooltip>Ver detalles</q-tooltip>
+              </q-btn>
+              <q-btn
+                flat
+                dense
+                round
+                icon="edit"
+                color="primary"
+                size="sm"
+                @click="editUser(props.row.id)"
+              >
+                <q-tooltip>Editar</q-tooltip>
+              </q-btn>
+              <q-btn
+                flat
+                dense
+                round
+                :icon="props.row.enabled ? 'block' : 'check_circle'"
+                :color="props.row.enabled ? 'negative' : 'positive'"
+                size="sm"
+                @click="handleToggleUserStatus(props.row)"
+              >
+                <q-tooltip>
+                  {{ props.row.enabled ? 'Deshabilitar' : 'Habilitar' }}
+                </q-tooltip>
+              </q-btn>
+            </div>
+          </q-td>
         </template>
 
         <template #no-data>
@@ -326,7 +317,7 @@
                 unelevated
                 icon="add"
                 label="Crear Usuario"
-                to="/users/new"
+                @click="createUser"
               />
             </template>
           </EmptyState>
@@ -346,451 +337,41 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue';
-import { useRouter } from 'vue-router';
-import { useQuasar } from 'quasar';
-import { debounce } from 'quasar';
-import type { QTableColumn, QTableProps } from 'quasar';
-import type { User, UserFilters, UserStatistics } from '../../../domain/user/models';
+import { onMounted } from 'vue';
+import { useUserList, useUserRoles } from '../composables';
 import EmptyState from '../../../shared/components/EmptyState.vue';
 import FiltersPanel from '../../../shared/components/FiltersPanel.vue';
 
-const router = useRouter();
-const $q = useQuasar();
+const {
+  loading,
+  users,
+  statistics,
+  filters,
+  selectedUsers,
+  pagination,
+  columns,
+  activeFiltersCount,
+  hasActiveFilters,
+  loadUsers,
+  onRequest,
+  clearAllFilters,
+  clearSelection,
+  handleToggleUserStatus,
+  handleBulkEnable,
+  handleBulkDisable,
+  viewUser,
+  editUser,
+  createUser,
+  handleExportToCSV,
+  handleExportToExcel,
+} = useUserList();
 
-// Estado
-const loading = ref(false);
-const users = ref<User[]>([]);
-const selectedUsers = ref<User[]>([]);
-const filters = ref<UserFilters>({
-  search: '',
-  role: null,
-  status: null,
-  personType: null,
-  isExternal: null,
-});
-
-const pagination = ref<QTableProps['pagination']>({
-  page: 1,
-  rowsPerPage: 10,
-  rowsNumber: 0,
-});
-
-const statistics = ref<UserStatistics>({
-  total: 0,
-  enabled: 0,
-  disabled: 0,
-  external: 0,
-  byRole: {
-    admin: 0,
-    institutional: 0,
-    driver: 0,
-  },
-  byType: {
-    natural: 0,
-    juridica: 0,
-  },
-});
-
-// Opciones de filtros
-const roleOptions = [
-  { label: 'Administrador', value: 'admin' },
-  { label: 'Cliente Institucional', value: 'institutional' },
-  { label: 'Conductor', value: 'driver' },
-];
-
-const statusOptions = [
-  { label: 'Habilitado', value: 'enabled' },
-  { label: 'Deshabilitado', value: 'disabled' },
-];
-
-const personTypeOptions = [
-  { label: 'Persona Natural', value: 'natural' },
-  { label: 'Persona Jurídica', value: 'juridica' },
-];
-
-// Columnas de la tabla
-const columns: QTableColumn<User>[] = [
-  {
-    name: 'name',
-    field: 'name',
-    label: 'Nombre',
-    align: 'left',
-    sortable: true,
-  },
-  {
-    name: 'email',
-    field: 'email',
-    label: 'Email',
-    align: 'left',
-    sortable: true,
-  },
-  {
-    name: 'document',
-    field: 'document',
-    label: 'Documento',
-    align: 'left',
-  },
-  {
-    name: 'role',
-    field: 'role',
-    label: 'Rol',
-    align: 'center',
-    sortable: true,
-  },
-  {
-    name: 'type',
-    field: 'personType',
-    label: 'Tipo',
-    align: 'center',
-  },
-  {
-    name: 'status',
-    field: 'enabled',
-    label: 'Estado',
-    align: 'center',
-    sortable: true,
-  },
-  {
-    name: 'company',
-    field: 'company',
-    label: 'Empresa',
-    align: 'left',
-  },
-  {
-    name: 'actions',
-    label: 'Acciones',
-    align: 'center',
-    field: () => '',
-  },
-];
-
-// Computed
-const filteredUsers = computed(() => {
-  let result = [...users.value];
-
-  // Filtro de búsqueda
-  if (filters.value.search) {
-    const search = filters.value.search.toLowerCase();
-    result = result.filter(
-      (user) =>
-        user.name.toLowerCase().includes(search) ||
-        user.email.toLowerCase().includes(search) ||
-        user.document.includes(search),
-    );
-  }
-
-  // Filtro por rol
-  if (filters.value.role) {
-    result = result.filter((user) => user.role === filters.value.role);
-  }
-
-  // Filtro por estado
-  if (filters.value.status) {
-    const enabled = filters.value.status === 'enabled';
-    result = result.filter((user) => user.enabled === enabled);
-  }
-
-  // Filtro por tipo de persona
-  if (filters.value.personType) {
-    result = result.filter((user) => user.personType === filters.value.personType);
-  }
-
-  // Filtro por externo
-  if (filters.value.isExternal !== null) {
-    result = result.filter((user) => user.isExternal === filters.value.isExternal);
-  }
-
-  return result;
-});
-
-const activeFiltersCount = computed(() => {
-  let count = 0;
-  if (filters.value.search) count++;
-  if (filters.value.role) count++;
-  if (filters.value.status) count++;
-  if (filters.value.personType) count++;
-  if (filters.value.isExternal !== null) count++;
-  return count;
-});
-
-const hasActiveFilters = computed(() => activeFiltersCount.value > 0);
-
-// Funciones
-function loadUsers() {
-  loading.value = true;
-  // Simular carga de datos (mock)
-  setTimeout(() => {
-    users.value = [
-      {
-        id: '1',
-        name: 'Juan Pérez',
-        email: 'juan.perez@example.com',
-        document: '12345678',
-        documentType: 'CC',
-        phone: '+57 300 123 4567',
-        role: 'driver',
-        personType: 'natural',
-        enabled: true,
-        isExternal: false,
-        company: 'Transportes ABC',
-        createdAt: '2025-01-15',
-      },
-      {
-        id: '2',
-        name: 'María González',
-        email: 'maria.gonzalez@example.com',
-        document: '87654321',
-        documentType: 'CC',
-        phone: '+57 300 987 6543',
-        role: 'driver',
-        personType: 'natural',
-        enabled: true,
-        isExternal: true,
-        createdAt: '2025-01-10',
-      },
-      {
-        id: '3',
-        name: 'Empresa Transportes XYZ',
-        email: 'contacto@transportesxyz.com',
-        document: '900123456',
-        documentType: 'NIT',
-        phone: '+57 1 234 5678',
-        role: 'institutional',
-        personType: 'juridica',
-        enabled: true,
-        companyName: 'Transportes XYZ S.A.S.',
-        createdAt: '2025-01-05',
-      },
-      {
-        id: '4',
-        name: 'Carlos Rodríguez',
-        email: 'carlos.rodriguez@example.com',
-        document: '11223344',
-        documentType: 'CC',
-        phone: '+57 300 555 1234',
-        role: 'driver',
-        personType: 'natural',
-        enabled: false,
-        isExternal: false,
-        createdAt: '2025-01-20',
-      },
-      {
-        id: '5',
-        name: 'Ana Martínez',
-        email: 'ana.martinez@example.com',
-        document: '55667788',
-        documentType: 'CE',
-        phone: '+57 300 777 8888',
-        role: 'driver',
-        personType: 'natural',
-        enabled: true,
-        isExternal: true,
-        createdAt: '2025-01-18',
-      },
-    ];
-
-    calculateStatistics();
-    pagination.value = {
-      ...pagination.value,
-      rowsNumber: filteredUsers.value.length,
-    };
-    loading.value = false;
-  }, 500);
-}
-
-function calculateStatistics() {
-  statistics.value = {
-    total: users.value.length,
-    enabled: users.value.filter((u) => u.enabled).length,
-    disabled: users.value.filter((u) => !u.enabled).length,
-    external: users.value.filter((u) => u.isExternal).length,
-    byRole: {
-      admin: users.value.filter((u) => u.role === 'admin').length,
-      institutional: users.value.filter((u) => u.role === 'institutional').length,
-      driver: users.value.filter((u) => u.role === 'driver').length,
-    },
-    byType: {
-      natural: users.value.filter((u) => u.personType === 'natural').length,
-      juridica: users.value.filter((u) => u.personType === 'juridica').length,
-    },
-  };
-}
-
-const debouncedSearch = debounce(() => {
-  pagination.value = {
-    ...pagination.value,
-    page: 1,
-  };
-}, 300);
-
-function onRequest(props: { pagination: QTableProps['pagination'] }) {
-  pagination.value = props.pagination;
-  // Aquí se haría la petición al backend con los filtros y paginación
-}
-
-function clearAllFilters() {
-  filters.value = {
-    search: '',
-    role: null,
-    status: null,
-    personType: null,
-    isExternal: null,
-  };
-  pagination.value = {
-    ...pagination.value,
-    page: 1,
-  };
-}
-
-function clearSelection() {
-  selectedUsers.value = [];
-}
-
-function bulkEnable() {
-  if (selectedUsers.value.length === 0) return;
-
-  $q.dialog({
-    title: 'Confirmar acción',
-    message: `¿Está seguro de habilitar ${selectedUsers.value.length} usuario(s)?`,
-    cancel: true,
-    persistent: true,
-  }).onOk(() => {
-    selectedUsers.value.forEach((user) => {
-      user.enabled = true;
-    });
-    calculateStatistics();
-    clearSelection();
-    $q.notify({
-      type: 'positive',
-      message: `${selectedUsers.value.length} usuario(s) habilitado(s) exitosamente`,
-      position: 'top',
-    });
-  });
-}
-
-function bulkDisable() {
-  if (selectedUsers.value.length === 0) return;
-
-  $q.dialog({
-    title: 'Confirmar acción',
-    message: `¿Está seguro de deshabilitar ${selectedUsers.value.length} usuario(s)?`,
-    cancel: true,
-    persistent: true,
-  }).onOk(() => {
-    selectedUsers.value.forEach((user) => {
-      user.enabled = false;
-    });
-    calculateStatistics();
-    clearSelection();
-    $q.notify({
-      type: 'info',
-      message: `${selectedUsers.value.length} usuario(s) deshabilitado(s) exitosamente`,
-      position: 'top',
-    });
-  });
-}
-
-function toggleUserStatus(user: User) {
-  const action = user.enabled ? 'deshabilitar' : 'habilitar';
-  $q.dialog({
-    title: 'Confirmar acción',
-    message: `¿Está seguro de ${action} a ${user.name}?`,
-    cancel: true,
-    persistent: true,
-  }).onOk(() => {
-    user.enabled = !user.enabled;
-    calculateStatistics();
-    $q.notify({
-      type: 'positive',
-      message: `Usuario ${action}do exitosamente`,
-      position: 'top',
-    });
-  });
-}
-
-function viewUser(id: string) {
-  void router.push(`/users/${id}`);
-}
-
-function editUser(id: string) {
-  void router.push(`/users/${id}?edit=true`);
-}
-
-function handleExport() {
-  // Placeholder para exportación
-}
-
-function exportToCSV() {
-  const headers = ['Nombre', 'Email', 'Documento', 'Rol', 'Tipo', 'Estado', 'Empresa'];
-  const rows = filteredUsers.value.map((user) => [
-    user.name,
-    user.email,
-    user.document,
-    getRoleLabel(user.role),
-    user.personType === 'juridica' ? 'Jurídica' : 'Natural',
-    user.enabled ? 'Habilitado' : 'Deshabilitado',
-    user.company || '',
-  ]);
-
-  const csvContent = [headers, ...rows]
-    .map((row) => row.map((cell) => `"${cell}"`).join(','))
-    .join('\n');
-
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-  const link = document.createElement('a');
-  link.href = URL.createObjectURL(blob);
-  link.download = `usuarios_${new Date().toISOString().split('T')[0]}.csv`;
-  link.click();
-
-  $q.notify({
-    type: 'positive',
-    message: 'Archivo CSV exportado exitosamente',
-    position: 'top',
-  });
-}
-
-function exportToExcel() {
-  $q.notify({
-    type: 'info',
-    message: 'Exportación a Excel próximamente',
-    position: 'top',
-  });
-}
-
-function getRoleLabel(role: string): string {
-  const labels: Record<string, string> = {
-    admin: 'Administrador',
-    institutional: 'Cliente Institucional',
-    driver: 'Conductor',
-  };
-  return labels[role] ?? role;
-}
-
-function getRoleColor(role: string): string {
-  const colors: Record<string, string> = {
-    admin: 'purple',
-    institutional: 'blue',
-    driver: 'green',
-  };
-  return colors[role] ?? 'grey';
-}
-
-// Watchers
-watch(
-  () => filters.value,
-  () => {
-    pagination.value = {
-      ...pagination.value,
-      page: 1,
-    };
-  },
-  { deep: true },
-);
+const { roleOptions, statusOptions, personTypeOptions, getRoleLabel, getRoleColor } =
+  useUserRoles();
 
 // Lifecycle
 onMounted(() => {
-  loadUsers();
+  void loadUsers();
 });
 </script>
 
@@ -805,7 +386,9 @@ body.body--dark .users-list-page {
 }
 
 .stat-card {
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .stat-card:hover {

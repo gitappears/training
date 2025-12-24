@@ -10,7 +10,7 @@ import type {
   CreateTrainingDto,
   UpdateTrainingDto,
 } from '../../../application/training/training.repository.port';
-import type { Training, TrainingSection, TrainingStudent } from '../../../domain/training/models';
+import type { Training, TrainingSection, TrainingStudent, TrainingStatus } from '../../../domain/training/models';
 
 /**
  * Tipos para las respuestas del backend
@@ -32,12 +32,24 @@ interface BackendPersona {
   email?: string;
 }
 
+interface BackendLeccion {
+  id: number;
+  titulo: string;
+  descripcion?: string;
+  contenido?: string;
+  videoUrl?: string;
+  duracionMinutos?: number;
+  orden: number;
+  activo: boolean;
+}
+
 interface BackendSeccion {
   id: number;
   titulo: string;
   descripcion?: string;
-  lecciones?: unknown[];
-  duracionMinutos?: number;
+  lecciones?: BackendLeccion[];
+  orden: number;
+  activo: boolean;
 }
 
 interface BackendMaterial {
@@ -70,6 +82,16 @@ interface BackendResena {
   fechaCreacion?: string;
 }
 
+interface BackendEvaluacion {
+  id: number;
+  titulo: string;
+  descripcion?: string;
+  tiempoLimiteMinutos?: number;
+  intentosPermitidos: number;
+  minimoAprobacion: number;
+  activo: boolean;
+}
+
 interface BackendCapacitacion {
   id: number;
   titulo: string;
@@ -86,10 +108,12 @@ interface BackendCapacitacion {
   imagenPortadaUrl?: string;
   videoPromocionalUrl?: string;
   promedioCalificacion?: number;
+  estado?: 'borrador' | 'publicada' | 'en_curso' | 'finalizada' | 'cancelada';
   secciones?: BackendSeccion[];
   materiales?: BackendMaterial[];
   inscripciones?: BackendInscripcion[];
   resenas?: BackendResena[];
+  evaluaciones?: BackendEvaluacion[];
 }
 
 interface BackendPaginatedResponse {
@@ -114,18 +138,27 @@ function mapBackendToDomain(backendData: BackendCapacitacion): Training {
     area: backendData.areaId?.toString() ?? '',
     studentsCount: backendData.inscripciones?.length ?? 0,
     averageRating: backendData.promedioCalificacion ?? 0,
-    sections: backendData.secciones?.map((s: BackendSeccion): TrainingSection => {
-      const section: TrainingSection = {
-        id: s.id?.toString() ?? '',
-        title: s.titulo ?? '',
-        lessonsCount: s.lecciones?.length ?? 0,
-        durationMinutes: s.duracionMinutos ?? 0,
-      };
-      if (s.descripcion) {
-        section.description = s.descripcion;
-      }
-      return section;
-    }) ?? [],
+    sections: backendData.secciones
+      ?.filter((s: BackendSeccion) => s.activo !== false)
+      .sort((a: BackendSeccion, b: BackendSeccion) => (a.orden ?? 0) - (b.orden ?? 0))
+      .map((s: BackendSeccion): TrainingSection => {
+        const leccionesActivas = s.lecciones?.filter((l: BackendLeccion) => l.activo !== false) ?? [];
+        const duracionTotal = leccionesActivas.reduce(
+          (total: number, l: BackendLeccion) => total + (l.duracionMinutos ?? 0),
+          0,
+        );
+
+        const section: TrainingSection = {
+          id: s.id?.toString() ?? '',
+          title: s.titulo ?? '',
+          lessonsCount: leccionesActivas.length,
+          durationMinutes: duracionTotal || 0,
+        };
+        if (s.descripcion) {
+          section.description = s.descripcion;
+        }
+        return section;
+      }) ?? [],
     attachments: backendData.materiales?.filter((m: BackendMaterial) => m.tipoMaterial?.nombre === 'archivo').map((m: BackendMaterial) => ({
       id: m.id?.toString() ?? '',
       type: 'file' as const,
@@ -182,6 +215,21 @@ function mapBackendToDomain(backendData: BackendCapacitacion): Training {
   }
   if (backendData.capacidadMaxima !== undefined && backendData.capacidadMaxima !== null) {
     training.capacity = backendData.capacidadMaxima;
+  }
+
+  // Mapear estado del backend al frontend
+  if (backendData.estado) {
+    const estadoMap: Record<string, TrainingStatus> = {
+      borrador: 'draft',
+      publicada: 'published',
+      en_curso: 'active',
+      finalizada: 'finished',
+      cancelada: 'cancelled',
+    };
+    training.status = estadoMap[backendData.estado] || 'draft';
+  } else {
+    // Si no hay estado, inferir según otros campos
+    training.status = 'draft';
   }
 
   return training;

@@ -87,9 +87,9 @@
                   <div class="text-body1 text-grey-8 line-height-relaxed">
                     {{ training.description || 'Sin descripción disponible' }}
                   </div>
-                  
+
                   <q-separator class="q-my-lg" />
-                  
+
                   <div v-if="training.targetAudience" class="info-section q-mb-md">
                     <div class="row items-start q-gutter-md">
                       <q-icon name="groups" size="24px" color="primary" />
@@ -99,8 +99,8 @@
                       </div>
                     </div>
                   </div>
-                  
-                  <div v-if="training.startDate || training.endDate" class="info-section">
+
+                  <div v-if="training.startDate || training.endDate" class="info-section q-mb-md">
                     <div class="row items-start q-gutter-md">
                       <q-icon name="event" size="24px" color="primary" />
                       <div class="col">
@@ -113,6 +113,43 @@
                           <span v-if="training.endDate">
                             Fin: {{ formatDate(training.endDate) }}
                           </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Sección de Recursos y Materiales -->
+                  <div v-if="allAttachments.length > 0" class="info-section">
+                    <div class="row items-start q-gutter-md">
+                      <q-icon name="attach_file" size="24px" color="primary" />
+                      <div class="col">
+                        <div class="text-subtitle2 q-mb-xs text-weight-medium">Recursos y Materiales</div>
+                        <div class="column q-gutter-xs q-mt-sm">
+                          <q-item
+                            v-for="att in allAttachments"
+                            :key="att.id"
+                            clickable
+                            tag="a"
+                            :href="att.url"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            dense
+                            class="resource-link-item"
+                          >
+                            <q-item-section avatar>
+                              <q-icon
+                                :name="att.type === 'file' ? 'attach_file' : 'link'"
+                                :color="att.type === 'file' ? 'primary' : 'secondary'"
+                                size="20px"
+                              />
+                            </q-item-section>
+                            <q-item-section>
+                              <q-item-label class="text-body2">{{ att.label }}</q-item-label>
+                            </q-item-section>
+                            <q-item-section side>
+                              <q-icon name="open_in_new" size="16px" color="grey-6" />
+                            </q-item-section>
+                          </q-item>
                         </div>
                       </div>
                     </div>
@@ -226,19 +263,30 @@
 
               <q-tab-panel name="resources">
                 <div class="resources-section">
-                  <div class="text-h6 q-mb-md text-weight-medium">Recursos y Materiales</div>
-                  <div v-if="training.attachments.length === 0" class="empty-state">
+                  <div class="row items-center justify-between q-mb-md">
+                    <div class="text-h6 text-weight-medium">Recursos y Materiales</div>
+                    <q-badge v-if="allAttachments.length > 0" color="primary" :label="`${allAttachments.length} recursos`" />
+                  </div>
+
+                  <q-inner-loading :showing="loadingMaterials" />
+
+                  <div v-if="!loadingMaterials && allAttachments.length === 0" class="empty-state">
                     <q-icon name="attach_file" size="48px" color="grey-5" class="q-mb-sm" />
                     <div class="text-body1 text-grey-6">No hay recursos disponibles</div>
+                    <div class="text-caption text-grey-5 q-mt-xs">
+                      Los recursos agregados durante la creación de la capacitación aparecerán aquí
+                    </div>
                   </div>
+
                   <q-list v-else separator class="resources-list">
                     <q-item
-                      v-for="att in training.attachments"
+                      v-for="att in allAttachments"
                       :key="att.id"
                       clickable
                       tag="a"
                       :href="att.url"
                       target="_blank"
+                      rel="noopener noreferrer"
                       class="resource-item"
                     >
                       <q-item-section avatar>
@@ -348,9 +396,9 @@
                     ({{ training.studentsCount }} {{ training.studentsCount === 1 ? 'alumno' : 'alumnos' }})
                   </span>
                 </div>
-                
+
                 <q-separator class="q-mb-md" />
-                
+
                 <div class="sidebar-info q-mb-md">
                   <div class="info-row q-mb-sm">
                     <q-icon name="schedule" size="18px" color="grey-6" class="q-mr-sm" />
@@ -372,7 +420,7 @@
                     </span>
                   </div>
                 </div>
-                
+
                 <q-btn
                   color="primary"
                   unelevated
@@ -382,6 +430,46 @@
                   class="full-width q-mb-sm"
                   @click="handleEnrollStudent"
                 />
+                <q-separator class="q-my-md" />
+
+                <!-- Status Toggle (RF-10) -->
+                <div class="status-toggle-section q-mb-md">
+                  <div class="text-subtitle2 q-mb-sm text-weight-medium">Estado de la Capacitación</div>
+                  <q-banner
+                    :class="trainingStatus === 'active' ? 'bg-positive-1' : 'bg-grey-2'"
+                    rounded
+                    dense
+                    class="q-mb-sm"
+                  >
+                    <template #avatar>
+                      <q-icon
+                        :name="trainingStatus === 'active' ? 'check_circle' : 'cancel'"
+                        :color="trainingStatus === 'active' ? 'positive' : 'grey-6'"
+                      />
+                    </template>
+                    <div class="text-body2 text-weight-medium">
+                      {{ trainingStatus === 'active' ? 'ACTIVA' : 'INACTIVA' }}
+                    </div>
+                    <div class="text-caption text-grey-7">
+                      {{ trainingStatus === 'active' ? 'La capacitación está disponible para inscripciones' : 'La capacitación no está disponible' }}
+                    </div>
+                  </q-banner>
+                  <q-btn
+                    :color="trainingStatus === 'active' ? 'negative' : 'positive'"
+                    :label="trainingStatus === 'active' ? 'Desactivar' : 'Activar'"
+                    :icon="trainingStatus === 'active' ? 'power_settings_new' : 'power'"
+                    class="full-width"
+                    outline
+                    @click="handleToggleStatus"
+                  >
+                    <q-tooltip>
+                      {{ trainingStatus === 'active' ? 'Desactivar capacitación (RF-10)' : 'Activar capacitación (RF-10)' }}
+                    </q-tooltip>
+                  </q-btn>
+                </div>
+
+                <q-separator class="q-my-md" />
+
                 <q-btn
                   flat
                   color="primary"
@@ -404,9 +492,11 @@ import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 import type { QTableColumn } from 'quasar';
-import type { Training, TrainingStudent } from '../../../domain/training/models';
+import type { Training, TrainingStudent, TrainingAttachment } from '../../../domain/training/models';
 import { TrainingUseCasesFactory } from '../../../application/training/training.use-cases.factory';
 import { trainingsService } from '../../../infrastructure/http/trainings/trainings.service';
+import { materialsService } from '../../../infrastructure/http/materials/materials.service';
+import type { Material } from '../../../domain/material/models';
 
 const route = useRoute();
 const router = useRouter();
@@ -416,6 +506,71 @@ const tab = ref<'overview' | 'content' | 'students' | 'resources' | 'reviews'>('
 const trainingId = parseInt(route.params.id as string);
 const training = ref<Training | null>(null);
 const loading = ref(false);
+const materials = ref<Material[]>([]);
+const loadingMaterials = ref(false);
+
+/**
+ * Carga los materiales de la capacitación desde el backend
+ */
+async function loadMaterials(): Promise<void> {
+  if (isNaN(trainingId)) return;
+
+  loadingMaterials.value = true;
+  try {
+    materials.value = await materialsService.findByCapacitacion(trainingId);
+  } catch (error) {
+    console.warn('Error al cargar materiales de la capacitación:', error);
+    // No es crítico, continuar sin materiales
+    materials.value = [];
+  } finally {
+    loadingMaterials.value = false;
+  }
+}
+
+/**
+ * Mapea un material del dominio a un TrainingAttachment
+ */
+function mapMaterialToAttachment(material: Material): TrainingAttachment {
+  const tipoNombre = material.tipoMaterial?.nombre?.toLowerCase() || '';
+  const tipoCodigo = material.tipoMaterial?.codigo?.toUpperCase() || '';
+
+  // Determinar si es un enlace o un archivo
+  const isLink =
+    tipoNombre.includes('enlace') ||
+    tipoNombre.includes('link') ||
+    tipoCodigo === 'LINK' ||
+    material.url.startsWith('http') && !material.url.match(/\.(pdf|doc|docx|ppt|pptx|jpg|jpeg|png|gif|mp4|webm|mp3|wav)$/i);
+
+  return {
+    id: material.id,
+    type: isLink ? 'link' : 'file',
+    label: material.nombre,
+    url: material.url,
+  };
+}
+
+/**
+ * Computed que combina los attachments del training con los materiales cargados
+ * Elimina duplicados basándose en la URL
+ */
+const allAttachments = computed<TrainingAttachment[]>(() => {
+  const attachmentsFromTraining = training.value?.attachments || [];
+  const attachmentsFromMaterials = materials.value
+    .filter((m) => m.activo !== false)
+    .map(mapMaterialToAttachment);
+
+  // Combinar y eliminar duplicados por URL
+  const combined = [...attachmentsFromTraining, ...attachmentsFromMaterials];
+  const uniqueMap = new Map<string, TrainingAttachment>();
+
+  for (const att of combined) {
+    if (!uniqueMap.has(att.url)) {
+      uniqueMap.set(att.url, att);
+    }
+  }
+
+  return Array.from(uniqueMap.values());
+});
 
 async function loadTraining() {
   if (isNaN(trainingId)) {
@@ -429,14 +584,56 @@ async function loadTraining() {
 
   loading.value = true;
   try {
+    // Cargar training y materiales en paralelo para mejor rendimiento
     const getTrainingUseCase = TrainingUseCasesFactory.getGetTrainingUseCase(trainingsService);
-    training.value = await getTrainingUseCase.execute(trainingId);
+
+    await Promise.all([
+      (async () => {
+        training.value = await getTrainingUseCase.execute(trainingId);
+      })(),
+      loadMaterials(), // Cargar materiales en paralelo (maneja sus propios errores)
+    ]);
   } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : 'Error al cargar la capacitación';
+    // Mejorar mensajes de error con más contexto
+    let errorMessage = 'Error al cargar la capacitación';
+
+    if (error instanceof Error) {
+      const errorStr = error.message.toLowerCase();
+
+      if (errorStr.includes('404') || errorStr.includes('not found')) {
+        errorMessage = 'Capacitación no encontrada: La capacitación solicitada no existe o ha sido eliminada';
+      } else if (errorStr.includes('network') || errorStr.includes('timeout')) {
+        errorMessage = 'Error de conexión: Verifique su conexión a internet e intente nuevamente';
+      } else if (errorStr.includes('401') || errorStr.includes('unauthorized')) {
+        errorMessage = 'Error de autenticación: Su sesión ha expirado. Por favor, inicie sesión nuevamente';
+        void router.push('/auth/login');
+        return;
+      } else if (errorStr.includes('403') || errorStr.includes('forbidden')) {
+        errorMessage = 'Error de permisos: No tiene permisos para ver esta capacitación';
+      } else {
+        errorMessage = error.message;
+      }
+    }
+
     $q.notify({
       type: 'negative',
       message: errorMessage,
+      icon: 'error',
+      position: 'top',
+      timeout: 7000,
+      actions: [
+        {
+          label: 'Volver',
+          color: 'white',
+          handler: () => {
+            void router.push('/trainings');
+          },
+        },
+        {
+          label: 'Cerrar',
+          color: 'white',
+        },
+      ],
     });
     void router.push('/trainings');
   } finally {
@@ -493,15 +690,134 @@ function formatDate(dateString: string): string {
 }
 
 function handleEnrollStudent() {
-  $q.notify({
-    type: 'info',
-    message: 'Funcionalidad de inscripción próximamente',
-    position: 'top',
+  if (!training.value) return;
+
+  // Verificar que la capacitación esté disponible para inscripciones
+  if (training.value.status !== 'published' && training.value.status !== 'active') {
+    $q.notify({
+      type: 'warning',
+      message: 'Solo se pueden realizar inscripciones en capacitaciones publicadas o activas',
+      icon: 'warning',
+      position: 'top',
+    });
+    return;
+  }
+
+  $q.dialog({
+    title: 'Inscribir Estudiante',
+    message: 'Ingresa el ID del estudiante que deseas inscribir en esta capacitación',
+    prompt: {
+      model: '',
+      type: 'number',
+      label: 'ID del Estudiante',
+      hint: 'Ingresa el ID numérico del estudiante',
+      isValid: (val) => val !== '' && !isNaN(Number(val)) && Number(val) > 0,
+    },
+    persistent: true,
+    ok: {
+      label: 'Inscribir',
+      color: 'primary',
+    },
+    cancel: {
+      label: 'Cancelar',
+      flat: true,
+    },
+  }).onOk((estudianteId: string) => {
+    void (async () => {
+      try {
+        const { inscriptionsService } = await import(
+          '../../../infrastructure/http/inscriptions/inscriptions.service'
+        );
+
+        // Crear la inscripción
+        await inscriptionsService.create({
+          courseId: training.value!.id,
+          userId: estudianteId,
+        });
+
+        $q.notify({
+          type: 'positive',
+          message: 'Estudiante inscrito exitosamente',
+          icon: 'check_circle',
+          position: 'top',
+        });
+
+        // Recargar la capacitación para actualizar el contador de estudiantes
+        await loadTraining();
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : 'Error al inscribir el estudiante';
+        $q.notify({
+          type: 'negative',
+          message: errorMessage,
+          icon: 'error',
+          position: 'top',
+          timeout: 5000,
+        });
+      }
+    })();
   });
 }
 
 function handleEditTraining() {
   void router.push({ name: 'training-edit', params: { id: training.value?.id } });
+}
+
+const trainingStatus = computed(() => {
+  return training.value?.status || 'active';
+});
+
+function handleToggleStatus(): void {
+  if (!training.value) return;
+
+  const currentStatus = trainingStatus.value;
+  const action = currentStatus === 'active' ? 'desactivar' : 'activar';
+  const actionPast = currentStatus === 'active' ? 'desactivada' : 'activada';
+
+  $q.dialog({
+    title: 'Confirmar cambio de estado',
+    message: `¿Está seguro de que desea ${action} esta capacitación? Los certificados ya emitidos no se afectarán (RF-10).`,
+    cancel: true,
+    persistent: true,
+    ok: {
+      label: 'Confirmar',
+      color: 'primary',
+    },
+  }).onOk(() => {
+    void (async () => {
+      try {
+        // Importar servicio de toggle
+        const { trainingsToggleStatusService } = await import(
+          '../../../infrastructure/http/trainings/trainings-toggle-status.service'
+        );
+
+        // Llamar al endpoint de toggle
+        await trainingsToggleStatusService.toggleActivoInactivo(trainingId);
+
+        // Actualizar el estado localmente
+        if (training.value) {
+          training.value.status = currentStatus === 'active' ? 'inactive' : 'active';
+        }
+
+        $q.notify({
+          type: 'positive',
+          message: `Capacitación ${actionPast} exitosamente`,
+          icon: 'check_circle',
+          position: 'top',
+        });
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : 'Error al cambiar el estado';
+        $q.notify({
+          type: 'negative',
+          message: errorMessage,
+          icon: 'error',
+          position: 'top',
+          timeout: 5000,
+        });
+      }
+    })();
+  });
 }
 
 const trainingModalityLabel = computed(() =>
@@ -716,6 +1032,21 @@ body.body--dark .info-section {
 
 .line-height-relaxed {
   line-height: 1.7;
+}
+
+.resource-link-item {
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  padding: 8px;
+
+  &:hover {
+    background: rgba(79, 70, 229, 0.1);
+    transform: translateX(4px);
+  }
+}
+
+body.body--dark .resource-link-item:hover {
+  background: rgba(79, 70, 229, 0.2);
 }
 
 // Content Section

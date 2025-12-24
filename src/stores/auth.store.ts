@@ -43,6 +43,10 @@ export const useAuthStore = defineStore('auth', () => {
 
       // Obtener perfil después del login
       await fetchProfile();
+    } catch (error) {
+      // Re-lanzar el error para que el componente pueda manejarlo
+      // Especialmente importante para TERMS_NOT_ACCEPTED
+      throw error;
     } finally {
       loading.value = false;
     }

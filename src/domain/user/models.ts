@@ -7,6 +7,7 @@ export type UserStatus = 'enabled' | 'disabled';
 
 export interface User {
   id: string;
+  personaId?: string; // ID de la persona en el backend (usado para inscripciones y certificados)
   name: string;
   email: string;
   document: string;
