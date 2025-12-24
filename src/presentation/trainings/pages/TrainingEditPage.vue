@@ -75,10 +75,16 @@ import { evaluationsService } from '../../../infrastructure/http/evaluations/eva
 import type { Training } from '../../../domain/training/models';
 import type { UpdateTrainingDto } from '../../../application/training/training.repository.port';
 import type { CreateMaterialDto, UpdateMaterialDto } from '../../../application/material/material.repository.port';
+import { useMaterialTypeMapper } from '../../../shared/composables/useMaterialTypeMapper';
+import { useMaterialUrl } from '../../../shared/composables/useMaterialUrl';
 
 const router = useRouter();
 const route = useRoute();
 const $q = useQuasar();
+
+// Composables
+const { mapFromBackend: mapMaterialTypeFromBackend, mapToBackendId: mapMaterialTypeToId } = useMaterialTypeMapper();
+const { extractRelativeUrl, isExternalLink } = useMaterialUrl();
 
 const loading = ref(true);
 const error = ref<string | null>(null);
@@ -112,8 +118,8 @@ async function loadTraining() {
           const material: Material = {
             id: m.id,
             name: m.nombre,
-            url: m.url,
-            type: mapMaterialTypeFromBackend(m.tipoMaterial?.nombre || 'PDF'),
+            url: m.url, // La URL ya viene completa desde el servicio
+            type: mapMaterialTypeFromBackend(m.tipoMaterial?.codigo || m.tipoMaterial?.nombre || 'PDF'),
             order: m.orden,
           };
           if (m.descripcion) {
@@ -503,11 +509,32 @@ async function syncMaterials(capacitacionId: number, newMaterials: Material[]) {
   // Crear o actualizar materiales
   for (const material of newMaterials) {
     try {
+      // Extraer URL relativa si es un archivo local, o mantener URL completa si es enlace externo
+      let materialUrl = material.url;
+      
+      // Tipo extendido para incluir URL relativa temporal
+      interface MaterialWithRelativeUrl extends Material {
+        _relativeUrl?: string;
+      }
+      const materialWithRelative = material as MaterialWithRelativeUrl;
+      
+      // Si el material tiene _relativeUrl (archivo subido), usar esa
+      // Si no, verificar si es un enlace externo o extraer la URL relativa
+      if (materialWithRelative._relativeUrl) {
+        materialUrl = materialWithRelative._relativeUrl;
+      } else if (isExternalLink(material.url)) {
+        // Para enlaces externos (videos, etc.), mantener la URL completa
+        materialUrl = material.url;
+      } else {
+        // Para archivos locales, extraer la URL relativa
+        materialUrl = extractRelativeUrl(material.url);
+      }
+      
       if (material.id) {
         // Actualizar material existente
         const updateDto: UpdateMaterialDto = {
           nombre: material.name,
-          url: material.url,
+          url: materialUrl, // URL relativa para archivos locales, completa para enlaces externos
           tipoMaterialId: mapMaterialTypeToId(material.type),
           orden: material.order ?? 0,
         };
@@ -521,7 +548,7 @@ async function syncMaterials(capacitacionId: number, newMaterials: Material[]) {
           capacitacionId: capacitacionId,
           tipoMaterialId: mapMaterialTypeToId(material.type),
           nombre: material.name,
-          url: material.url,
+          url: materialUrl, // URL relativa para archivos locales, completa para enlaces externos
           orden: material.order ?? 0,
         };
         if (material.description) {
@@ -555,31 +582,7 @@ function mapModalityToId(modality: string | null): number {
   return map[modality ?? 'online'] ?? 1;
 }
 
-// Mapeo temporal de tipos de material - TODO: Obtener de catálogo del backend
-function mapMaterialTypeToId(type: string): number {
-  const map: Record<string, number> = {
-    PDF: 1,
-    IMAGE: 2,
-    VIDEO: 3,
-    DOC: 4,
-    LINK: 5,
-    PRESENTATION: 6,
-    AUDIO: 7,
-  };
-  return map[type] ?? 1;
-}
-
-function mapMaterialTypeFromBackend(nombre: string): Material['type'] {
-  const nombreLower = nombre.toLowerCase();
-  if (nombreLower.includes('pdf')) return 'PDF';
-  if (nombreLower.includes('imagen') || nombreLower.includes('image')) return 'IMAGE';
-  if (nombreLower.includes('video')) return 'VIDEO';
-  if (nombreLower.includes('word') || nombreLower.includes('doc')) return 'DOC';
-  if (nombreLower.includes('enlace') || nombreLower.includes('link')) return 'LINK';
-  if (nombreLower.includes('presentación') || nombreLower.includes('presentation')) return 'PRESENTATION';
-  if (nombreLower.includes('audio')) return 'AUDIO';
-  return 'PDF'; // Default
-}
+// La función mapMaterialTypeToId ya está declarada arriba usando el composable useMaterialTypeMapper
 
 /**
  * Mapea el ID del tipo de pregunta del backend al tipo del dominio

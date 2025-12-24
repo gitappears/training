@@ -8,3 +8,7 @@ export * from './usePasswordVisibility';
 export * from './useFileUpload';
 export * from './useTableFilters';
 export * from './useDebounce';
+export * from './useTrainingEvaluation';
+export * from './useMaterialUrl';
+export * from './useMaterialTypeMapper';
+

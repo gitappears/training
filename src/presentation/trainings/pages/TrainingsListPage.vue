@@ -9,6 +9,7 @@
         </div>
       </div>
       <q-btn
+        v-if="canManageTrainings"
         color="primary"
         unelevated
         icon="add"
@@ -30,6 +31,7 @@
         Crea tu primera capacitación para comenzar a formar a tu equipo.
       </div>
       <q-btn
+        v-if="canManageTrainings"
         color="primary"
         unelevated
         icon="add"
@@ -67,22 +69,15 @@
                     dense
                     size="sm"
                     color="info"
-                    icon="visibility"
-                    @click.stop="goDetail(training.id)"
+                    icon="quiz"
+                    :loading="loadingEvaluation(training.id)"
+                    @click.stop="presentTraining(training)"
                   >
-                    <q-tooltip>Ver detalles</q-tooltip>
+                    <q-tooltip>Presentar capacitación</q-tooltip>
                   </q-btn>
+                  <!-- Botón de Editar - Solo ADMIN e INSTRUCTOR -->
                   <q-btn
-                    round
-                    dense
-                    size="sm"
-                    color="purple"
-                    icon="analytics"
-                    @click.stop="viewStatistics()"
-                  >
-                    <q-tooltip>Ver estadísticas</q-tooltip>
-                  </q-btn>
-                  <q-btn
+                    v-if="canManageTrainings"
                     round
                     dense
                     size="sm"
@@ -92,16 +87,18 @@
                   >
                     <q-tooltip>Editar</q-tooltip>
                   </q-btn>
+                  <!-- Botón de Activar/Desactivar - Solo ADMIN y CLIENTE -->
                   <q-btn
+                    v-if="canActivateTrainings"
                     round
                     dense
                     size="sm"
-                    :color="(training.status || 'active') === 'active' ? 'positive' : 'grey-6'"
-                    :icon="(training.status || 'active') === 'active' ? 'power_settings_new' : 'power_off'"
+                    :color="isStatusActive(training.status) ? 'positive' : 'grey-6'"
+                    :icon="isStatusActive(training.status) ? 'power_settings_new' : 'power_off'"
                     @click.stop="toggleStatus(training)"
                   >
                     <q-tooltip>
-                      {{ (training.status || 'active') === 'active' ? 'Desactivar' : 'Activar' }}
+                      {{ isStatusActive(training.status) ? 'Desactivar' : 'Activar' }}
                     </q-tooltip>
                   </q-btn>
                 </div>
@@ -119,8 +116,8 @@
               <!-- Status Badge -->
               <div class="absolute-bottom-left q-pa-sm">
                 <q-badge
-                  :color="(training.status || 'active') === 'active' ? 'positive' : 'grey-6'"
-                  :label="(training.status || 'active') === 'active' ? 'ACTIVO' : 'INACTIVO'"
+                  :color="getStatusColor(training.status)"
+                  :label="getStatusLabel(training.status)"
                   class="text-weight-medium"
                 />
               </div>
@@ -204,9 +201,14 @@ import { useQuasar } from 'quasar';
 import { TrainingUseCasesFactory } from '../../../application/training/training.use-cases.factory';
 import { trainingsService } from '../../../infrastructure/http/trainings/trainings.service';
 import type { Training } from '../../../domain/training/models';
+import { useTrainingEvaluation, type TrainingWithEvaluations } from '../../../shared/composables/useTrainingEvaluation';
+import { useRole } from '../../../shared/composables/useRole';
 
 const router = useRouter();
 const $q = useQuasar();
+
+// Control de roles y permisos
+const { canManageTrainings, canActivateTrainings } = useRole();
 
 const trainings = ref<Training[]>([]);
 const loading = ref(false);
@@ -216,6 +218,10 @@ const pagination = ref({
   total: 0,
   totalPages: 0,
 });
+
+// Composable para gestionar evaluaciones
+const { navigateToEvaluation } = useTrainingEvaluation();
+const loadingEvaluations = ref<Record<string, boolean>>({});
 
 const modalityLabels: Record<string, string> = {
   online: 'Online',
@@ -247,6 +253,50 @@ function getTypeColor(type: string): string {
   return typeColors[type] ?? 'primary';
 }
 
+/**
+ * Obtiene el color del badge según el estado de la capacitación
+ */
+function getStatusColor(status?: string): string {
+  if (!status) return 'grey-6';
+  
+  const statusMap: Record<string, string> = {
+    'published': 'positive',
+    'publicada': 'positive',
+    'en_curso': 'info',
+    'active': 'positive',
+    'borrador': 'grey-6',
+    'draft': 'grey-6',
+    'finalizada': 'primary',
+    'finished': 'primary',
+    'cancelada': 'negative',
+    'cancelled': 'negative',
+  };
+  
+  return statusMap[status.toLowerCase()] ?? 'grey-6';
+}
+
+/**
+ * Obtiene la etiqueta del estado de la capacitación
+ */
+function getStatusLabel(status?: string): string {
+  if (!status) return 'BORRADOR';
+  
+  const statusMap: Record<string, string> = {
+    'published': 'PUBLICADA',
+    'publicada': 'PUBLICADA',
+    'en_curso': 'EN CURSO',
+    'active': 'ACTIVA',
+    'borrador': 'BORRADOR',
+    'draft': 'BORRADOR',
+    'finalizada': 'FINALIZADA',
+    'finished': 'FINALIZADA',
+    'cancelada': 'CANCELADA',
+    'cancelled': 'CANCELADA',
+  };
+  
+  return statusMap[status.toLowerCase()] ?? status.toUpperCase();
+}
+
 async function loadTrainings() {
   loading.value = true;
   try {
@@ -255,11 +305,11 @@ async function loadTrainings() {
       page: pagination.value.page,
       limit: pagination.value.limit,
     });
-    // Agregar status por defecto si no existe
+    // Mapear los datos sin sobrescribir el status del backend
     trainings.value = response.data.map((t) => ({
       ...t,
-      status: (t.status || 'active'),
-    }));
+      // No sobrescribir el status, usar el que viene del backend
+    })) as TrainingWithEvaluations[];
     pagination.value.total = response.total;
     pagination.value.totalPages = response.totalPages;
   } catch (error) {
@@ -316,14 +366,44 @@ function editTraining(id: string) {
   void router.push(`/trainings/${id}/edit`);
 }
 
-function viewStatistics() {
-  $q.notify({
-    type: 'info',
-    message: 'Funcionalidad de estadísticas próximamente',
-    position: 'top',
-  });
-  // TODO: Implementar página de estadísticas
-  // void router.push(`/trainings/${id}/statistics`);
+/**
+ * Presenta la capacitación redirigiendo a su evaluación
+ * Sigue el principio de responsabilidad única
+ */
+async function presentTraining(training: Training): Promise<void> {
+  loadingEvaluations.value[training.id] = true;
+  try {
+    const trainingWithEvals = training as TrainingWithEvaluations;
+    await navigateToEvaluation(trainingWithEvals);
+  } catch (error) {
+    console.error('Error al presentar capacitación:', error);
+    $q.notify({
+      type: 'negative',
+      message: 'Error al acceder a la evaluación de la capacitación',
+      icon: 'error',
+      position: 'top',
+      timeout: 4000,
+    });
+  } finally {
+    loadingEvaluations.value[training.id] = false;
+  }
+}
+
+/**
+ * Verifica si se está cargando la evaluación para una capacitación específica
+ */
+function loadingEvaluation(trainingId: string): boolean {
+  return loadingEvaluations.value[trainingId] ?? false;
+}
+
+/**
+ * Verifica si el estado de la capacitación se considera "activo"
+ */
+function isStatusActive(status?: string): boolean {
+  if (!status) return false;
+  
+  const activeStatuses = ['published', 'publicada', 'en_curso', 'active'];
+  return activeStatuses.includes(status.toLowerCase());
 }
 
 function toggleStatus(training: Training): void {

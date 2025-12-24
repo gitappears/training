@@ -2,7 +2,7 @@
 
 export interface TrainingAttachment {
   id: string;
-  type: 'file' | 'link';
+  type: 'file' | 'link' | 'video';
   label: string;
   url: string;
 }
