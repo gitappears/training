@@ -1,7 +1,7 @@
 import { ref, computed } from 'vue';
 import { useQuasar } from 'quasar';
-import { usersService } from '../../infrastructure/http/users/users.service';
-import { UserUseCasesFactory } from '../../application/user/user.use-cases.factory';
+import { usersService } from '../../../infrastructure/http/users/users.service';
+import { UserUseCasesFactory } from '../../../application/user/user.use-cases.factory';
 import type {
   User,
   UserListParams,
@@ -9,7 +9,7 @@ import type {
   UserStatistics,
   CreateUserDto,
   UpdateUserDto,
-} from '../../application/user/user.repository.port';
+} from '../../../application/user/user.repository.port';
 
 /**
  * Composable para gestionar usuarios
