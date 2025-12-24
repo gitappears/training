@@ -1,5 +1,6 @@
 <template>
-  <q-layout view="lhh lpR lFf">
+  <!-- lhh lpR lFf -->
+  <q-layout view="lHh Lpr lff">
     <!-- Header -->
     <q-header
       elevated
