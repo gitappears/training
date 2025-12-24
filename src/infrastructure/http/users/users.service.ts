@@ -72,6 +72,7 @@ function mapBackendToDomain(backendData: BackendUser): User {
 
   const user: User = {
     id: backendData.id.toString(),
+    personaId: persona.id.toString(), // ID de la persona para usar en inscripciones y certificados
     name: fullName,
     email: persona.email || '',
     document: persona.numeroDocumento || '',

@@ -6,20 +6,12 @@
     <div class="row items-center justify-between q-mb-xl">
       <div class="col">
         <div class="row items-center q-gutter-md q-mb-sm">
-          <q-btn
-            flat
-            round
-            icon="arrow_back"
-            color="primary"
-            @click="goBack"
-          >
+          <q-btn flat round icon="arrow_back" color="primary" @click="goBack">
             <q-tooltip>Volver</q-tooltip>
           </q-btn>
           <div>
             <div class="text-h4 text-weight-bold text-primary q-mb-xs">{{ user.name }}</div>
-            <div class="text-body2 text-grey-7">
-              {{ user.email }} · {{ user.document }}
-            </div>
+            <div class="text-body2 text-grey-7">{{ user.email }} · {{ user.document }}</div>
           </div>
         </div>
       </div>
@@ -31,13 +23,7 @@
           :label="user.enabled ? 'Deshabilitar' : 'Habilitar'"
           @click="handleToggleUserStatus"
         />
-        <q-btn
-          flat
-          color="primary"
-          icon="edit"
-          label="Editar"
-          @click="editUser"
-        />
+        <q-btn flat color="primary" icon="edit" label="Editar" @click="editUser" />
         <q-btn
           color="primary"
           unelevated
@@ -207,14 +193,11 @@
                     <q-item-label caption>Tipo de Persona</q-item-label>
                     <q-item-label>
                       <q-badge :color="user.personType === 'juridica' ? 'blue' : 'green'" outline>
-                        {{ user.personType === 'juridica' ? 'Persona Jurídica' : 'Persona Natural' }}
+                        {{
+                          user.personType === 'juridica' ? 'Persona Jurídica' : 'Persona Natural'
+                        }}
                       </q-badge>
-                      <q-badge
-                        v-if="user.isExternal"
-                        color="warning"
-                        outline
-                        class="q-ml-xs"
-                      >
+                      <q-badge v-if="user.isExternal" color="warning" outline class="q-ml-xs">
                         Externo
                       </q-badge>
                     </q-item-label>
@@ -411,7 +394,7 @@
                     icon="download"
                     color="primary"
                     size="sm"
-                    @click.stop="downloadCertificate()"
+                    @click.stop="downloadCertificate(certificate.id)"
                   >
                     <q-tooltip>Descargar certificado</q-tooltip>
                   </q-btn>
@@ -453,229 +436,33 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
-import { useQuasar } from 'quasar';
-import { useUsers } from '../../../shared/composables';
-import type { User } from '../../../domain/user/models';
+import { useRoute } from 'vue-router';
+import { useUserDetail } from '../composables';
 import EmptyState from '../../../shared/components/EmptyState.vue';
 
 const route = useRoute();
-const router = useRouter();
-const $q = useQuasar();
-
-const { loading, currentUser, getUser, toggleUserStatus, updateUser } = useUsers();
-
-// Estado
-const tab = ref<'info' | 'courses' | 'certificates' | 'activity'>('info');
 const userId = route.params.id as string;
 
-const user = computed(() => currentUser.value || ({} as User));
-
-interface Course {
-  id: string;
-  courseName: string;
-  status: string;
-  progress: number;
-  enrolledDate: string;
-}
-
-interface Certificate {
-  id: string;
-  courseName: string;
-  issuedDate: string;
-  expiryDate: string;
-  valid: boolean;
-}
-
-interface Activity {
-  id: string;
-  title: string;
-  description: string;
-  date: string;
-  icon: string;
-  color: string;
-  meta?: string;
-}
-
-const assignedCourses = ref<Course[]>([
-  {
-    id: '1',
-    courseName: 'Manejo Defensivo',
-    status: 'En progreso',
-    progress: 65,
-    enrolledDate: '2025-01-10',
-  },
-  {
-    id: '2',
-    courseName: 'Primeros Auxilios',
-    status: 'Completado',
-    progress: 100,
-    enrolledDate: '2025-01-05',
-  },
-  {
-    id: '3',
-    courseName: 'Transporte de Mercancías Peligrosas',
-    status: 'Pendiente',
-    progress: 0,
-    enrolledDate: '2025-01-18',
-  },
-]);
-
-const certificates = ref<Certificate[]>([
-  {
-    id: '1',
-    courseName: 'Primeros Auxilios',
-    issuedDate: '2025-01-15',
-    expiryDate: '2026-01-15',
-    valid: true,
-  },
-]);
-
-const activities = ref<Activity[]>([
-  {
-    id: '1',
-    title: 'Certificado obtenido',
-    description: 'Completó y aprobó el curso "Primeros Auxilios"',
-    date: '2025-01-15',
-    icon: 'verified',
-    color: 'positive',
-    meta: 'Calificación: 85%',
-  },
-  {
-    id: '2',
-    title: 'Inscripción en curso',
-    description: 'Se inscribió en el curso "Manejo Defensivo"',
-    date: '2025-01-10',
-    icon: 'school',
-    color: 'primary',
-  },
-  {
-    id: '3',
-    title: 'Usuario creado',
-    description: 'Usuario registrado en el sistema',
-    date: '2025-01-05',
-    icon: 'person_add',
-    color: 'info',
-  },
-]);
-
-// Computed
-const averageProgress = computed(() => {
-  if (assignedCourses.value.length === 0) return 0;
-  const total = assignedCourses.value.reduce((sum, course) => sum + course.progress, 0);
-  return Math.round(total / assignedCourses.value.length);
-});
-
-// Funciones
-function formatDate(dateString: string): string {
-  try {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('es-ES', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
-  } catch {
-    return dateString;
-  }
-}
-
-function getDocumentTypeLabel(type: string): string {
-  const labels: Record<string, string> = {
-    CC: 'Cédula de Ciudadanía',
-    CE: 'Cédula de Extranjería',
-    PA: 'Pasaporte',
-    TI: 'Tarjeta de Identidad',
-    NIT: 'NIT',
-  };
-  return labels[type] ?? type;
-}
-
-function getRoleLabel(role: string): string {
-  const labels: Record<string, string> = {
-    admin: 'Administrador',
-    institutional: 'Cliente Institucional',
-    driver: 'Conductor',
-  };
-  return labels[role] ?? role;
-}
-
-function getRoleColor(role: string): string {
-  const colors: Record<string, string> = {
-    admin: 'purple',
-    institutional: 'blue',
-    driver: 'green',
-  };
-  return colors[role] ?? 'grey';
-}
-
-function getCourseStatusColor(status: string): string {
-  const colors: Record<string, string> = {
-    'En progreso': 'info',
-    Completado: 'positive',
-    Pendiente: 'warning',
-  };
-  return colors[status] ?? 'grey';
-}
-
-async function handleToggleUserStatus() {
-  if (!user.value.id) return;
-  const action = user.value.enabled ? 'deshabilitar' : 'habilitar';
-  $q.dialog({
-    title: 'Confirmar acción',
-    message: `¿Está seguro de ${action} a ${user.value.name}?`,
-    cancel: true,
-    persistent: true,
-  }).onOk(async () => {
-    try {
-      await toggleUserStatus(user.value.id, !user.value.enabled);
-    } catch (error) {
-      console.error('Error toggling user status:', error);
-    }
-  });
-}
-
-function editUser() {
-  void router.push(`/users/${userId}?edit=true`);
-}
-
-function assignCourse() {
-  $q.notify({
-    type: 'info',
-    message: 'Funcionalidad de asignación de cursos próximamente',
-    position: 'top',
-  });
-}
-
-function viewCertificate(id: string) {
-  void router.push(`/certificates/${id}`);
-}
-
-function downloadCertificate() {
-  $q.notify({
-    type: 'info',
-    message: 'Descarga de certificado próximamente',
-    position: 'top',
-  });
-}
-
-function goBack() {
-  void router.push('/users');
-}
-
-// Lifecycle
-onMounted(() => {
-  void loadUser();
-});
-
-async function loadUser() {
-  try {
-    await getUser(userId);
-  } catch (error) {
-    console.error('Error loading user:', error);
-  }
-}
+const {
+  loading,
+  user,
+  tab,
+  assignedCourses,
+  certificates,
+  activities,
+  averageProgress,
+  formatDate,
+  getDocumentTypeLabel,
+  getCourseStatusColor,
+  getRoleLabel,
+  getRoleColor,
+  handleToggleUserStatus,
+  editUser,
+  assignCourse,
+  viewCertificate,
+  downloadCertificate,
+  goBack,
+} = useUserDetail(userId);
 </script>
 
 <style scoped lang="scss">
@@ -689,7 +476,9 @@ body.body--dark .user-detail-page {
 }
 
 .stat-card {
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .stat-card:hover {
@@ -702,7 +491,9 @@ body.body--dark .stat-card:hover {
 }
 
 .course-card {
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .course-card:hover {
