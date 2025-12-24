@@ -186,161 +186,36 @@
     </q-card>
 
     <!-- Users Table -->
-    <q-card flat bordered>
-      <q-table
-        v-model:selected="selectedUsers"
-        :rows="users"
-        :columns="columns"
-        row-key="id"
-        :loading="loading"
-        :pagination="pagination"
-        :rows-per-page-options="[10, 25, 50, 100]"
-        selection="multiple"
-        flat
-        @request="onRequest"
-      >
-        <template #top>
-          <div class="row items-center justify-between full-width">
-            <div class="text-subtitle1 text-weight-medium">Lista de Usuarios</div>
-            <div class="row items-center q-gutter-sm">
-              <q-btn flat dense icon="download" color="primary" label="Exportar">
-                <q-menu>
-                  <q-list>
-                    <q-item clickable v-close-popup @click="handleExportToCSV">
-                      <q-item-section avatar>
-                        <q-icon name="description" />
-                      </q-item-section>
-                      <q-item-section>
-                        <q-item-label>Exportar a CSV</q-item-label>
-                      </q-item-section>
-                    </q-item>
-                    <q-item clickable v-close-popup @click="handleExportToExcel">
-                      <q-item-section avatar>
-                        <q-icon name="table_chart" />
-                      </q-item-section>
-                      <q-item-section>
-                        <q-item-label>Exportar a Excel</q-item-label>
-                      </q-item-section>
-                    </q-item>
-                  </q-list>
-                </q-menu>
-              </q-btn>
-            </div>
-          </div>
-        </template>
+    <UsersTable
+      v-model:selected="selectedUsers"
+      :users="users"
+      :columns="columns"
+      :loading="loading"
+      :pagination="pagination"
+      :selected-users="selectedUsers"
+      :has-active-filters="hasActiveFilters"
+      @request="onRequest"
+      @view-user="viewUser"
+      @edit-user="handleEditUser"
+      @toggle-status="handleToggleUserStatus"
+      @export-csv="handleExportToCSV"
+      @export-excel="handleExportToExcel"
+      @clear-filters="clearAllFilters"
+      @create-user="createUser"
+    />
 
-        <template #body-cell-role="props">
-          <q-td :props="props">
-            <q-badge :color="getRoleColor(props.row.role)" outline>
-              {{ getRoleLabel(props.row.role) }}
-            </q-badge>
-          </q-td>
-        </template>
-
-        <template #body-cell-status="props">
-          <q-td :props="props">
-            <q-badge :color="props.row.enabled ? 'positive' : 'negative'" outline>
-              {{ props.row.enabled ? 'Habilitado' : 'Deshabilitado' }}
-            </q-badge>
-          </q-td>
-        </template>
-
-        <template #body-cell-type="props">
-          <q-td :props="props">
-            <q-badge :color="props.row.personType === 'juridica' ? 'blue' : 'green'" outline>
-              {{ props.row.personType === 'juridica' ? 'Jurídica' : 'Natural' }}
-            </q-badge>
-            <q-badge v-if="props.row.isExternal" color="warning" outline class="q-ml-xs">
-              Externo
-            </q-badge>
-          </q-td>
-        </template>
-
-        <template #body-cell-actions="props">
-          <q-td :props="props">
-            <div class="row q-gutter-xs">
-              <q-btn
-                flat
-                dense
-                round
-                icon="visibility"
-                color="primary"
-                size="sm"
-                @click="viewUser(props.row.id)"
-              >
-                <q-tooltip>Ver detalles</q-tooltip>
-              </q-btn>
-              <q-btn
-                flat
-                dense
-                round
-                icon="edit"
-                color="primary"
-                size="sm"
-                @click="editUser(props.row.id)"
-              >
-                <q-tooltip>Editar</q-tooltip>
-              </q-btn>
-              <q-btn
-                flat
-                dense
-                round
-                :icon="props.row.enabled ? 'block' : 'check_circle'"
-                :color="props.row.enabled ? 'negative' : 'positive'"
-                size="sm"
-                @click="handleToggleUserStatus(props.row)"
-              >
-                <q-tooltip>
-                  {{ props.row.enabled ? 'Deshabilitar' : 'Habilitar' }}
-                </q-tooltip>
-              </q-btn>
-            </div>
-          </q-td>
-        </template>
-
-        <template #no-data>
-          <EmptyState
-            icon="people"
-            title="No hay usuarios disponibles"
-            description="No se encontraron usuarios que coincidan con los filtros aplicados."
-          >
-            <template #actions>
-              <q-btn
-                v-if="hasActiveFilters"
-                flat
-                color="primary"
-                label="Limpiar filtros"
-                @click="clearAllFilters"
-              />
-              <q-btn
-                color="primary"
-                unelevated
-                icon="add"
-                label="Crear Usuario"
-                @click="createUser"
-              />
-            </template>
-          </EmptyState>
-        </template>
-
-        <template #loading>
-          <q-inner-loading showing color="primary">
-            <div class="column items-center q-gutter-md">
-              <q-spinner color="primary" size="48px" />
-              <div class="text-body2 text-grey-7">Cargando usuarios...</div>
-            </div>
-          </q-inner-loading>
-        </template>
-      </q-table>
-    </q-card>
+    <!-- Edit User Dialog -->
+    <UserEditDialog v-model="editDialogOpen" :user="userToEdit" @success="handleEditSuccess" />
   </q-page>
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useUserList, useUserRoles } from '../composables';
-import EmptyState from '../../../shared/components/EmptyState.vue';
 import FiltersPanel from '../../../shared/components/FiltersPanel.vue';
+import UsersTable from '../components/UsersTable.vue';
+import UserEditDialog from '../components/UserEditDialog.vue';
+import type { User } from '../../../domain/user/models';
 
 const {
   loading,
@@ -360,14 +235,26 @@ const {
   handleBulkEnable,
   handleBulkDisable,
   viewUser,
-  editUser,
   createUser,
   handleExportToCSV,
   handleExportToExcel,
 } = useUserList();
 
-const { roleOptions, statusOptions, personTypeOptions, getRoleLabel, getRoleColor } =
-  useUserRoles();
+const { roleOptions, statusOptions, personTypeOptions } = useUserRoles();
+
+const editDialogOpen = ref(false);
+const userToEdit = ref<User | null>(null);
+
+function handleEditUser(user: User) {
+  userToEdit.value = user;
+  editDialogOpen.value = true;
+}
+
+function handleEditSuccess() {
+  editDialogOpen.value = false;
+  userToEdit.value = null;
+  void loadUsers();
+}
 
 // Lifecycle
 onMounted(() => {

@@ -140,6 +140,62 @@ export function useUsers() {
   }
 
   /**
+   * Actualiza los datos personales de un usuario
+   * Nota: Usa el endpoint de perfil que requiere que el usuario esté autenticado
+   * Para administradores editando otros usuarios, se necesita un endpoint específico en el backend
+   */
+  async function updateUserPersonData(
+    userId: string,
+    personaData: {
+      nombres?: string;
+      apellidos?: string;
+      email?: string;
+      telefono?: string;
+      fechaNacimiento?: string;
+      genero?: 'M' | 'F' | 'O';
+      direccion?: string;
+    },
+  ) {
+    loading.value = true;
+    try {
+      // Por ahora, actualizamos los datos personales a través del método updateUser
+      // con los campos mapeados correctamente
+      const updateDto: UpdateUserDto = {};
+      
+      if (personaData.nombres && personaData.apellidos) {
+        updateDto.name = `${personaData.nombres} ${personaData.apellidos}`.trim();
+      }
+      if (personaData.email) {
+        updateDto.email = personaData.email;
+      }
+      if (personaData.telefono) {
+        updateDto.phone = personaData.telefono;
+      }
+      if (personaData.fechaNacimiento) {
+        updateDto.birthDate = personaData.fechaNacimiento;
+      }
+      if (personaData.genero) {
+        updateDto.gender = personaData.genero;
+      }
+      if (personaData.direccion) {
+        updateDto.address = personaData.direccion;
+      }
+
+      return await updateUser(userId, updateDto);
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Error al actualizar los datos personales';
+      $q.notify({
+        type: 'negative',
+        message: errorMessage,
+      });
+      throw error;
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  /**
    * Elimina un usuario (soft-delete)
    */
   async function deleteUser(id: string) {
@@ -288,6 +344,7 @@ export function useUsers() {
     getUser,
     createUser,
     updateUser,
+    updateUserPersonData,
     deleteUser,
     toggleUserStatus,
     getStatistics,
