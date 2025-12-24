@@ -15,11 +15,13 @@ export function useUserEditForm(user: Ref<User | null> | User | null) {
 
   const formData = ref<{
     username: string;
+    role: string;
     habilitado: boolean;
     activo: boolean;
     debeCambiarPassword: boolean;
   }>({
     username: '',
+    role: '',
     habilitado: true,
     activo: true,
     debeCambiarPassword: false,
@@ -32,6 +34,7 @@ export function useUserEditForm(user: Ref<User | null> | User | null) {
       if (currentUser) {
         formData.value = {
           username: currentUser.username || '',
+          role: currentUser.role || '',
           habilitado: currentUser.enabled ?? true,
           activo: currentUser.active ?? true,
           debeCambiarPassword: currentUser.mustChangePassword ?? false,
@@ -46,6 +49,7 @@ export function useUserEditForm(user: Ref<User | null> | User | null) {
     if (currentUser) {
       formData.value = {
         username: currentUser.username || '',
+        role: currentUser.role || '',
         habilitado: currentUser.enabled ?? true,
         activo: currentUser.active ?? true,
         debeCambiarPassword: currentUser.mustChangePassword ?? false,
