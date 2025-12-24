@@ -166,47 +166,194 @@ function mapQuestionTypeToTipoPreguntaId(type: QuestionType): number {
 export class EvaluationsService implements IEvaluationRepository {
   private readonly baseUrl = '/evaluaciones';
 
-  // eslint-disable-next-line @typescript-eslint/require-await
   async findAll(params: EvaluationListParams): Promise<PaginatedResponse<Evaluation>> {
     try {
-      // Mock por ahora
-      const mockEvaluations: BackendEvaluacion[] = [
-        {
-          id: 1,
-          capacitacion: { id: 1 },
-          titulo: 'Primeros Auxilios',
-          descripcion: 'Evaluación sobre primeros auxilios básicos',
-          tiempoLimiteMinutos: 30,
-          minimoAprobacion: 70,
-          intentosPermitidos: 2,
-          mostrarResultados: true,
-          mostrarRespuestasCorrectas: false,
-          puntajeTotal: 100,
-          orden: 0,
-          activo: true,
-          fechaCreacion: '2025-01-15T10:00:00Z',
-          preguntas: [],
-        },
-      ];
+      // Obtener el perfil del usuario actual desde localStorage
+      const storedProfile = localStorage.getItem('auth_profile');
+      if (!storedProfile) {
+        throw new Error('Usuario no autenticado');
+      }
 
+      const profile = JSON.parse(storedProfile) as { id: number; personaId?: number; persona?: { id: number } };
+      
+      // Obtener el ID de la persona del usuario
+      // Primero intentar desde personaId (nuevo campo del backend)
+      // Luego desde persona.id (estructura antigua)
+      // Finalmente desde el endpoint de perfil
+      let personaId = profile.personaId || profile.persona?.id;
+      
+      if (!personaId) {
+        // Intentar obtener el perfil completo desde el backend
+        try {
+          const profileResponse = await api.get<{ id: number; personaId?: number; persona?: { id: number } }>('/auth/profile');
+          personaId = profileResponse.data.personaId || profileResponse.data.persona?.id;
+        } catch (error) {
+          console.error('Error al obtener perfil desde backend:', error);
+          throw new Error('No se pudo obtener el perfil del usuario desde el servidor');
+        }
+      }
+
+      if (!personaId) {
+        throw new Error('No se pudo obtener el ID de la persona del usuario. Por favor, inicia sesión nuevamente.');
+      }
+
+      // Obtener las inscripciones del usuario
+      const pagination = {
+        page: params.page ?? 1,
+        limit: params.limit ?? 100, // Obtener todas las inscripciones para filtrar después
+      };
+
+      const inscripcionesResponse = await api.post<{
+        data: Array<{
+          id: number;
+          capacitacion: {
+            id: number;
+            titulo: string;
+            evaluaciones?: Array<{ id: number }>;
+          };
+          intentosEvaluacion?: Array<{
+            id: number;
+            evaluacion: { id: number };
+            puntajeObtenido: number;
+            porcentaje: number;
+            aprobado: boolean;
+            fechaInicio: string;
+            fechaFinalizacion?: string;
+          }>;
+        }>;
+        total: number;
+      }>(`/inscripciones/estudiante/${personaId}`, pagination);
+
+      // Obtener todas las evaluaciones de las capacitaciones inscritas
+      const evaluacionesMap = new Map<string, Evaluation>();
+      
+      // Primero, obtener todas las evaluaciones únicas
+      const evaluacionesIds = new Set<number>();
+      for (const inscripcion of inscripcionesResponse.data.data) {
+        if (inscripcion.capacitacion.evaluaciones && inscripcion.capacitacion.evaluaciones.length > 0) {
+          inscripcion.capacitacion.evaluaciones.forEach((evaluacionRef) => {
+            evaluacionesIds.add(evaluacionRef.id);
+          });
+        }
+      }
+
+      // Obtener todas las evaluaciones en paralelo
+      const evaluacionesPromises = Array.from(evaluacionesIds).map((id) =>
+        this.findOne(id.toString()).catch((error) => {
+          console.error(`Error al obtener evaluación ${id}:`, error);
+          return null;
+        })
+      );
+
+      const evaluacionesCompletas = await Promise.all(evaluacionesPromises);
+      
+      // Crear un mapa de evaluaciones por ID
+      evaluacionesCompletas.forEach((evaluation) => {
+        if (evaluation) {
+          evaluacionesMap.set(evaluation.id, evaluation);
+        }
+      });
+
+      // Ahora actualizar con información de intentos y nombres de curso
+      for (const inscripcion of inscripcionesResponse.data.data) {
+        if (inscripcion.capacitacion.evaluaciones && inscripcion.capacitacion.evaluaciones.length > 0) {
+          for (const evaluacionRef of inscripcion.capacitacion.evaluaciones) {
+            const evalId = evaluacionRef.id.toString();
+            const evaluation = evaluacionesMap.get(evalId);
+            
+            if (evaluation) {
+              // Actualizar información del curso
+              evaluation.courseId = inscripcion.capacitacion.id.toString();
+              evaluation.courseName = inscripcion.capacitacion.titulo;
+              
+              // Obtener intentos de esta evaluación para esta inscripción
+              const intentos = inscripcion.intentosEvaluacion?.filter(
+                (intento) => intento.evaluacion?.id === evaluacionRef.id
+              ) || [];
+              
+              if (intentos.length > 0) {
+                // Ordenar por fecha para obtener el último intento
+                const intentosOrdenados = intentos.sort((a, b) => {
+                  const fechaA = new Date(a.fechaFinalizacion || a.fechaInicio).getTime();
+                  const fechaB = new Date(b.fechaFinalizacion || b.fechaInicio).getTime();
+                  return fechaB - fechaA;
+                });
+                
+                const ultimoIntento = intentosOrdenados[0];
+                evaluation.status = ultimoIntento.aprobado ? 'passed' : 'failed';
+                evaluation.lastAttempt = {
+                  date: ultimoIntento.fechaFinalizacion || ultimoIntento.fechaInicio,
+                  score: ultimoIntento.porcentaje || ultimoIntento.puntajeObtenido,
+                  passed: ultimoIntento.aprobado ?? false,
+                };
+                evaluation.attemptsRemaining = Math.max(0, evaluation.attemptsAllowed - intentos.length);
+              } else {
+                evaluation.status = 'pending';
+                evaluation.attemptsRemaining = evaluation.attemptsAllowed;
+              }
+            }
+          }
+        }
+      }
+
+      // Convertir el Map a array y aplicar paginación
+      let evaluationsArray = Array.from(evaluacionesMap.values());
+
+      // Aplicar filtros del frontend
+      if (params.filters?.search) {
+        const search = params.filters.search.toLowerCase();
+        evaluationsArray = evaluationsArray.filter(
+          (e) =>
+            e.courseName.toLowerCase().includes(search) ||
+            e.description.toLowerCase().includes(search)
+        );
+      }
+
+      if (params.filters?.courseId) {
+        evaluationsArray = evaluationsArray.filter(
+          (e) => e.courseId === params.filters.courseId
+        );
+      }
+
+      if (params.filters?.status) {
+        evaluationsArray = evaluationsArray.filter(
+          (e) => e.status === params.filters.status
+        );
+      }
+
+      // Aplicar paginación
       const page = params.page ?? 1;
       const limit = params.limit ?? 10;
       const start = (page - 1) * limit;
       const end = start + limit;
-      const paginated = mockEvaluations.slice(start, end);
+      const paginated = evaluationsArray.slice(start, end);
 
       return {
-        data: paginated.map(mapBackendToDomain),
-        total: mockEvaluations.length,
+        data: paginated,
+        total: evaluationsArray.length,
         page,
         limit,
-        totalPages: Math.ceil(mockEvaluations.length / limit),
+        totalPages: Math.ceil(evaluationsArray.length / limit),
       };
     } catch (error) {
       const axiosError = error as AxiosError<{ message?: string }>;
-      throw new Error(
-        axiosError.response?.data?.message ?? 'Error al obtener la lista de evaluaciones',
-      );
+      console.error('Error completo en findAll:', error);
+      console.error('Error response:', axiosError.response);
+      console.error('Error message:', axiosError.message);
+      
+      // Proporcionar un mensaje más descriptivo
+      let errorMessage = 'Error al obtener la lista de evaluaciones';
+      
+      if (axiosError.response) {
+        errorMessage = axiosError.response.data?.message || 
+          `Error del servidor: ${axiosError.response.status} ${axiosError.response.statusText}`;
+      } else if (axiosError.request) {
+        errorMessage = 'No se pudo conectar con el servidor. Verifica tu conexión.';
+      } else {
+        errorMessage = axiosError.message || errorMessage;
+      }
+      
+      throw new Error(errorMessage);
     }
   }
 
@@ -224,14 +371,32 @@ export class EvaluationsService implements IEvaluationRepository {
 
   async findByCourse(courseId: string): Promise<Evaluation | null> {
     try {
-      // Mock por ahora
-      const evaluation = await this.findOne('1');
-      if (evaluation.courseId === courseId) {
-        return evaluation;
+      // Obtener la capacitación para encontrar su evaluación asociada
+      const capacitacionResponse = await api.get<{
+        id: number;
+        titulo: string;
+        evaluaciones?: Array<{ id: number }>;
+      }>(`/capacitaciones/${courseId}`);
+
+      if (
+        !capacitacionResponse.data.evaluaciones ||
+        capacitacionResponse.data.evaluaciones.length === 0
+      ) {
+        return null;
       }
-      return null;
+
+      // Obtener la primera evaluación asociada
+      const evaluacionId = capacitacionResponse.data.evaluaciones[0].id.toString();
+      const evaluation = await this.findOne(evaluacionId);
+      evaluation.courseName = capacitacionResponse.data.titulo;
+
+      return evaluation;
     } catch (error) {
       const axiosError = error as AxiosError<{ message?: string }>;
+      // Si la capacitación no tiene evaluación, retornar null en lugar de error
+      if (axiosError.response?.status === 404) {
+        return null;
+      }
       throw new Error(
         axiosError.response?.data?.message ?? `Error al obtener la evaluación del curso ${courseId}`,
       );
@@ -415,8 +580,7 @@ export class EvaluationsService implements IEvaluationRepository {
 
   async remove(id: string): Promise<void> {
     try {
-      // Mock por ahora
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      await api.delete(`${this.baseUrl}/${id}`);
     } catch (error) {
       const axiosError = error as AxiosError<{ message?: string }>;
       throw new Error(

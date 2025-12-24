@@ -312,6 +312,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
+import { useQuasar } from 'quasar';
 import { debounce } from 'quasar';
 import type { QTableColumn } from 'quasar';
 import type {
@@ -324,6 +325,7 @@ import EmptyState from '../../../shared/components/EmptyState.vue';
 import FiltersPanel from '../../../shared/components/FiltersPanel.vue';
 
 const router = useRouter();
+const $q = useQuasar();
 
 // Estado
 const loading = ref(false);
@@ -461,68 +463,37 @@ const activeFiltersCount = computed(() => {
 const hasActiveFilters = computed(() => activeFiltersCount.value > 0);
 
 // Funciones
-function loadEvaluations() {
+async function loadEvaluations() {
   loading.value = true;
-  // Simular carga de datos (mock)
-  setTimeout(() => {
-    evaluations.value = [
-      {
-        id: '1',
-        courseId: '1',
-        courseName: 'Manejo Defensivo',
-        description: 'Evaluación sobre técnicas de manejo defensivo y seguridad vial.',
-        questions: [],
-        questionsCount: 20,
-        durationMinutes: 30,
-        minimumScore: 70,
-        status: 'pending',
-        attemptsAllowed: 2,
-        attemptsRemaining: 2,
-        createdAt: '2025-01-15',
-      },
-      {
-        id: '2',
-        courseId: '2',
-        courseName: 'Primeros Auxilios',
-        description: 'Evaluación sobre procedimientos básicos de primeros auxilios.',
-        questions: [],
-        questionsCount: 15,
-        durationMinutes: 25,
-        minimumScore: 80,
-        status: 'passed',
-        attemptsAllowed: 2,
-        attemptsRemaining: 0,
-        lastAttempt: {
-          date: '2025-01-15',
-          score: 85,
-          passed: true,
-        },
-        createdAt: '2025-01-10',
-      },
-      {
-        id: '3',
-        courseId: '3',
-        courseName: 'Transporte de Mercancías Peligrosas',
-        description: 'Evaluación sobre normativas y procedimientos para transporte de materiales peligrosos.',
-        questions: [],
-        questionsCount: 25,
-        durationMinutes: 40,
-        minimumScore: 75,
-        status: 'failed',
-        attemptsAllowed: 2,
-        attemptsRemaining: 1,
-        lastAttempt: {
-          date: '2025-01-18',
-          score: 65,
-          passed: false,
-        },
-        createdAt: '2025-01-12',
-      },
-    ];
+  try {
+    const { EvaluationUseCasesFactory } = await import(
+      '../../../application/evaluation/evaluation.use-cases.factory'
+    );
+    const { evaluationsService } = await import(
+      '../../../infrastructure/http/evaluations/evaluations.service'
+    );
+    const listEvaluationsUseCase = EvaluationUseCasesFactory.getListEvaluationsUseCase(evaluationsService);
 
+    const result = await listEvaluationsUseCase.execute({
+      page: 1,
+      limit: 100, // Obtener todas para mostrar
+      filters: filters.value,
+    });
+
+    evaluations.value = result.data;
     calculateStatistics();
+  } catch (error) {
+    console.error('Error al cargar evaluaciones:', error);
+    $q.notify({
+      type: 'negative',
+      message: 'Error al cargar las evaluaciones. Por favor, intenta nuevamente.',
+      icon: 'error',
+      position: 'top',
+    });
+    evaluations.value = [];
+  } finally {
     loading.value = false;
-  }, 500);
+  }
 }
 
 function calculateStatistics() {

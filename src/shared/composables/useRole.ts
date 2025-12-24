@@ -15,16 +15,16 @@ export function useRole() {
   const userRole = computed<UserRole | null>(() => {
     const rol = authStore.profile?.rol;
     if (!rol) return null;
-    
+
     // Normalizar el rol a mayúsculas para comparación
     const normalizedRol = rol.toUpperCase() as UserRole;
-    
+
     // Validar que sea un rol válido
     const validRoles: UserRole[] = ['ADMIN', 'CLIENTE', 'INSTRUCTOR', 'ALUMNO', 'OPERADOR'];
     if (validRoles.includes(normalizedRol)) {
       return normalizedRol;
     }
-    
+
     return null;
   });
 
@@ -157,6 +157,22 @@ export function useRole() {
     return hasRole('ADMIN');
   });
 
+  /**
+   * Verifica si el usuario puede activar/desactivar capacitaciones
+   * Solo ADMIN y CLIENTE pueden activar/desactivar
+   */
+  const canActivateTrainings = computed(() => {
+    return hasRole('ADMIN', 'CLIENTE');
+  });
+
+  /**
+   * Verifica si el usuario puede inscribir estudiantes
+   * ADMIN, CLIENTE, INSTRUCTOR pueden inscribir
+   */
+  const canEnrollStudents = computed(() => {
+    return hasRole('ADMIN', 'CLIENTE', 'INSTRUCTOR');
+  });
+
   return {
     userRole,
     hasRole,
@@ -168,6 +184,8 @@ export function useRole() {
     canViewDashboard,
     canViewTrainings,
     canManageTrainings,
+    canActivateTrainings,
+    canEnrollStudents,
     canManageUsers,
     canViewEvaluations,
     canViewCertificates,

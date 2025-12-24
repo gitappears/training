@@ -1051,6 +1051,7 @@ import { useQuasar } from 'quasar';
 import MaterialViewer from '../../../shared/components/MaterialViewer.vue';
 import type { Material } from '../../../shared/components/MaterialViewer.vue';
 import { materialsService } from '../../../infrastructure/http/materials/materials.service';
+import { useMaterialUrl } from '../../../shared/composables/useMaterialUrl';
 
 export interface EvaluationOption {
   id?: number; // ID de la opción (para edición)
@@ -1143,6 +1144,9 @@ const emit = defineEmits<{
 
 const $q = useQuasar();
 const showImagePreview = ref(false);
+
+// Composables
+const { buildFullUrl } = useMaterialUrl();
 
 // Estados para videos
 const showAddVideoDialog = ref(false);
@@ -1447,19 +1451,27 @@ async function uploadAndSaveFile(): Promise<void> {
       },
     );
 
-    // Construir URL completa
-    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-    const fullUrl = response.url.startsWith('http')
-      ? response.url
-      : `${baseUrl}${response.url}`;
+    // Guardar URL relativa para el backend, pero construir URL completa para visualización
+    // El backend espera URLs relativas o URLs completas válidas
+    // Para archivos locales, guardamos la URL relativa que viene del backend
+    // Para visualización, construimos la URL completa
+    const relativeUrl = response.url; // El backend ya retorna la URL relativa
+    const fullUrl = buildFullUrl(relativeUrl); // Para visualización en el frontend
 
-    const fileMaterial: Material = {
+    // Tipo extendido para incluir URL relativa temporal
+    interface MaterialWithRelativeUrl extends Material {
+      _relativeUrl?: string;
+    }
+    
+    const fileMaterial: MaterialWithRelativeUrl = {
       id: generateId(),
       name: newFile.name,
-      url: fullUrl,
+      url: fullUrl, // URL completa para visualización en el frontend
       type: newFile.type as 'PDF' | 'IMAGE',
       description: newFile.description || '',
       order: files.value.length,
+      // Guardar también la URL relativa para cuando se envíe al backend
+      _relativeUrl: relativeUrl,
     };
 
     if (editingFileIndex.value !== null) {

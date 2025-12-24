@@ -9,4 +9,5 @@ export * from './useFileUpload';
 export * from './useTableFilters';
 export * from './useDebounce';
 export * from './useUsers';
+export * from './useTrainingEvaluation';
 

@@ -46,15 +46,21 @@ import { trainingsLinkEvaluationService } from '../../../infrastructure/http/tra
 import { useAuthStore } from '../../../stores/auth.store';
 import type { CreateTrainingDto } from '../../../application/training/training.repository.port';
 import type { CreateMaterialDto } from '../../../application/material/material.repository.port';
+import { useMaterialTypeMapper } from '../../../shared/composables/useMaterialTypeMapper';
+import { useMaterialUrl } from '../../../shared/composables/useMaterialUrl';
 
 const router = useRouter();
 const $q = useQuasar();
 const authStore = useAuthStore();
 
+// Composables
+const { mapToBackendId: mapMaterialTypeToId } = useMaterialTypeMapper();
+const { extractRelativeUrl, isExternalLink } = useMaterialUrl();
+
 async function handleSubmit(payload: TrainingFormModel, formMaterials: Material[]) {
   try {
     // Obtener el usuario actual para usuario_creacion
-    const usuarioCreacion = authStore.profile?.persona.email || authStore.profile?.username || 'system';
+    const usuarioCreacion = authStore.profile?.persona?.email || authStore.profile?.username || 'system';
 
     // Mapear el formulario al DTO del backend
     const dto: CreateTrainingDto = {
@@ -196,11 +202,32 @@ async function handleSubmit(payload: TrainingFormModel, formMaterials: Material[
     if (formMaterials && formMaterials.length > 0) {
       try {
         const materialPromises = formMaterials.map((material) => {
+          // Extraer URL relativa si es un archivo local, o mantener URL completa si es enlace externo
+          let materialUrl = material.url;
+          
+          // Tipo extendido para incluir URL relativa temporal
+          interface MaterialWithRelativeUrl extends Material {
+            _relativeUrl?: string;
+          }
+          const materialWithRelative = material as MaterialWithRelativeUrl;
+          
+          // Si el material tiene _relativeUrl (archivo subido), usar esa
+          // Si no, verificar si es un enlace externo o extraer la URL relativa
+          if (materialWithRelative._relativeUrl) {
+            materialUrl = materialWithRelative._relativeUrl;
+          } else if (isExternalLink(material.url)) {
+            // Para enlaces externos (videos, etc.), mantener la URL completa
+            materialUrl = material.url;
+          } else {
+            // Para archivos locales, extraer la URL relativa
+            materialUrl = extractRelativeUrl(material.url);
+          }
+          
           const materialDto: CreateMaterialDto = {
             capacitacionId: parseInt(created.id),
             tipoMaterialId: mapMaterialTypeToId(material.type),
             nombre: material.name,
-            url: material.url,
+            url: materialUrl, // URL relativa para archivos locales, completa para enlaces externos
             orden: material.order ?? 0,
           };
           // Agregar descripción solo si existe
@@ -286,17 +313,5 @@ function mapModalityToId(modality: string | null): number {
   return map[modality ?? 'online'] ?? 1;
 }
 
-// Mapeo temporal de tipos de material - TODO: Obtener de catálogo del backend
-function mapMaterialTypeToId(type: string): number {
-  const map: Record<string, number> = {
-    PDF: 1,
-    IMAGE: 2,
-    VIDEO: 3,
-    DOC: 4,
-    LINK: 5,
-    PRESENTATION: 6,
-    AUDIO: 7,
-  };
-  return map[type] ?? 1;
-}
+// La función mapMaterialTypeToId ahora se obtiene del composable useMaterialTypeMapper
 </script>

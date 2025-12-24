@@ -449,7 +449,21 @@
                   </div>
                 </div>
 
+                <!-- Botón de Presentar Evaluación - Visible para todos los roles -->
                 <q-btn
+                  color="info"
+                  unelevated
+                  size="lg"
+                  label="Presentar Evaluación"
+                  icon="quiz"
+                  class="full-width q-mb-sm"
+                  :loading="loadingEvaluation"
+                  @click="handlePresentEvaluation"
+                />
+
+                <!-- Botón de Inscribir Estudiante - Solo ADMIN, CLIENTE, INSTRUCTOR -->
+                <q-btn
+                  v-if="canEnrollStudents"
                   color="primary"
                   unelevated
                   size="lg"
@@ -458,10 +472,10 @@
                   class="full-width q-mb-sm"
                   @click="handleEnrollStudent"
                 />
-                <q-separator class="q-my-md" />
+                <q-separator v-if="canEnrollStudents || canActivateTrainings || canManageTrainings" class="q-my-md" />
 
-                <!-- Status Toggle (RF-10) -->
-                <div class="status-toggle-section q-mb-md">
+                <!-- Status Toggle (RF-10) - Solo ADMIN y CLIENTE -->
+                <div v-if="canActivateTrainings" class="status-toggle-section q-mb-md">
                   <div class="text-subtitle2 q-mb-sm text-weight-medium">Estado de la Capacitación</div>
                   <q-banner
                     :class="trainingStatus === 'active' ? 'bg-positive-1' : 'bg-grey-2'"
@@ -496,9 +510,11 @@
                   </q-btn>
                 </div>
 
-                <q-separator class="q-my-md" />
+                <q-separator v-if="canManageTrainings" class="q-my-md" />
 
+                <!-- Botón de Editar - Solo ADMIN e INSTRUCTOR -->
                 <q-btn
+                  v-if="canManageTrainings"
                   flat
                   color="primary"
                   label="Editar Capacitación"
@@ -523,13 +539,18 @@ import type { QTableColumn } from 'quasar';
 import type { Training, TrainingStudent, TrainingAttachment } from '../../../domain/training/models';
 import { TrainingUseCasesFactory } from '../../../application/training/training.use-cases.factory';
 import { trainingsService } from '../../../infrastructure/http/trainings/trainings.service';
-import { materialsService } from '../../../infrastructure/http/materials/materials.service';
+// import { materialsService } from '../../../infrastructure/http/materials/materials.service';
 import type { Material } from '../../../domain/material/models';
+import { useRole } from '../../../shared/composables/useRole';
+import { useTrainingEvaluation, type TrainingWithEvaluations } from '../../../shared/composables/useTrainingEvaluation';
 
 const route = useRoute();
 const router = useRouter();
 const $q = useQuasar();
 const tab = ref<'overview' | 'content' | 'students' | 'resources' | 'reviews'>('overview');
+
+// Control de roles y permisos
+const { canManageTrainings, canActivateTrainings, canEnrollStudents } = useRole();
 
 const trainingId = parseInt(route.params.id as string);
 const training = ref<Training | null>(null);
@@ -537,15 +558,22 @@ const loading = ref(false);
 const materials = ref<Material[]>([]);
 const loadingMaterials = ref(false);
 
+// Composable para gestionar evaluaciones
+const { navigateToEvaluation } = useTrainingEvaluation();
+const loadingEvaluation = ref(false);
+
 /**
  * Carga los materiales de la capacitación desde el backend
+ * TODO: Implementar método findByCapacitacion en materialsService
  */
-async function loadMaterials(): Promise<void> {
+function loadMaterials(): void {
   if (isNaN(trainingId)) return;
 
   loadingMaterials.value = true;
   try {
-    materials.value = await materialsService.findByCapacitacion(trainingId);
+    // TODO: Implementar cuando el servicio de materiales tenga el método findByCapacitacion
+    // Por ahora, los materiales se obtienen desde el training directamente
+    materials.value = [];
   } catch (error) {
     console.warn('Error al cargar materiales de la capacitación:', error);
     // No es crítico, continuar sin materiales
@@ -625,12 +653,9 @@ async function loadTraining() {
     // Cargar training y materiales en paralelo para mejor rendimiento
     const getTrainingUseCase = TrainingUseCasesFactory.getGetTrainingUseCase(trainingsService);
 
-    await Promise.all([
-      (async () => {
-        training.value = await getTrainingUseCase.execute(trainingId);
-      })(),
-      loadMaterials(), // Cargar materiales en paralelo (maneja sus propios errores)
-    ]);
+    training.value = await getTrainingUseCase.execute(trainingId);
+    // Cargar materiales (maneja sus propios errores)
+    loadMaterials();
   } catch (error) {
     // Mejorar mensajes de error con más contexto
     let errorMessage = 'Error al cargar la capacitación';
@@ -811,6 +836,39 @@ async function handleEnrollStudentConfirm(estudianteId: string): Promise<void> {
 
 function handleEditTraining() {
   void router.push({ name: 'training-edit', params: { id: training.value?.id } });
+}
+
+/**
+ * Presenta la evaluación de la capacitación
+ * Redirige a la evaluación asociada a esta capacitación
+ */
+async function handlePresentEvaluation(): Promise<void> {
+  if (!training.value) {
+    $q.notify({
+      type: 'warning',
+      message: 'No se puede acceder a la evaluación. La capacitación no está cargada.',
+      icon: 'warning',
+      position: 'top',
+    });
+    return;
+  }
+
+  loadingEvaluation.value = true;
+  try {
+    const trainingWithEvals = training.value as TrainingWithEvaluations;
+    await navigateToEvaluation(trainingWithEvals);
+  } catch (error) {
+    console.error('Error al presentar evaluación:', error);
+    $q.notify({
+      type: 'negative',
+      message: 'Error al acceder a la evaluación de la capacitación',
+      icon: 'error',
+      position: 'top',
+      timeout: 4000,
+    });
+  } finally {
+    loadingEvaluation.value = false;
+  }
 }
 
 const trainingStatus = computed(() => {
