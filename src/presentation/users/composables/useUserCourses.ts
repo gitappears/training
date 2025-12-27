@@ -3,7 +3,8 @@ import { inscriptionsService } from '../../../infrastructure/http/inscriptions/i
 import type { Inscription } from '../../../application/inscription/inscription.repository.port';
 
 export interface Course {
-  id: string;
+  id: string; // ID del curso (courseId)
+  inscriptionId: string; // ID de la inscripción
   courseName: string;
   status: string;
   progress: number;
@@ -28,7 +29,8 @@ function mapStatusToFrontend(status: Inscription['status']): string {
  */
 function mapInscriptionToCourse(inscription: Inscription): Course {
   return {
-    id: inscription.id,
+    id: inscription.courseId, // ID del curso, no de la inscripción
+    inscriptionId: inscription.id, // ID de la inscripción para referencia
     courseName: inscription.courseName,
     status: mapStatusToFrontend(inscription.status),
     progress: Math.round(inscription.progress * 100), // Convertir de 0-1 a 0-100

@@ -85,15 +85,28 @@ function mapStatusToBackend(
  * Mapea la respuesta del backend al modelo de dominio
  */
 function mapBackendToDomain(backendData: BackendInscripcion): Inscription {
+  // Validar que los datos necesarios estén presentes
+  if (!backendData) {
+    throw new Error('Datos de inscripción no válidos');
+  }
+
   const estudiante = backendData.estudiante;
-  const nombreCompleto = `${estudiante.nombres || ''} ${estudiante.apellidos || ''}`.trim();
+  const capacitacion = backendData.capacitacion;
+
+  // Construir nombre completo de forma segura
+  let nombreCompleto = '';
+  if (estudiante) {
+    const nombres = estudiante.nombres || '';
+    const apellidos = estudiante.apellidos || '';
+    nombreCompleto = `${nombres} ${apellidos}`.trim();
+  }
 
   const inscription: Inscription = {
     id: backendData.id?.toString() ?? '',
-    courseId: backendData.capacitacion?.id?.toString() ?? '',
-    courseName: backendData.capacitacion?.titulo ?? '',
-    userId: backendData.estudiante?.id?.toString() ?? '',
-    userName: nombreCompleto || estudiante.numeroDocumento || '',
+    courseId: capacitacion?.id?.toString() ?? '',
+    courseName: capacitacion?.titulo ?? 'Curso sin nombre',
+    userId: estudiante?.id?.toString() ?? '',
+    userName: nombreCompleto || estudiante?.numeroDocumento || 'Usuario desconocido',
     enrolledDate: backendData.fechaInscripcion ?? new Date().toISOString(),
     progress: backendData.progresoPorcentaje ? backendData.progresoPorcentaje / 100 : 0,
     status: mapStatus(backendData.estado),
@@ -191,19 +204,63 @@ export class InscriptionsService implements IInscriptionRepository {
 
   async findByUser(userId: string): Promise<Inscription[]> {
     try {
+      // Validar que userId sea un número válido
+      const estudianteId = Number.parseInt(userId, 10);
+      if (Number.isNaN(estudianteId)) {
+        throw new Error(`ID de usuario inválido: ${userId}`);
+      }
+
       const response = await api.post<BackendPaginatedResponse>(
-        `${this.baseUrl}/estudiante/${userId}`,
+        `${this.baseUrl}/estudiante/${estudianteId}`,
         {
           page: 1,
           limit: 100, // Máximo permitido por el backend
         },
       );
-      return response.data.data.map(mapBackendToDomain);
+      
+      // Verificar que la respuesta tenga la estructura esperada
+      if (!response.data || !Array.isArray(response.data.data)) {
+        console.warn('Respuesta inesperada del backend:', response.data);
+        return [];
+      }
+      
+      // Mapear las inscripciones con manejo de errores individual
+      const inscriptions: Inscription[] = [];
+      for (const item of response.data.data) {
+        try {
+          const inscription = mapBackendToDomain(item);
+          inscriptions.push(inscription);
+        } catch (error) {
+          console.error('Error al mapear inscripción:', error, item);
+          // Continuar con las siguientes inscripciones
+        }
+      }
+      
+      return inscriptions;
     } catch (error) {
-      const axiosError = error as AxiosError<{ message?: string }>;
-      throw new Error(
-        axiosError.response?.data?.message ?? `Error al obtener las inscripciones del usuario ${userId}`,
-      );
+      const axiosError = error as AxiosError<{ message?: string; error?: string }>;
+      
+      // Log detallado del error para debugging
+      console.error('Error en findByUser:', {
+        userId,
+        status: axiosError.response?.status,
+        statusText: axiosError.response?.statusText,
+        data: axiosError.response?.data,
+        message: axiosError.message,
+      });
+      
+      // Si es un error 404, retornar array vacío en lugar de lanzar error
+      if (axiosError.response?.status === 404) {
+        console.warn(`No se encontraron inscripciones para el usuario ${userId}`);
+        return [];
+      }
+      
+      const errorMessage =
+        axiosError.response?.data?.message ??
+        axiosError.response?.data?.error ??
+        `Error al obtener las inscripciones del usuario ${userId}`;
+      
+      throw new Error(errorMessage);
     }
   }
 
