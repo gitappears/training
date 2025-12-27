@@ -1,11 +1,7 @@
 <template>
-  <q-layout view="hHh lpR fFf">
+  <q-layout>
     <q-page-container>
-      <q-page class="flex flex-center bg-grey-1">
-        <div class="full-width" style="max-width: 500px">
-          <router-view />
-        </div>
-      </q-page>
+      <router-view />
     </q-page-container>
   </q-layout>
 </template>
@@ -20,4 +16,3 @@
   background-color: #f5f5f5;
 }
 </style>
-

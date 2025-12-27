@@ -79,8 +79,15 @@ function mapBackendToDomain(backendData: BackendUser): User {
     documentType: mapDocumentType(persona.tipoDocumento),
     phone: persona.telefono || '',
     role: mapRole(backendData.rolPrincipal?.codigo || ''),
+    roleId: backendData.rolPrincipal?.id,
+    username: backendData.username,
     personType: 'natural', // El backend no expone tipoPersona directamente, asumimos natural por defecto
     enabled: backendData.habilitado,
+    active: backendData.activo,
+    mustChangePassword: backendData.debeCambiarPassword,
+    birthDate: persona.fechaNacimiento || undefined,
+    gender: (persona.genero as 'M' | 'F' | 'O') || undefined,
+    address: persona.direccion || undefined,
     createdAt: backendData.fechaCreacion || new Date().toISOString(),
   };
 
@@ -210,16 +217,81 @@ export class UsersService implements IUserRepository {
   async update(id: string, dto: UpdateUserDto): Promise<User> {
     try {
       // Mapear DTO del frontend al formato del backend
-      const backendDto: Record<string, unknown> = {};
+      const backendDto: {
+        username?: string;
+        rolPrincipalId?: number;
+        habilitado?: boolean;
+        activo?: boolean;
+        debeCambiarPassword?: boolean;
+        // Campos de persona
+        nombres?: string;
+        apellidos?: string;
+        email?: string;
+        telefono?: string;
+        fechaNacimiento?: string;
+        genero?: string;
+        direccion?: string;
+      } = {};
 
+      // El backend acepta estos campos directamente
+      if (dto.username !== undefined) {
+        backendDto.username = dto.username;
+      }
+      if (dto.rolPrincipalId !== undefined) {
+        backendDto.rolPrincipalId = dto.rolPrincipalId;
+      }
+      if (dto.habilitado !== undefined) {
+        backendDto.habilitado = dto.habilitado;
+      }
+      if (dto.activo !== undefined) {
+        backendDto.activo = dto.activo;
+      }
+      if (dto.debeCambiarPassword !== undefined) {
+        backendDto.debeCambiarPassword = dto.debeCambiarPassword;
+      }
+
+      // También mapear enabled del frontend a habilitado del backend
       if (dto.enabled !== undefined) {
         backendDto.habilitado = dto.enabled;
       }
-      if (dto.role) {
-        // Necesitamos el ID del rol, no el código
-        // Por ahora, el backend espera rolPrincipalId
-        // Esto requeriría una llamada adicional para obtener el ID del rol
-        // Por simplicidad, asumimos que el frontend puede pasar el ID directamente
+
+      // Campos de persona
+      if (dto.name !== undefined) {
+        // Separar nombres y apellidos si viene como un solo campo
+        const nameParts = dto.name.trim().split(' ');
+        backendDto.nombres = nameParts[0] || '';
+        backendDto.apellidos = nameParts.slice(1).join(' ') || '';
+      }
+      if (dto.email !== undefined) {
+        backendDto.email = dto.email;
+      }
+      if (dto.phone !== undefined) {
+        backendDto.telefono = dto.phone;
+      }
+      if (dto.birthDate !== undefined) {
+        backendDto.fechaNacimiento = dto.birthDate;
+      }
+      if (dto.gender !== undefined) {
+        backendDto.genero = dto.gender;
+      }
+      if (dto.address !== undefined) {
+        backendDto.direccion = dto.address;
+      }
+
+      // Si hay campos de persona, intentar actualizarlos usando el endpoint de perfil
+      // Nota: El endpoint de perfil solo funciona para el usuario autenticado
+      // Por lo tanto, si hay campos de persona, necesitamos usar un endpoint específico
+      // Por ahora, intentamos enviarlos en el mismo request al endpoint de usuarios
+      // Si el backend no los acepta, se ignorarán
+      const hasPersonData = backendDto.nombres || backendDto.apellidos || backendDto.email || 
+                            backendDto.telefono || backendDto.fechaNacimiento || 
+                            backendDto.genero || backendDto.direccion;
+
+      if (hasPersonData) {
+        // Intentar actualizar datos personales usando el endpoint de perfil del usuario
+        // Esto requiere que el backend tenga un endpoint para administradores
+        // Por ahora, enviamos los datos de persona junto con los datos de usuario
+        // El backend debería procesarlos si tiene la funcionalidad implementada
       }
 
       const response = await api.put<BackendUser>(`${this.baseUrl}/${id}`, backendDto);
@@ -231,6 +303,7 @@ export class UsersService implements IUserRepository {
       );
     }
   }
+
 
   async remove(id: string): Promise<void> {
     try {

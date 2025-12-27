@@ -381,7 +381,7 @@ export class CertificatesService implements ICertificateRepository {
     try {
       // TODO: Implementar endpoint en backend si es necesario
       // Por ahora retornar estadísticas básicas
-      const result = await this.findAll({ page: 1, limit: 1000, filters: filters ?? {} });
+      const result = await this.findAll({ page: 1, limit: 100, filters: filters ?? {} });
       
       const valid = result.data.filter((c) => c.status === 'valid').length;
       const expired = result.data.filter((c) => c.status === 'expired').length;

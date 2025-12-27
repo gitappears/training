@@ -108,7 +108,7 @@ function mapBackendToDomain(backendData: BackendInscripcion): InscriptionWithDoc
     enrolledDate: backendData.fechaInscripcion ?? new Date().toISOString(),
     progress: backendData.progresoPorcentaje ? backendData.progresoPorcentaje / 100 : 0,
     status: mapStatus(backendData.estado),
-    documentNumber: estudiante?.numeroDocumento,
+    ...(estudiante?.numeroDocumento && { documentNumber: estudiante.numeroDocumento }),
   };
 
   if (backendData.fechaFinalizacion) {
@@ -336,7 +336,6 @@ export class InscriptionsService implements IInscriptionRepository {
 
   async findByCourse(courseId: string): Promise<InscriptionWithDocument[]> {
     try {
-      console.log(`📡 Obteniendo inscripciones para courseId: ${courseId}`);
       
       // El backend tiene un límite máximo de 100 por página según PaginationDto
       // Hacer múltiples peticiones si es necesario para obtener todas las inscripciones
@@ -372,7 +371,7 @@ export class InscriptionsService implements IInscriptionRepository {
       
       console.log(`✅ Total de inscripciones obtenidas: ${allInscriptions.length}`);
       // Mapear todas las inscripciones obtenidas
-      return allInscriptions.map(mapBackendToDomain) as InscriptionWithDocument[];
+      return allInscriptions.map(mapBackendToDomain);
     } catch (error) {
       console.error('❌ Error al obtener inscripciones del curso:', error);
       const axiosError = error as AxiosError<{ message?: string }>;

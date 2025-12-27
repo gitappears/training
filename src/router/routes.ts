@@ -171,6 +171,24 @@ const routes: RouteRecordRaw[] = [
           roles: ['ADMIN', 'CLIENTE', 'OPERADOR'] as UserRole[],
         },
       },
+
+      // Conductores externos (RF-04, RF-05)
+      {
+        path: 'people/external-drivers/new',
+        component: () => import('../presentation/people/pages/ExternalDriverCreatePage.vue'),
+        meta: {
+          roles: ['ADMIN', 'CLIENTE'] as UserRole[],
+        },
+      },
+
+      // Pagos
+      {
+        path: 'payments',
+        component: () => import('../presentation/payments/pages/PaymentsPage.vue'),
+        meta: {
+          roles: ['ADMIN', 'CLIENTE', 'OPERADOR'] as UserRole[],
+        },
+      },
     ],
   },
 
