@@ -42,6 +42,17 @@ export class AuthService implements IAuthRepository {
         throw error;
       }
       
+      // Manejo específico para credenciales incorrectas (401)
+      if (axiosError.response?.status === 401) {
+        throw new Error('Usuario y/o contraseña errados; inténtelo de nuevo');
+      }
+      
+      // Error de conexión (red, timeout, etc.)
+      if (!axiosError.response) {
+        throw new Error('Error de conexión con el servidor. Verifique su conexión a internet.');
+      }
+      
+      // Error genérico del servidor
       throw new Error(
         axiosError.response?.data?.message ?? 'Error al iniciar sesión',
       );

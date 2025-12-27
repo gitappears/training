@@ -437,15 +437,17 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
+import { dashboardService } from '../../../infrastructure/http/dashboard';
 
 const router = useRouter();
 const $q = useQuasar();
 
 // Estado
 const showCustomizeDialog = ref(false);
+const loading = ref(false);
 
 interface Widget {
   id: string;
@@ -634,78 +636,8 @@ const completionTrend = ref([
   { label: 'Dic', value: 84 },
 ]);
 
-const notifications = ref([
-  {
-    id: 1,
-    title: 'Nuevo certificado emitido',
-    time: 'Hace 5 minutos',
-    icon: 'verified',
-    color: 'positive',
-    read: false,
-  },
-  {
-    id: 2,
-    title: 'Evaluación pendiente de revisión',
-    time: 'Hace 1 hora',
-    icon: 'quiz',
-    color: 'warning',
-    read: false,
-  },
-  {
-    id: 3,
-    title: 'Curso próximo a iniciar',
-    time: 'Hace 2 horas',
-    icon: 'event',
-    color: 'info',
-    read: true,
-  },
-  {
-    id: 4,
-    title: 'Usuario nuevo registrado',
-    time: 'Hace 3 horas',
-    icon: 'person_add',
-    color: 'primary',
-    read: true,
-  },
-  {
-    id: 5,
-    title: 'Reporte mensual disponible',
-    time: 'Ayer',
-    icon: 'insights',
-    color: 'purple',
-    read: true,
-  },
-]);
-
-const recentActivity = ref([
-  {
-    id: 1,
-    title: 'Nuevo curso publicado',
-    when: 'Hace 2 horas',
-    description: 'Se publicó el curso "Seguridad de la información nivel básico".',
-    meta: 'Área responsable: Tecnología',
-    icon: 'campaign',
-    color: 'primary',
-  },
-  {
-    id: 2,
-    title: 'Sesión completada',
-    when: 'Hoy · 10:30',
-    description: '32 usuarios completaron el curso "Introducción a la compañía".',
-    meta: 'Tasa de finalización: 89%',
-    icon: 'check_circle',
-    color: 'positive',
-  },
-  {
-    id: 3,
-    title: 'Encuesta de satisfacción cerrada',
-    when: 'Ayer',
-    description: 'Encuesta del curso "Atención al cliente" cerrada con nota media 4.7/5.',
-    meta: 'Respuestas recibidas: 58',
-    icon: 'star',
-    color: 'amber-7',
-  },
-]);
+const notifications = ref<any[]>([]);
+const recentActivity = ref<any[]>([]);
 
 // Funciones
 function navigateTo(path: string) {
@@ -716,7 +648,133 @@ function createTraining() {
   void router.push('/trainings/create');
 }
 
+// Función para cargar datos del dashboard
+async function loadDashboardData() {
+  loading.value = true;
+  try {
+    const stats = await dashboardService.getStats();
+    
+    // Actualizar widgets con datos reales
+    allWidgets.value = [
+      {
+        id: 'activeCourses',
+        label: 'Cursos Activos',
+        description: 'Total de cursos disponibles actualmente',
+        value: stats.kpis.activeCourses.value,
+        icon: 'play_circle',
+        color: 'primary',
+        iconSize: '48px',
+        columnClass: 'col-12 col-sm-6 col-md-3',
+        visible: true,
+        variation: stats.kpis.activeCourses.variation,
+      },
+      {
+        id: 'enrolledUsers',
+        label: 'Usuarios Inscritos',
+        description: 'Total de usuarios registrados en cursos',
+        value: stats.kpis.enrolledUsers.value,
+        icon: 'people',
+        color: 'positive',
+        iconSize: '48px',
+        columnClass: 'col-12 col-sm-6 col-md-3',
+        visible: true,
+        variation: stats.kpis.enrolledUsers.variation,
+      },
+      {
+        id: 'completionRate',
+        label: 'Tasa de Finalización',
+        description: 'Porcentaje de cursos completados',
+        value: `${stats.kpis.completionRate.value}%`,
+        icon: 'check_circle',
+        color: 'amber',
+        iconSize: '48px',
+        columnClass: 'col-12 col-sm-6 col-md-3',
+        visible: true,
+        progress: stats.kpis.completionRate.value / 100,
+        target: `${stats.kpis.completionRate.target}%`,
+      },
+      {
+        id: 'avgSatisfaction',
+        label: 'Satisfacción Promedio',
+        description: 'Calificación promedio de los cursos',
+        value: `${stats.kpis.avgSatisfaction.value}/5`,
+        icon: 'star',
+        color: 'purple',
+        iconSize: '48px',
+        columnClass: 'col-12 col-sm-6 col-md-3',
+        visible: true,
+      },
+      {
+        id: 'certificatesIssued',
+        label: 'Certificados Emitidos',
+        description: 'Total de certificados generados este mes',
+        value: stats.kpis.certificatesIssued.value,
+        icon: 'verified',
+        color: 'teal',
+        iconSize: '48px',
+        columnClass: 'col-12 col-sm-6 col-md-3',
+        visible: false,
+        variation: stats.kpis.certificatesIssued.variation,
+      },
+      {
+        id: 'evaluationsPending',
+        label: 'Evaluaciones Pendientes',
+        description: 'Evaluaciones que requieren atención',
+        value: stats.kpis.evaluationsPending.value,
+        icon: 'quiz',
+        color: 'orange',
+        iconSize: '48px',
+        columnClass: 'col-12 col-sm-6 col-md-3',
+        visible: false,
+      },
+    ];
+
+    // Actualizar próximas capacitaciones
+    upcomingTrainings.value = stats.upcomingTrainings;
+
+    // Actualizar progreso por área
+    areaProgress.value = stats.areaProgress;
+
+    // Actualizar tendencia de finalización
+    completionTrend.value = stats.completionTrend;
+
+    // Actualizar notificaciones (Mapeo de backend a frontend)
+    notifications.value = stats.notifications.map((n: any) => ({
+      id: n.id,
+      title: n.message, // Backend envía 'message'
+      time: n.time,
+      icon: 'warning', // Backend envía 'type', mapeamos a icono
+      color: n.type === 'warning' ? 'warning' : 'primary',
+      read: false,
+    }));
+
+    // Actualizar actividad reciente (Mapeo de backend a frontend)
+    recentActivity.value = stats.recentActivity.map((a: any) => ({
+      id: a.id,
+      title: a.title,
+      when: a.time,    // Backend envía 'time', frontend espera 'when'
+      description: a.description,
+      meta: '',        // Backend no envía meta por ahora
+      icon: a.icon,
+      color: a.color,
+    }));
+
+    // Cargar preferencias guardadas
+    loadWidgetPreferences();
+  } catch (error) {
+    console.error('Error loading dashboard data:', error);
+    $q.notify({
+      type: 'negative',
+      message: 'Error al cargar datos del dashboard',
+      position: 'top',
+    });
+  } finally {
+    loading.value = false;
+  }
+}
+
 function refreshData() {
+  void loadDashboardData();
   $q.notify({
     type: 'positive',
     message: 'Datos actualizados exitosamente',
@@ -764,8 +822,10 @@ function loadWidgetPreferences() {
   }
 }
 
-// Cargar preferencias al montar
-loadWidgetPreferences();
+// Cargar datos al montar
+onMounted(() => {
+  void loadDashboardData();
+});
 </script>
 
 <style scoped lang="scss">
