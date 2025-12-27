@@ -263,8 +263,12 @@ async function handleSubmit(payload: TrainingFormModel, formMaterials: Material[
     if (payload.modality) {
       dto.modalidadId = mapModalityToId(payload.modality);
     }
-    if (payload.area) {
-      dto.areaId = parseInt(payload.area);
+    // Área oculta temporalmente - no enviar si está vacía o no es válida
+    if (payload.area && payload.area.trim() !== '') {
+      const areaId = parseInt(payload.area);
+      if (!isNaN(areaId) && areaId > 0) {
+        dto.areaId = areaId;
+      }
     }
     if (payload.targetAudience) {
       dto.publicoObjetivo = payload.targetAudience;
@@ -276,7 +280,8 @@ async function handleSubmit(payload: TrainingFormModel, formMaterials: Material[
       dto.fechaFin = payload.endDate;
     }
     if (payload.durationHours !== null && payload.durationHours !== undefined) {
-      dto.duracionHoras = payload.durationHours;
+      // Asegurar que sea un número entero
+      dto.duracionHoras = Math.round(payload.durationHours);
     }
     if (payload.capacity !== null && payload.capacity !== undefined) {
       dto.capacidadMaxima = payload.capacity;
@@ -451,15 +456,22 @@ async function handleSubmit(payload: TrainingFormModel, formMaterials: Material[
       if (errorStr.includes('evaluación') || errorStr.includes('evaluation')) {
         errorMessage = 'Error: Debe vincular una evaluación antes de actualizar la capacitación (RF-09)';
       } else if (errorStr.includes('validación') || errorStr.includes('validation')) {
-        errorMessage = 'Error de validación: Verifique que todos los campos requeridos estén completos correctamente';
+        // Intentar extraer detalles del error de validación
+        const validationDetails = extractValidationErrors(err);
+        errorMessage = validationDetails || 'Error de validación: Verifique que todos los campos requeridos estén completos correctamente';
       } else if (errorStr.includes('network') || errorStr.includes('timeout')) {
         errorMessage = 'Error de conexión: Verifique su conexión a internet e intente nuevamente';
       } else if (errorStr.includes('401') || errorStr.includes('unauthorized')) {
         errorMessage = 'Error de autenticación: Su sesión ha expirado. Por favor, inicie sesión nuevamente';
       } else if (errorStr.includes('403') || errorStr.includes('forbidden')) {
         errorMessage = 'Error de permisos: No tiene permisos para actualizar capacitaciones';
-      } else if (errorStr.includes('404') || errorStr.includes('not found')) {
-        errorMessage = 'Error: La capacitación no fue encontrada';
+      } else if (errorStr.includes('404') || errorStr.includes('not found') || errorStr.includes('no encontrada')) {
+        // Verificar si el problema es al cargar o al actualizar
+        if (training.value) {
+          errorMessage = 'Error: La capacitación no fue encontrada en el servidor. Puede que haya sido eliminada.';
+        } else {
+          errorMessage = 'Error: No se pudo cargar la capacitación. Verifique que el ID sea correcto.';
+        }
       } else if (errorStr.includes('500') || errorStr.includes('server')) {
         errorMessage = 'Error del servidor: Por favor, intente más tarde o contacte al administrador';
       } else {
@@ -610,6 +622,23 @@ function mapQuestionTypeToTipoPreguntaId(type: 'single' | 'multiple' | 'image' |
     yes_no: 5,
   };
   return map[type] ?? 1;
+}
+
+/**
+ * Extrae detalles de errores de validación del backend
+ */
+function extractValidationErrors(error: Error): string | null {
+  // Intentar extraer detalles del error de validación del backend
+  if ('response' in error && error.response && typeof error.response === 'object') {
+    const response = error.response as { data?: { message?: string | string[] } };
+    if (response.data?.message) {
+      if (Array.isArray(response.data.message)) {
+        return `Errores de validación: ${response.data.message.join(', ')}`;
+      }
+      return `Error de validación: ${response.data.message}`;
+    }
+  }
+  return null;
 }
 </script>
 

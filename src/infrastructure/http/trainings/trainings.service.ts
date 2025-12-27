@@ -29,6 +29,8 @@ interface BackendModalidad {
 
 interface BackendPersona {
   id: number;
+  nombres?: string;
+  apellidos?: string;
   nombreCompleto?: string;
   nombre?: string;
   email?: string;
@@ -168,7 +170,12 @@ function mapBackendToDomain(backendData: BackendCapacitacion): Training {
     description: backendData.descripcion ?? '',
     type: mapTipoCapacitacion(backendData.tipoCapacitacion),
     modality: mapModalidad(backendData.modalidad),
-    instructor: backendData.instructor?.nombreCompleto ?? backendData.instructor?.nombre ?? '',
+    instructor: backendData.instructor
+      ? backendData.instructor.nombreCompleto ||
+        (backendData.instructor.nombres && backendData.instructor.apellidos
+          ? `${backendData.instructor.nombres} ${backendData.instructor.apellidos}`.trim()
+          : backendData.instructor.nombres || backendData.instructor.nombre || '')
+      : '',
     area: backendData.areaId?.toString() ?? '',
     studentsCount: backendData.inscripciones?.length ?? 0,
     averageRating: backendData.promedioCalificacion ?? 0,
@@ -250,10 +257,22 @@ function mapBackendToDomain(backendData: BackendCapacitacion): Training {
     training.targetAudience = backendData.publicoObjetivo;
   }
   if (backendData.fechaInicio) {
-    training.startDate = backendData.fechaInicio;
+    // Convertir fecha a string en formato YYYY-MM-DD para el input date
+    const fechaInicio = typeof backendData.fechaInicio === 'string' 
+      ? backendData.fechaInicio 
+      : new Date(backendData.fechaInicio).toISOString().split('T')[0];
+    if (fechaInicio) {
+      training.startDate = fechaInicio;
+    }
   }
   if (backendData.fechaFin) {
-    training.endDate = backendData.fechaFin;
+    // Convertir fecha a string en formato YYYY-MM-DD para el input date
+    const fechaFin = typeof backendData.fechaFin === 'string'
+      ? backendData.fechaFin
+      : new Date(backendData.fechaFin).toISOString().split('T')[0];
+    if (fechaFin) {
+      training.endDate = fechaFin;
+    }
   }
   if (backendData.duracionHoras !== undefined && backendData.duracionHoras !== null) {
     training.durationHours = backendData.duracionHoras;

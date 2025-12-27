@@ -3,7 +3,7 @@
     <q-inner-loading :showing="loading" />
 
     <!-- Header -->
-    <div class="row items-center justify-between q-mb-xl">
+    <div v-if="certificate" class="row items-center justify-between q-mb-xl">
       <div class="col">
         <div class="row items-center q-gutter-md q-mb-sm">
           <q-btn
@@ -36,14 +36,6 @@
         <q-btn
           color="primary"
           unelevated
-          icon="preview"
-          label="Vista Previa"
-          class="q-mr-sm"
-          @click="showPreview = true"
-        />
-        <q-btn
-          color="primary"
-          unelevated
           icon="download"
           label="Descargar PDF"
           @click="downloadPDF"
@@ -51,14 +43,15 @@
       </div>
     </div>
 
-    <div class="row q-col-gutter-lg">
+    <!-- Contenido principal - Solo mostrar si el certificado está cargado -->
+    <div v-if="certificate" class="row q-col-gutter-lg">
       <!-- Main Content -->
       <div class="col-12 col-md-8">
         <!-- Certificate Viewer -->
         <q-card flat bordered class="q-mb-lg">
           <q-card-section class="q-pa-none">
             <!-- PDF Viewer -->
-            <div v-if="certificate.pdfUrl" class="certificate-viewer-container">
+            <div v-if="certificate" class="certificate-viewer-container">
               <div class="viewer-toolbar row items-center justify-between q-pa-md bg-grey-2">
                 <div class="row items-center q-gutter-sm">
                   <q-btn
@@ -103,34 +96,34 @@
               <div
                 ref="viewerContainer"
                 class="certificate-viewer"
-                :style="{ transform: `scale(${zoomLevel})`, transformOrigin: 'top left' }"
               >
-                <!-- PDF Viewer usando iframe (mock) -->
+                <!-- Loading state -->
+                <div v-if="loadingPDF" class="flex flex-center full-height">
+                  <q-spinner color="primary" size="3em" />
+                </div>
+                
+                <!-- PDF Viewer usando iframe con blob URL -->
                 <iframe
-                  :src="certificate.pdfUrl"
+                  v-else-if="pdfViewerUrl"
+                  :src="pdfViewerUrl"
                   class="pdf-iframe"
                   frameborder="0"
+                  type="application/pdf"
                 />
-                <!-- Alternativa: Mostrar imagen del certificado si no hay PDF -->
-                <div v-if="!certificate.pdfUrl" class="certificate-image-placeholder">
-                  <q-icon name="picture_as_pdf" size="64px" color="grey-4" class="q-mb-md" />
-                  <div class="text-h6 text-grey-6">Vista previa del certificado</div>
-                  <div class="text-body2 text-grey-6 q-mt-sm">
-                    El certificado se generará al descargar el PDF
+                
+                <!-- Error state -->
+                <div v-else class="flex flex-center full-height text-center q-pa-xl">
+                  <div>
+                    <q-icon name="error_outline" size="64px" color="negative" class="q-mb-md" />
+                    <div class="text-h6 q-mb-sm">Error al cargar el certificado</div>
+                    <div class="text-body2 text-grey-7">
+                      No se pudo cargar el PDF del certificado. Por favor, intente descargarlo.
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
 
-            <!-- Certificate Info (si no hay PDF) -->
-            <div v-else class="q-pa-xl text-center">
-              <q-icon name="verified" size="80px" color="primary" class="q-mb-md" />
-              <div class="text-h6 q-mb-sm">Certificado Válido</div>
-              <div class="text-body2 text-grey-7">
-                Este certificado puede ser verificado públicamente usando el código QR o el código de
-                verificación.
-              </div>
-            </div>
           </q-card-section>
         </q-card>
 
@@ -499,76 +492,47 @@
       </q-list>
     </q-menu>
 
-    <!-- Certificate Preview Dialog -->
-    <CertificatePreview
-      v-model="showPreview"
-      :certificate="certificate"
-      @download="downloadPDF"
-    />
   </q-page>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 import type { Certificate, CertificateVerificationHistory } from '../../../domain/certificate/models';
 import EmptyState from '../../../shared/components/EmptyState.vue';
-import CertificatePreview from '../../../shared/components/CertificatePreview.vue';
 import QRCodeDisplay from '../../../shared/components/QRCodeDisplay.vue';
+import { useCertificates } from '../../../shared/composables/useCertificates';
+import { certificatesService } from '../../../infrastructure/http/certificates/certificates.service';
+import { api } from '../../../boot/axios';
 
 const route = useRoute();
 const router = useRouter();
 const $q = useQuasar();
 
-// Estado
-const loading = ref(false);
+// Composable para gestión de certificados
+const {
+  loading,
+  currentCertificate: certificate,
+  loadCertificate,
+  downloadCertificatePDF,
+} = useCertificates();
+
+// Estado local
 const tab = ref<'info' | 'verification' | 'history'>('info');
 const certificateId = route.params.id as string;
 const zoomLevel = ref(1);
 const isFullscreen = ref(false);
 const showShareMenuDialog = ref(false);
-const showPreview = ref(false);
 const viewerContainer = ref<HTMLElement | null>(null);
 const shareMenu = ref();
 
-const certificate = ref<Certificate>({
-  id: certificateId,
-  courseId: '1',
-  courseName: 'Primeros Auxilios',
-  studentId: '1',
-  studentName: 'Juan Pérez',
-  documentNumber: '12345678',
-  instructor: '1',
-  instructorName: 'Dr. María González',
-  issuedDate: '2025-01-15',
-  expiryDate: '2026-01-15',
-  isRetroactive: false,
-  score: 85,
-  minimumScore: 70,
-  status: 'valid',
-  verificationCode: 'ABC123XYZ789',
-  qrCodeUrl: 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=ABC123XYZ789',
-  publicVerificationUrl: '/verify/ABC123XYZ789',
-  pdfUrl: '/certificates/1.pdf',
-  createdAt: '2025-01-15',
-});
+// URL del blob para mostrar el PDF en el iframe
+const pdfViewerUrl = ref<string>('');
+const loadingPDF = ref(false);
 
-const verificationHistory = ref<CertificateVerificationHistory[]>([
-  {
-    id: 'v1',
-    certificateId: certificateId,
-    verifiedAt: '2025-01-20T10:30:00Z',
-    verifiedBy: '192.168.1.1',
-    userAgent: 'Mozilla/5.0...',
-  },
-  {
-    id: 'v2',
-    certificateId: certificateId,
-    verifiedAt: '2025-01-18T14:20:00Z',
-    verifiedBy: '192.168.1.2',
-  },
-]);
+// Historial de verificaciones (mock por ahora, puede conectarse al backend después)
+const verificationHistory = ref<CertificateVerificationHistory[]>([]);
 
 // Funciones
 function formatDate(dateString: string): string {
@@ -631,6 +595,7 @@ function getValidityMessage(expiryDate: string): string {
 }
 
 function getValidityProgress(expiryDate: string): number {
+  if (!certificate.value) return 0;
   const expiry = new Date(expiryDate);
   const issued = new Date(certificate.value.issuedDate);
   const now = new Date();
@@ -658,6 +623,9 @@ function resetZoom() {
   zoomLevel.value = 1;
 }
 
+// Nota: El zoom ahora se maneja con CSS transform en el contenedor
+// pero para PDFs en iframe, es mejor usar el zoom del navegador o el viewer
+
 function toggleFullscreen() {
   if (!viewerContainer.value) return;
 
@@ -673,14 +641,31 @@ function toggleFullscreen() {
   isFullscreen.value = !isFullscreen.value;
 }
 
-function downloadPDF() {
-  // Aquí se llamaría al servicio HTTP para descargar el certificado PDF
-  console.log('Descargar certificado PDF:', certificateId);
-  $q.notify({
-    type: 'positive',
-    message: 'Certificado descargado exitosamente',
-    position: 'top',
-  });
+async function downloadPDF() {
+  if (!certificate.value) {
+    $q.notify({
+      type: 'negative',
+      message: 'Certificado no disponible',
+      position: 'top',
+    });
+    return;
+  }
+
+  try {
+    await downloadCertificatePDF(certificate.value.id);
+    $q.notify({
+      type: 'positive',
+      message: 'Certificado descargado exitosamente',
+      position: 'top',
+    });
+  } catch (error) {
+    console.error('Error al descargar certificado:', error);
+    $q.notify({
+      type: 'negative',
+      message: 'Error al descargar el certificado',
+      position: 'top',
+    });
+  }
 }
 
 function showShareMenu() {
@@ -688,6 +673,7 @@ function showShareMenu() {
 }
 
 function copyVerificationLink() {
+  if (!certificate.value) return;
   const link = `${window.location.origin}${certificate.value.publicVerificationUrl}`;
   void navigator.clipboard.writeText(link);
   $q.notify({
@@ -699,6 +685,7 @@ function copyVerificationLink() {
 }
 
 function copyVerificationCode() {
+  if (!certificate.value) return;
   void navigator.clipboard.writeText(certificate.value.verificationCode);
   $q.notify({
     type: 'positive',
@@ -713,6 +700,7 @@ function shareVerificationLink() {
 }
 
 function shareViaEmail() {
+  if (!certificate.value) return;
   const subject = encodeURIComponent(`Verificación de Certificado - ${certificate.value.courseName}`);
   const body = encodeURIComponent(
     `Te comparto mi certificado de ${certificate.value.courseName}.\n\nPuedes verificarlo en: ${window.location.origin}${certificate.value.publicVerificationUrl}`,
@@ -722,6 +710,7 @@ function shareViaEmail() {
 }
 
 function shareViaWhatsApp() {
+  if (!certificate.value) return;
   const text = encodeURIComponent(
     `Te comparto mi certificado de ${certificate.value.courseName}. Verifícalo aquí: ${window.location.origin}${certificate.value.publicVerificationUrl}`,
   );
@@ -730,6 +719,7 @@ function shareViaWhatsApp() {
 }
 
 function openPublicVerification() {
+  if (!certificate.value) return;
   window.open(certificate.value.publicVerificationUrl, '_blank');
 }
 
@@ -737,19 +727,55 @@ function goBack() {
   void router.push('/certificates');
 }
 
+/**
+ * Carga el PDF del certificado como blob URL para visualización
+ */
+async function loadPDFForView() {
+  if (!certificate.value) return;
+  
+  loadingPDF.value = true;
+  try {
+    // Obtener el PDF como blob usando el servicio autenticado
+    const blob = await certificatesService.getPDFForView(certificate.value.id);
+    
+    // Crear blob URL para el iframe
+    pdfViewerUrl.value = window.URL.createObjectURL(blob);
+  } catch (error) {
+    console.error('Error al cargar PDF para visualización:', error);
+    $q.notify({
+      type: 'negative',
+      message: 'Error al cargar el certificado para visualización',
+      icon: 'error',
+      position: 'top',
+    });
+  } finally {
+    loadingPDF.value = false;
+  }
+}
+
 // Lifecycle
-onMounted(() => {
-  loading.value = true;
-  // Simular carga de datos
-  setTimeout(() => {
-    if (!certificate.value.durationHours) {
-      certificate.value.durationHours = 8; // Valor por defecto
-    }
-    loading.value = false;
-  }, 500);
+onMounted(async () => {
+  if (certificateId) {
+    await loadCertificate(certificateId);
+    // Cargar el PDF después de cargar el certificado
+    await loadPDFForView();
+  } else {
+    $q.notify({
+      type: 'negative',
+      message: 'ID de certificado no válido',
+      icon: 'error',
+      position: 'top',
+    });
+    void router.push('/certificates');
+  }
 });
 
 onUnmounted(() => {
+  // Limpiar blob URL para liberar memoria
+  if (pdfViewerUrl.value) {
+    window.URL.revokeObjectURL(pdfViewerUrl.value);
+  }
+  
   if (isFullscreen.value && document.exitFullscreen) {
     void document.exitFullscreen();
   }
@@ -790,13 +816,19 @@ body.body--dark .viewer-toolbar {
   position: relative;
   overflow: auto;
   max-height: 70vh;
-  transition: transform 0.3s ease;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
 }
 
 .pdf-iframe {
   width: 100%;
   min-height: 800px;
+  height: 100vh;
+  max-height: 70vh;
   border: none;
+  background: #f5f5f5;
 }
 
 .certificate-image-placeholder {
