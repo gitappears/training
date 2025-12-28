@@ -75,10 +75,16 @@ import { evaluationsService } from '../../../infrastructure/http/evaluations/eva
 import type { Training } from '../../../domain/training/models';
 import type { UpdateTrainingDto } from '../../../application/training/training.repository.port';
 import type { CreateMaterialDto, UpdateMaterialDto } from '../../../application/material/material.repository.port';
+import { useMaterialTypeMapper } from '../../../shared/composables/useMaterialTypeMapper';
+import { useMaterialUrl } from '../../../shared/composables/useMaterialUrl';
 
 const router = useRouter();
 const route = useRoute();
 const $q = useQuasar();
+
+// Composables
+const { mapFromBackend: mapMaterialTypeFromBackend, mapToBackendId: mapMaterialTypeToId } = useMaterialTypeMapper();
+const { extractRelativeUrl, isExternalLink } = useMaterialUrl();
 
 const loading = ref(true);
 const error = ref<string | null>(null);
@@ -112,8 +118,8 @@ async function loadTraining() {
           const material: Material = {
             id: m.id,
             name: m.nombre,
-            url: m.url,
-            type: mapMaterialTypeFromBackend(m.tipoMaterial?.nombre || 'PDF'),
+            url: m.url, // La URL ya viene completa desde el servicio
+            type: mapMaterialTypeFromBackend(m.tipoMaterial?.codigo || m.tipoMaterial?.nombre || 'PDF'),
             order: m.orden,
           };
           if (m.descripcion) {
@@ -257,8 +263,12 @@ async function handleSubmit(payload: TrainingFormModel, formMaterials: Material[
     if (payload.modality) {
       dto.modalidadId = mapModalityToId(payload.modality);
     }
-    if (payload.area) {
-      dto.areaId = parseInt(payload.area);
+    // Área oculta temporalmente - no enviar si está vacía o no es válida
+    if (payload.area && payload.area.trim() !== '') {
+      const areaId = parseInt(payload.area);
+      if (!isNaN(areaId) && areaId > 0) {
+        dto.areaId = areaId;
+      }
     }
     if (payload.targetAudience) {
       dto.publicoObjetivo = payload.targetAudience;
@@ -270,7 +280,8 @@ async function handleSubmit(payload: TrainingFormModel, formMaterials: Material[
       dto.fechaFin = payload.endDate;
     }
     if (payload.durationHours !== null && payload.durationHours !== undefined) {
-      dto.duracionHoras = payload.durationHours;
+      // Asegurar que sea un número entero
+      dto.duracionHoras = Math.round(payload.durationHours);
     }
     if (payload.capacity !== null && payload.capacity !== undefined) {
       dto.capacidadMaxima = payload.capacity;
@@ -445,15 +456,22 @@ async function handleSubmit(payload: TrainingFormModel, formMaterials: Material[
       if (errorStr.includes('evaluación') || errorStr.includes('evaluation')) {
         errorMessage = 'Error: Debe vincular una evaluación antes de actualizar la capacitación (RF-09)';
       } else if (errorStr.includes('validación') || errorStr.includes('validation')) {
-        errorMessage = 'Error de validación: Verifique que todos los campos requeridos estén completos correctamente';
+        // Intentar extraer detalles del error de validación
+        const validationDetails = extractValidationErrors(err);
+        errorMessage = validationDetails || 'Error de validación: Verifique que todos los campos requeridos estén completos correctamente';
       } else if (errorStr.includes('network') || errorStr.includes('timeout')) {
         errorMessage = 'Error de conexión: Verifique su conexión a internet e intente nuevamente';
       } else if (errorStr.includes('401') || errorStr.includes('unauthorized')) {
         errorMessage = 'Error de autenticación: Su sesión ha expirado. Por favor, inicie sesión nuevamente';
       } else if (errorStr.includes('403') || errorStr.includes('forbidden')) {
         errorMessage = 'Error de permisos: No tiene permisos para actualizar capacitaciones';
-      } else if (errorStr.includes('404') || errorStr.includes('not found')) {
-        errorMessage = 'Error: La capacitación no fue encontrada';
+      } else if (errorStr.includes('404') || errorStr.includes('not found') || errorStr.includes('no encontrada')) {
+        // Verificar si el problema es al cargar o al actualizar
+        if (training.value) {
+          errorMessage = 'Error: La capacitación no fue encontrada en el servidor. Puede que haya sido eliminada.';
+        } else {
+          errorMessage = 'Error: No se pudo cargar la capacitación. Verifique que el ID sea correcto.';
+        }
       } else if (errorStr.includes('500') || errorStr.includes('server')) {
         errorMessage = 'Error del servidor: Por favor, intente más tarde o contacte al administrador';
       } else {
@@ -503,11 +521,32 @@ async function syncMaterials(capacitacionId: number, newMaterials: Material[]) {
   // Crear o actualizar materiales
   for (const material of newMaterials) {
     try {
+      // Extraer URL relativa si es un archivo local, o mantener URL completa si es enlace externo
+      let materialUrl = material.url;
+      
+      // Tipo extendido para incluir URL relativa temporal
+      interface MaterialWithRelativeUrl extends Material {
+        _relativeUrl?: string;
+      }
+      const materialWithRelative = material as MaterialWithRelativeUrl;
+      
+      // Si el material tiene _relativeUrl (archivo subido), usar esa
+      // Si no, verificar si es un enlace externo o extraer la URL relativa
+      if (materialWithRelative._relativeUrl) {
+        materialUrl = materialWithRelative._relativeUrl;
+      } else if (isExternalLink(material.url)) {
+        // Para enlaces externos (videos, etc.), mantener la URL completa
+        materialUrl = material.url;
+      } else {
+        // Para archivos locales, extraer la URL relativa
+        materialUrl = extractRelativeUrl(material.url);
+      }
+      
       if (material.id) {
         // Actualizar material existente
         const updateDto: UpdateMaterialDto = {
           nombre: material.name,
-          url: material.url,
+          url: materialUrl, // URL relativa para archivos locales, completa para enlaces externos
           tipoMaterialId: mapMaterialTypeToId(material.type),
           orden: material.order ?? 0,
         };
@@ -521,7 +560,7 @@ async function syncMaterials(capacitacionId: number, newMaterials: Material[]) {
           capacitacionId: capacitacionId,
           tipoMaterialId: mapMaterialTypeToId(material.type),
           nombre: material.name,
-          url: material.url,
+          url: materialUrl, // URL relativa para archivos locales, completa para enlaces externos
           orden: material.order ?? 0,
         };
         if (material.description) {
@@ -555,31 +594,7 @@ function mapModalityToId(modality: string | null): number {
   return map[modality ?? 'online'] ?? 1;
 }
 
-// Mapeo temporal de tipos de material - TODO: Obtener de catálogo del backend
-function mapMaterialTypeToId(type: string): number {
-  const map: Record<string, number> = {
-    PDF: 1,
-    IMAGE: 2,
-    VIDEO: 3,
-    DOC: 4,
-    LINK: 5,
-    PRESENTATION: 6,
-    AUDIO: 7,
-  };
-  return map[type] ?? 1;
-}
-
-function mapMaterialTypeFromBackend(nombre: string): Material['type'] {
-  const nombreLower = nombre.toLowerCase();
-  if (nombreLower.includes('pdf')) return 'PDF';
-  if (nombreLower.includes('imagen') || nombreLower.includes('image')) return 'IMAGE';
-  if (nombreLower.includes('video')) return 'VIDEO';
-  if (nombreLower.includes('word') || nombreLower.includes('doc')) return 'DOC';
-  if (nombreLower.includes('enlace') || nombreLower.includes('link')) return 'LINK';
-  if (nombreLower.includes('presentación') || nombreLower.includes('presentation')) return 'PRESENTATION';
-  if (nombreLower.includes('audio')) return 'AUDIO';
-  return 'PDF'; // Default
-}
+// La función mapMaterialTypeToId ya está declarada arriba usando el composable useMaterialTypeMapper
 
 /**
  * Mapea el ID del tipo de pregunta del backend al tipo del dominio
@@ -607,6 +622,23 @@ function mapQuestionTypeToTipoPreguntaId(type: 'single' | 'multiple' | 'image' |
     yes_no: 5,
   };
   return map[type] ?? 1;
+}
+
+/**
+ * Extrae detalles de errores de validación del backend
+ */
+function extractValidationErrors(error: Error): string | null {
+  // Intentar extraer detalles del error de validación del backend
+  if ('response' in error && error.response && typeof error.response === 'object') {
+    const response = error.response as { data?: { message?: string | string[] } };
+    if (response.data?.message) {
+      if (Array.isArray(response.data.message)) {
+        return `Errores de validación: ${response.data.message.join(', ')}`;
+      }
+      return `Error de validación: ${response.data.message}`;
+    }
+  }
+  return null;
 }
 </script>
 

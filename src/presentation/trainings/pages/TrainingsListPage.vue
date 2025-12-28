@@ -9,6 +9,7 @@
         </div>
       </div>
       <q-btn
+        v-if="canManageTrainings"
         color="primary"
         unelevated
         icon="add"
@@ -20,16 +21,17 @@
       />
     </div>
 
-    <q-inner-loading :showing="loading" />
+    <q-inner-loading :showing="loading || loadingEnrollments" />
 
     <!-- Empty State -->
-    <div v-if="!loading && trainings.length === 0" class="text-center q-pa-xl">
+    <div v-if="!loading && !loadingEnrollments && trainings.length === 0" class="text-center q-pa-xl">
       <q-icon name="school" size="80px" color="grey-4" class="q-mb-md" />
       <div class="text-h6 text-grey-7 q-mb-sm">No hay capacitaciones disponibles</div>
       <div class="text-body2 text-grey-6 q-mb-lg">
         Crea tu primera capacitación para comenzar a formar a tu equipo.
       </div>
       <q-btn
+        v-if="canManageTrainings"
         color="primary"
         unelevated
         icon="add"
@@ -62,27 +64,22 @@
               <!-- Action Buttons Overlay -->
               <div class="absolute-top-right q-pa-sm">
                 <div class="row q-gutter-xs">
+                  <!-- Botón de Presentar Evaluación - Solo visible si el usuario está inscrito -->
                   <q-btn
+                    v-if="isEnrolledIn(training.id)"
                     round
                     dense
                     size="sm"
                     color="info"
-                    icon="visibility"
-                    @click.stop="goDetail(training.id)"
+                    icon="quiz"
+                    :loading="loadingEvaluation(training.id)"
+                    @click.stop="presentTraining(training)"
                   >
-                    <q-tooltip>Ver detalles</q-tooltip>
+                    <q-tooltip>Presentar evaluación</q-tooltip>
                   </q-btn>
+                  <!-- Botón de Editar - Solo ADMIN e INSTRUCTOR -->
                   <q-btn
-                    round
-                    dense
-                    size="sm"
-                    color="purple"
-                    icon="analytics"
-                    @click.stop="viewStatistics()"
-                  >
-                    <q-tooltip>Ver estadísticas</q-tooltip>
-                  </q-btn>
-                  <q-btn
+                    v-if="canManageTrainings"
                     round
                     dense
                     size="sm"
@@ -92,16 +89,18 @@
                   >
                     <q-tooltip>Editar</q-tooltip>
                   </q-btn>
+                  <!-- Botón de Activar/Desactivar - Solo ADMIN y CLIENTE -->
                   <q-btn
+                    v-if="canActivateTrainings"
                     round
                     dense
                     size="sm"
-                    :color="(training.status || 'active') === 'active' ? 'positive' : 'grey-6'"
-                    :icon="(training.status || 'active') === 'active' ? 'power_settings_new' : 'power_off'"
+                    :color="isStatusActive(training.status) ? 'positive' : 'grey-6'"
+                    :icon="isStatusActive(training.status) ? 'power_settings_new' : 'power_off'"
                     @click.stop="toggleStatus(training)"
                   >
                     <q-tooltip>
-                      {{ (training.status || 'active') === 'active' ? 'Desactivar' : 'Activar' }}
+                      {{ isStatusActive(training.status) ? 'Desactivar' : 'Activar' }}
                     </q-tooltip>
                   </q-btn>
                 </div>
@@ -119,8 +118,8 @@
               <!-- Status Badge -->
               <div class="absolute-bottom-left q-pa-sm">
                 <q-badge
-                  :color="(training.status || 'active') === 'active' ? 'positive' : 'grey-6'"
-                  :label="(training.status || 'active') === 'active' ? 'ACTIVO' : 'INACTIVO'"
+                  :color="getStatusColor(training.status)"
+                  :label="getStatusLabel(training.status)"
                   class="text-weight-medium"
                 />
               </div>
@@ -204,9 +203,18 @@ import { useQuasar } from 'quasar';
 import { TrainingUseCasesFactory } from '../../../application/training/training.use-cases.factory';
 import { trainingsService } from '../../../infrastructure/http/trainings/trainings.service';
 import type { Training } from '../../../domain/training/models';
+import { useTrainingEvaluation, type TrainingWithEvaluations } from '../../../shared/composables/useTrainingEvaluation';
+import { useRole } from '../../../shared/composables/useRole';
+import { useUserEnrolledTrainings } from '../../../shared/composables/useUserEnrolledTrainings';
 
 const router = useRouter();
 const $q = useQuasar();
+
+// Control de roles y permisos
+const { canManageTrainings, canActivateTrainings, isAlumno } = useRole();
+
+// Composable para gestionar inscripciones del usuario
+const { enrolledTrainingIds, loadEnrollments, loading: loadingEnrollments, isEnrolledIn } = useUserEnrolledTrainings();
 
 const trainings = ref<Training[]>([]);
 const loading = ref(false);
@@ -216,6 +224,10 @@ const pagination = ref({
   total: 0,
   totalPages: 0,
 });
+
+// Composable para gestionar evaluaciones
+const { navigateToEvaluation } = useTrainingEvaluation();
+const loadingEvaluations = ref<Record<string, boolean>>({});
 
 const modalityLabels: Record<string, string> = {
   online: 'Online',
@@ -247,21 +259,101 @@ function getTypeColor(type: string): string {
   return typeColors[type] ?? 'primary';
 }
 
+/**
+ * Obtiene el color del badge según el estado de la capacitación
+ */
+function getStatusColor(status?: string): string {
+  if (!status) return 'grey-6';
+  
+  const statusMap: Record<string, string> = {
+    'published': 'positive',
+    'publicada': 'positive',
+    'en_curso': 'info',
+    'active': 'positive',
+    'borrador': 'grey-6',
+    'draft': 'grey-6',
+    'finalizada': 'primary',
+    'finished': 'primary',
+    'cancelada': 'negative',
+    'cancelled': 'negative',
+  };
+  
+  return statusMap[status.toLowerCase()] ?? 'grey-6';
+}
+
+/**
+ * Obtiene la etiqueta del estado de la capacitación
+ */
+function getStatusLabel(status?: string): string {
+  if (!status) return 'BORRADOR';
+  
+  const statusMap: Record<string, string> = {
+    'published': 'PUBLICADA',
+    'publicada': 'PUBLICADA',
+    'en_curso': 'EN CURSO',
+    'active': 'ACTIVA',
+    'borrador': 'BORRADOR',
+    'draft': 'BORRADOR',
+    'finalizada': 'FINALIZADA',
+    'finished': 'FINALIZADA',
+    'cancelada': 'CANCELADA',
+    'cancelled': 'CANCELADA',
+  };
+  
+  return statusMap[status.toLowerCase()] ?? status.toUpperCase();
+}
+
 async function loadTrainings() {
   loading.value = true;
   try {
+    // Cargar inscripciones del usuario para todos los roles
+    // Esto permite verificar si el usuario está inscrito en cada capacitación
+    // y mostrar/ocultar el botón "Presentar capacitación" según corresponda
+    await loadEnrollments();
+
     const listTrainingsUseCase = TrainingUseCasesFactory.getListTrainingsUseCase(trainingsService);
     const response = await listTrainingsUseCase.execute({
       page: pagination.value.page,
       limit: pagination.value.limit,
     });
-    // Agregar status por defecto si no existe
-    trainings.value = response.data.map((t) => ({
+    
+    // Mapear los datos sin sobrescribir el status del backend
+    let allTrainings = response.data.map((t) => ({
       ...t,
-      status: (t.status || 'active'),
-    }));
-    pagination.value.total = response.total;
-    pagination.value.totalPages = response.totalPages;
+      // No sobrescribir el status, usar el que viene del backend
+    })) as TrainingWithEvaluations[];
+
+    // Si el usuario es ALUMNO, filtrar solo las capacitaciones donde está inscrito Y que estén publicadas
+    if (isAlumno.value) {
+      const enrolledIds = enrolledTrainingIds.value as Set<string>;
+      console.log('🔍 Debug - IDs inscritos:', Array.from(enrolledIds));
+      console.log('🔍 Debug - Total capacitaciones antes del filtro:', allTrainings.length);
+      
+      // Estados que se consideran publicados (no borrador)
+      const publishedStatuses = ['published', 'publicada', 'en_curso', 'active'];
+      
+      allTrainings = allTrainings.filter((training) => {
+        const isEnrolled = enrolledIds.has(training.id);
+        const isPublished = training.status && publishedStatuses.includes(training.status.toLowerCase());
+        
+        console.log(`🔍 Capacitación ${training.id} (${training.title}): ${isEnrolled ? 'INSCRITO' : 'NO INSCRITO'}, Estado: ${training.status || 'sin estado'}, Publicada: ${isPublished}`);
+        
+        // Solo mostrar si está inscrito Y publicada (no borrador)
+        return isEnrolled && isPublished;
+      });
+      
+      console.log('🔍 Debug - Total capacitaciones después del filtro (inscritas y publicadas):', allTrainings.length);
+      
+      // Actualizar paginación para reflejar el filtro
+      pagination.value.total = allTrainings.length;
+      pagination.value.totalPages = Math.ceil(allTrainings.length / pagination.value.limit);
+    } else {
+      // Para otros roles, mantener la paginación original
+      pagination.value.total = response.total;
+      pagination.value.totalPages = response.totalPages;
+    }
+
+    trainings.value = allTrainings;
   } catch (error) {
     // Mejorar mensajes de error con más contexto
     let errorMessage = 'Error al cargar las capacitaciones';
@@ -316,53 +408,113 @@ function editTraining(id: string) {
   void router.push(`/trainings/${id}/edit`);
 }
 
-function viewStatistics() {
-  $q.notify({
-    type: 'info',
-    message: 'Funcionalidad de estadísticas próximamente',
-    position: 'top',
-  });
-  // TODO: Implementar página de estadísticas
-  // void router.push(`/trainings/${id}/statistics`);
+/**
+ * Presenta la capacitación redirigiendo a su evaluación
+ * Sigue el principio de responsabilidad única
+ */
+async function presentTraining(training: Training): Promise<void> {
+  loadingEvaluations.value[training.id] = true;
+  try {
+    const trainingWithEvals = training as TrainingWithEvaluations;
+    await navigateToEvaluation(trainingWithEvals);
+  } catch (error) {
+    console.error('Error al presentar capacitación:', error);
+    $q.notify({
+      type: 'negative',
+      message: 'Error al acceder a la evaluación de la capacitación',
+      icon: 'error',
+      position: 'top',
+      timeout: 4000,
+    });
+  } finally {
+    loadingEvaluations.value[training.id] = false;
+  }
+}
+
+/**
+ * Verifica si se está cargando la evaluación para una capacitación específica
+ */
+function loadingEvaluation(trainingId: string): boolean {
+  return loadingEvaluations.value[trainingId] ?? false;
+}
+
+/**
+ * Verifica si el estado de la capacitación se considera "activo"
+ */
+function isStatusActive(status?: string): boolean {
+  if (!status) return false;
+  
+  const activeStatuses = ['published', 'publicada', 'en_curso', 'active'];
+  return activeStatuses.includes(status.toLowerCase());
 }
 
 function toggleStatus(training: Training): void {
-  const currentStatus = training.status || 'active';
-  const action = currentStatus === 'active' ? 'desactivar' : 'activar';
-  const actionPast = currentStatus === 'active' ? 'desactivada' : 'activada';
+  const isActive = isStatusActive(training.status);
+  const action = isActive ? 'desactivar' : 'activar';
 
+  // Verificar si $q.dialog está disponible, si no usar confirm nativo
+  if (typeof $q.dialog !== 'function') {
+    // Fallback si dialog no está disponible
+    if (confirm(`¿Está seguro de que desea ${action} la capacitación "${training.title}"? Los certificados ya emitidos no se afectarán (RF-10).`)) {
+      void handleToggleStatusConfirm(training, isActive);
+    }
+    return;
+  }
+
+  // Modal de confirmación mejorado
   $q.dialog({
     title: 'Confirmar cambio de estado',
-    message: `¿Está seguro de que desea ${action} esta capacitación? Los certificados ya emitidos no se afectarán (RF-10).`,
-    cancel: true,
-    persistent: true,
+    message: `¿Está seguro de que desea ${action} la capacitación "${training.title}"?`,
+    html: true,
+    cancel: {
+      label: 'Cancelar',
+      flat: true,
+      color: 'grey-7',
+    },
     ok: {
       label: 'Confirmar',
-      color: 'primary',
+      color: isActive ? 'negative' : 'positive',
+      unelevated: true,
     },
-  }).onOk(() => {
-    void (async () => {
-    try {
-      // Importar servicio de toggle
-      const { trainingsToggleStatusService } = await import(
-        '../../../infrastructure/http/trainings/trainings-toggle-status.service'
-      );
+    persistent: true,
+  }).onOk(async () => {
+    void handleToggleStatusConfirm(training, isActive);
+  });
+}
 
-      // Llamar al endpoint de toggle
-      await trainingsToggleStatusService.toggleActivoInactivo(
-        parseInt(training.id),
-      );
+async function handleToggleStatusConfirm(training: Training, isActive: boolean): Promise<void> {
+  try {
+    const actionPast = isActive ? 'desactivada' : 'activada';
+    
+    // Importar servicio de toggle
+    const { trainingsToggleStatusService } = await import(
+      '../../../infrastructure/http/trainings/trainings-toggle-status.service'
+    );
 
-      // Actualizar el estado localmente
-      const trainingIndex = trainings.value.findIndex((t) => t.id === training.id);
-      if (trainingIndex !== -1) {
-        const foundTraining = trainings.value[trainingIndex];
-        if (foundTraining) {
-          // Mapear estado del backend al frontend
-          // El backend retorna el estado actualizado, pero necesitamos mapearlo
-          foundTraining.status = currentStatus === 'active' ? 'inactive' : 'active';
+    // Llamar al endpoint de toggle
+    const updatedTraining = await trainingsToggleStatusService.toggleActivoInactivo(
+      parseInt(training.id),
+    );
+
+    // Actualizar el estado localmente basándose en la respuesta del backend
+    // El backend retorna un Training ya mapeado, pero recargamos para asegurar consistencia
+    const trainingIndex = trainings.value.findIndex((t) => t.id === training.id);
+    if (trainingIndex !== -1) {
+      const foundTraining = trainings.value[trainingIndex];
+      if (foundTraining) {
+        // Usar el estado del Training retornado (ya mapeado por el servicio)
+        // Si no está disponible, inferir basándose en la acción realizada
+        if (updatedTraining.status) {
+          foundTraining.status = updatedTraining.status;
+        } else {
+          // Fallback: mapear según la acción realizada
+          foundTraining.status = isActive ? 'draft' : 'published';
         }
       }
+    }
+    
+    // Recargar la lista para asegurar que todos los estados estén actualizados
+    await loadTrainings();
 
       $q.notify({
         type: 'positive',
@@ -370,40 +522,38 @@ function toggleStatus(training: Training): void {
         icon: 'check_circle',
         position: 'top',
       });
-    } catch (error) {
-      // Mejorar mensajes de error para toggle
-      let errorMessage = 'Error al cambiar el estado';
+  } catch (error) {
+    // Mejorar mensajes de error para toggle
+    let errorMessage = 'Error al cambiar el estado';
 
-      if (error instanceof Error) {
-        const errorStr = error.message.toLowerCase();
+    if (error instanceof Error) {
+      const errorStr = error.message.toLowerCase();
 
-        if (errorStr.includes('evaluación') || errorStr.includes('evaluation')) {
-          errorMessage = 'No se puede activar: Debe vincular una evaluación primero (RF-09)';
-        } else if (errorStr.includes('certificado') || errorStr.includes('certificate')) {
-          errorMessage = 'Los certificados existentes no se afectarán al cambiar el estado (RF-10)';
-        } else if (errorStr.includes('network') || errorStr.includes('timeout')) {
-          errorMessage = 'Error de conexión: Verifique su conexión e intente nuevamente';
-        } else {
-          errorMessage = error.message;
-        }
+      if (errorStr.includes('evaluación') || errorStr.includes('evaluation')) {
+        errorMessage = 'No se puede activar: Debe vincular una evaluación primero (RF-09)';
+      } else if (errorStr.includes('certificado') || errorStr.includes('certificate')) {
+        errorMessage = 'Los certificados existentes no se afectarán al cambiar el estado (RF-10)';
+      } else if (errorStr.includes('network') || errorStr.includes('timeout')) {
+        errorMessage = 'Error de conexión: Verifique su conexión e intente nuevamente';
+      } else {
+        errorMessage = error.message;
       }
-
-      $q.notify({
-        type: 'negative',
-        message: errorMessage,
-        icon: 'error',
-        position: 'top',
-        timeout: 7000,
-        actions: [
-          {
-            label: 'Cerrar',
-            color: 'white',
-          },
-        ],
-      });
     }
-    })();
-  });
+
+    $q.notify({
+      type: 'negative',
+      message: errorMessage,
+      icon: 'error',
+      position: 'top',
+      timeout: 7000,
+      actions: [
+        {
+          label: 'Cerrar',
+          color: 'white',
+        },
+      ],
+    });
+  }
 }
 
 onMounted(() => {

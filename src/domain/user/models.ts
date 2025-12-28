@@ -14,11 +14,18 @@ export interface User {
   documentType: 'CC' | 'CE' | 'PA' | 'TI' | 'NIT';
   phone: string;
   role: UserRole;
+  roleId?: number; // ID del rol en el backend
+  username?: string; // Nombre de usuario del backend
   personType: PersonType;
   enabled: boolean;
+  active?: boolean; // Estado activo del backend
+  mustChangePassword?: boolean; // Debe cambiar contraseña
   isExternal?: boolean; // RF-04, RF-05: Conductor externo
   company?: string;
   companyName?: string; // Para personas jurídicas
+  birthDate?: string; // Fecha de nacimiento
+  gender?: 'M' | 'F' | 'O'; // Género
+  address?: string; // Dirección
   createdAt: string;
   updatedAt?: string;
   lastLoginAt?: string;

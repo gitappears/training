@@ -37,7 +37,9 @@ export interface UserProfile {
   id: number;
   username: string;
   rol: string;
+  personaId?: number; // Agregar personaId que viene del backend
   persona: {
+    id?: number; // También puede venir dentro de persona
     numeroDocumento: string;
     nombres: string;
     apellidos?: string;
@@ -72,5 +74,5 @@ export interface IAuthRepository {
    */
   refreshToken(): Promise<TokenResponse>;
 
-  updateProfile(data: any): Promise<void>;
+  updateProfile(data: Partial<RegisterDto>): Promise<void>;
 }

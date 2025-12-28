@@ -96,7 +96,7 @@
             </template>
           </q-select>
         </div>
-        <div class="col-12 col-md-4">
+        <div v-if="false" class="col-12 col-md-4">
           <q-input
             v-model="form.location"
             filled
@@ -115,11 +115,17 @@
             v-model.number="form.durationHours"
             type="number"
             min="0"
+            step="1"
             filled
             label="Duración (horas)"
             placeholder="0"
-            hint="Horas totales del curso"
+            hint="Horas totales del curso (número entero)"
+            :rules="[
+              (val) => val === null || val === undefined || val === '' || (!isNaN(val) && val >= 0) || 'La duración debe ser un número mayor o igual a 0',
+              (val) => val === null || val === undefined || val === '' || Number.isInteger(Number(val)) || 'La duración debe ser un número entero',
+            ]"
             :dense="false"
+            @update:model-value="handleDurationChange"
           >
             <template #prepend>
               <q-icon name="schedule" />
@@ -142,9 +148,6 @@
             </template>
           </q-input>
         </div>
-      </div>
-
-      <div class="row q-col-gutter-md q-mt-sm">
         <div class="col-12 col-md-4">
           <q-input
             v-model="form.instructor"
@@ -159,7 +162,11 @@
             </template>
           </q-input>
         </div>
-        <div class="col-12 col-md-4">
+      </div>
+
+      <div class="row q-col-gutter-md q-mt-sm">
+      
+        <div v-if="false" class="col-12 col-md-4">
           <q-input
             v-model="form.area"
             filled
@@ -187,10 +194,8 @@
             </template>
           </q-select>
         </div>
-      </div>
-
-      <div class="row q-col-gutter-md q-mt-sm">
-        <div class="col-12 col-md-6">
+     
+        <div class="col-12 col-md-4">
           <q-input
             v-model="form.startDate"
             filled
@@ -212,7 +217,7 @@
             </template>
           </q-input>
         </div>
-        <div class="col-12 col-md-6">
+        <div class="col-12 col-md-4">
           <q-input
             v-model="form.endDate"
             filled
@@ -302,207 +307,231 @@
       </div>
     </q-card>
 
-    <!-- Sección 4: Materiales y Enlaces -->
+    <!-- Sección 4: Contenido del Curso -->
     <q-card flat bordered class="q-pa-md">
       <div class="row items-center q-mb-md">
-        <q-icon name="attach_file" size="24px" color="primary" class="q-mr-sm" />
-        <div class="text-h6 text-weight-medium">Materiales y Enlaces</div>
-        <q-space />
-        <q-btn
-          outline
-          color="primary"
-          icon="add"
-          label="Agregar Material"
-          size="sm"
-          @click="showAddMaterialDialog = true"
-        />
+        <q-icon name="menu_book" size="24px" color="primary" class="q-mr-sm" />
+        <div class="text-h6 text-weight-medium">Contenido del Curso</div>
       </div>
 
-      <!-- Lista de materiales con preview -->
-      <div v-if="materials.length === 0" class="empty-materials q-pa-xl text-center">
-        <q-icon name="attach_file" size="64px" color="grey-5" class="q-mb-md" />
-        <div class="text-body1 text-grey-7 q-mb-sm">No hay materiales agregados</div>
-        <div class="text-caption text-grey-6">Agrega PDFs, imágenes, videos o enlaces para enriquecer el curso</div>
-      </div>
+      <!-- Subsección 4A: Videos del Curso (Solo URLs) -->
+      <div class="videos-section q-mb-lg">
+        <div class="row items-center q-mb-md">
+          <q-icon name="videocam" size="20px" color="purple" class="q-mr-sm" />
+          <div class="text-subtitle1 text-weight-medium">Videos del Curso</div>
+          <q-space />
+          <q-btn
+            outline
+            color="purple"
+            icon="add"
+            label="Agregar Video"
+            size="sm"
+            @click="showAddVideoDialog = true"
+          />
+        </div>
 
-      <div v-else class="materials-list q-gutter-md">
-        <q-card
-          v-for="(material, index) in materials"
-          :key="material.id || `material-${index}`"
-          flat
-          bordered
-          class="material-card"
-        >
-          <q-card-section>
-            <div class="row items-center q-gutter-md">
-              <!-- Drag handle -->
-              <div class="drag-handle cursor-move">
-                <q-icon name="drag_indicator" size="24px" color="grey-6" />
-              </div>
+        <q-banner dense class="bg-purple-1 text-purple q-mb-md" rounded>
+          <template #avatar>
+            <q-icon name="info" color="purple" />
+          </template>
+          <div class="text-body2">
+            Los videos se reproducen directamente en la plataforma. Ingresa URLs de YouTube, Vimeo u otros servicios compatibles.
+          </div>
+        </q-banner>
 
-              <!-- Preview del material -->
-              <div class="material-preview-container">
-                <MaterialViewer
-                  :material="material"
-                  :show-preview="true"
-                  :allow-download="false"
-                  class="material-preview"
-                />
-              </div>
+        <!-- Lista de videos -->
+        <div v-if="videos.length === 0" class="empty-materials q-pa-lg text-center">
+          <q-icon name="videocam" size="48px" color="grey-5" class="q-mb-md" />
+          <div class="text-body2 text-grey-7 q-mb-sm">No hay videos agregados</div>
+          <div class="text-caption text-grey-6">Agrega videos que se reproducirán en la plataforma</div>
+        </div>
 
-              <!-- Información del material -->
-              <div class="col material-info">
-                <div class="text-body1 text-weight-medium q-mb-xs">
-                  {{ material.name }}
+        <div v-else class="materials-list q-gutter-md">
+          <q-card
+            v-for="(video, index) in videos"
+            :key="video.id || `video-${index}`"
+            flat
+            bordered
+            class="material-card"
+          >
+            <q-card-section>
+              <div class="row items-center q-gutter-md">
+                <div class="material-preview-container">
+                  <q-icon name="videocam" size="48px" color="purple" />
                 </div>
-                <div class="text-caption text-grey-7 q-mb-xs">
+                <div class="col material-info">
+                  <div class="text-body1 text-weight-medium q-mb-xs">
+                    {{ video.name }}
+                  </div>
+                  <q-chip color="purple" text-color="white" size="sm" dense>
+                    Video
+                  </q-chip>
+                  <div v-if="video.description" class="text-caption text-grey-6 q-mt-xs">
+                    {{ video.description }}
+                  </div>
+                  <div class="text-caption text-grey-6 q-mt-xs">
+                    {{ video.url }}
+                  </div>
+                </div>
+                <div class="material-actions">
+                  <q-btn-group flat>
+                    <q-btn
+                      icon="edit"
+                      flat
+                      round
+                      dense
+                      @click="editVideo(index)"
+                    >
+                      <q-tooltip>Editar</q-tooltip>
+                    </q-btn>
+                    <q-btn
+                      icon="delete"
+                      flat
+                      round
+                      dense
+                      color="negative"
+                      @click="removeVideo(index)"
+                    >
+                      <q-tooltip>Eliminar</q-tooltip>
+                    </q-btn>
+                  </q-btn-group>
+                </div>
+              </div>
+            </q-card-section>
+          </q-card>
+        </div>
+      </div>
+
+      <q-separator class="q-my-lg" />
+
+      <!-- Subsección 4B: Archivos e Imágenes (Upload) -->
+      <div class="files-section">
+        <div class="row items-center q-mb-md">
+          <q-icon name="attach_file" size="20px" color="primary" class="q-mr-sm" />
+          <div class="text-subtitle1 text-weight-medium">Archivos e Imágenes</div>
+          <q-space />
+          <q-btn
+            outline
+            color="primary"
+            icon="upload_file"
+            label="Subir Archivo"
+            size="sm"
+            @click="showUploadFileDialog = true"
+          />
+        </div>
+
+        <q-banner dense class="bg-info-1 text-info q-mb-md" rounded>
+          <template #avatar>
+            <q-icon name="info" color="info" />
+          </template>
+          <div class="text-body2">
+            Sube PDFs e imágenes que se almacenarán en el servidor. Los archivos estarán disponibles en:
+            <code>localhost:3000/storage/materials</code>
+          </div>
+        </q-banner>
+
+        <!-- Lista de archivos subidos -->
+        <div v-if="files.length === 0" class="empty-materials q-pa-lg text-center">
+          <q-icon name="attach_file" size="48px" color="grey-5" class="q-mb-md" />
+          <div class="text-body2 text-grey-7 q-mb-sm">No hay archivos subidos</div>
+          <div class="text-caption text-grey-6">Sube PDFs e imágenes para enriquecer el curso</div>
+        </div>
+
+        <div v-else class="materials-list q-gutter-md">
+          <q-card
+            v-for="(file, index) in files"
+            :key="file.id || `file-${index}`"
+            flat
+            bordered
+            class="material-card"
+          >
+            <q-card-section>
+              <div class="row items-center q-gutter-md">
+                <div class="material-preview-container">
+                  <MaterialViewer
+                    :material="file"
+                    :show-preview="true"
+                    :allow-download="false"
+                    class="material-preview"
+                  />
+                </div>
+                <div class="col material-info">
+                  <div class="text-body1 text-weight-medium q-mb-xs">
+                    {{ file.name }}
+                  </div>
                   <q-chip
-                    :color="getMaterialTypeColor(material.type)"
+                    :color="getMaterialTypeColor(file.type)"
                     text-color="white"
                     size="sm"
                     dense
                   >
-                    {{ getMaterialTypeLabel(material.type) }}
+                    {{ getMaterialTypeLabel(file.type) }}
                   </q-chip>
+                  <div v-if="file.description" class="text-caption text-grey-6 q-mt-xs">
+                    {{ file.description }}
+                  </div>
                 </div>
-                <div
-                  v-if="material.description"
-                  class="text-caption text-grey-6"
-                >
-                  {{ material.description }}
-                </div>
-                <div class="text-caption text-grey-6 q-mt-xs">
-                  Orden: {{ index + 1 }}
+                <div class="material-actions">
+                  <q-btn-group flat>
+                    <q-btn
+                      icon="edit"
+                      flat
+                      round
+                      dense
+                      @click="editFile(index)"
+                    >
+                      <q-tooltip>Editar</q-tooltip>
+                    </q-btn>
+                    <q-btn
+                      icon="delete"
+                      flat
+                      round
+                      dense
+                      color="negative"
+                      @click="removeFile(index)"
+                    >
+                      <q-tooltip>Eliminar</q-tooltip>
+                    </q-btn>
+                  </q-btn-group>
                 </div>
               </div>
+            </q-card-section>
+          </q-card>
+        </div>
+      </div>
+    </q-card>
 
-              <!-- Acciones -->
-              <div class="material-actions">
-                <q-btn-group flat>
-                  <q-btn
-                    icon="edit"
-                    flat
-                    round
-                    dense
-                    @click="editMaterial(index)"
-                  >
-                    <q-tooltip>Editar</q-tooltip>
-                  </q-btn>
-                  <q-btn
-                    icon="delete"
-                    flat
-                    round
-                    dense
-                    color="negative"
-                    @click="removeMaterial(index)"
-                  >
-                    <q-tooltip>Eliminar</q-tooltip>
-                  </q-btn>
-                </q-btn-group>
-              </div>
-            </div>
-          </q-card-section>
-        </q-card>
+    <!-- Sección 5: Evaluación (RF-09) - Siempre inline -->
+    <q-card flat bordered class="q-pa-md q-mt-md evaluation-section">
+      <div class="row items-center q-mb-md">
+        <q-icon
+          name="quiz"
+          size="24px"
+          :color="hasEvaluation ? 'primary' : 'warning'"
+          class="q-mr-sm"
+        />
+        <div class="text-h6 text-weight-medium">Evaluación</div>
+        <q-badge v-if="!hasEvaluation" color="warning" class="q-ml-md">
+          Requerida
+        </q-badge>
       </div>
 
-      <!-- Sección: Evaluación (RF-09) -->
-      <q-separator class="q-my-md" />
-      <q-card
-        flat
-        bordered
-        class="q-pa-md q-mt-md evaluation-section"
-        :class="{
-          'evaluation-warning': !hasEvaluation,
-          'evaluation-selected': hasEvaluation,
-        }"
+      <q-banner
+        dense
+        class="bg-primary-1 text-primary q-mb-md"
+        rounded
       >
-        <div class="row items-center q-mb-md">
-          <q-icon
-            name="quiz"
-            size="24px"
-            :color="hasEvaluation ? 'primary' : 'warning'"
-            class="q-mr-sm"
-          />
-          <div class="text-h6 text-weight-medium">Evaluación</div>
-          <q-badge v-if="!hasEvaluation" color="warning" class="q-ml-md">
-            Requerida
-          </q-badge>
+        <template #avatar>
+          <q-icon name="info" color="primary" />
+        </template>
+        <div class="text-body2">
+          <strong>Evaluación obligatoria (RF-09):</strong> Cada capacitación requiere una evaluación.
+          Créela aquí con preguntas y opciones de respuesta.
         </div>
+      </q-banner>
 
-        <q-banner
-          v-if="!hasEvaluation"
-          dense
-          class="bg-warning-1 text-warning q-mb-md"
-          rounded
-        >
-          <template #avatar>
-            <q-icon name="warning" color="warning" />
-          </template>
-          <div class="text-body2">
-            <strong>Evaluación obligatoria (RF-09):</strong> Cada capacitación debe tener una evaluación vinculada.
-            No se puede publicar un curso sin evaluación.
-          </div>
-        </q-banner>
-
-        <!-- Toggle para elegir modo -->
-        <q-btn-toggle
-          v-model="evaluationMode"
-          toggle-color="primary"
-          :options="[
-            { label: 'Vincular evaluación existente', value: 'link' },
-            { label: 'Crear nueva evaluación', value: 'create' },
-          ]"
-          class="q-mb-md"
-        />
-
-        <!-- Modo: Vincular evaluación existente -->
-        <div v-if="evaluationMode === 'link'">
-          <q-select
-            v-model="form.evaluationId"
-            filled
-            :options="evaluationOptions"
-            label="Evaluación asociada *"
-            emit-value
-            map-options
-            :rules="[(val) => !!val || 'Debe seleccionar una evaluación']"
-            hint="Seleccione la evaluación que se aplicará en esta capacitación"
-            :dense="false"
-            :loading="loadingEvaluations"
-            clearable
-            @update:model-value="form.evaluationInline = null"
-          >
-            <template #prepend>
-              <q-icon name="assignment" />
-            </template>
-            <template #no-option>
-              <q-item>
-                <q-item-section class="text-grey">
-                  <q-item-label v-if="loadingEvaluations">
-                    Cargando evaluaciones...
-                  </q-item-label>
-                  <q-item-label v-else>
-                    No hay evaluaciones disponibles. Use la opción "Crear nueva evaluación".
-                  </q-item-label>
-                </q-item-section>
-              </q-item>
-            </template>
-          </q-select>
-
-          <div v-if="form.evaluationId" class="q-mt-sm">
-            <q-btn
-              flat
-              dense
-              color="primary"
-              icon="open_in_new"
-              label="Ver detalles de la evaluación"
-              size="sm"
-              @click="handleViewEvaluationDetails"
-            />
-          </div>
-        </div>
-
-        <!-- Modo: Crear nueva evaluación inline -->
-        <div v-else class="q-mt-md">
+      <!-- Formulario de evaluación inline -->
+      <div class="q-mt-md">
           <q-banner dense class="bg-info-1 text-info q-mb-md" rounded>
             <template #avatar>
               <q-icon name="info" color="info" />
@@ -513,9 +542,9 @@
           </q-banner>
 
           <!-- Formulario de evaluación -->
-          <div class="q-gutter-md">
+          <div class="q-gutter-md" v-if="form.evaluationInline">
             <q-input
-              v-model="form.evaluationInline!.titulo"
+              v-model="form.evaluationInline.titulo"
               filled
               label="Título de la evaluación *"
               hint="Nombre descriptivo de la evaluación"
@@ -528,19 +557,19 @@
             </q-input>
 
             <q-input
-              v-model="form.evaluationInline!.descripcion"
+              v-model="form.evaluationInline.descripcion"
               filled
               type="textarea"
               label="Descripción"
               hint="Descripción opcional de la evaluación"
               :dense="false"
-              rows="2"
+              rows="3"
             />
 
-            <div class="row q-col-gutter-md">
+            <div class="row q-col-gutter-md q-mt-sm">
               <div class="col-12 col-md-6">
                 <q-input
-                  v-model.number="form.evaluationInline!.tiempoLimiteMinutos"
+                  v-model.number="form.evaluationInline.tiempoLimiteMinutos"
                   filled
                   type="number"
                   label="Tiempo límite (minutos)"
@@ -555,7 +584,7 @@
               </div>
               <div class="col-12 col-md-6">
                 <q-input
-                  v-model.number="form.evaluationInline!.intentosPermitidos"
+                  v-model.number="form.evaluationInline.intentosPermitidos"
                   filled
                   type="number"
                   label="Intentos permitidos *"
@@ -573,23 +602,23 @@
             <div class="row q-col-gutter-md">
               <div class="col-12 col-md-6">
                 <q-input
-                  v-model.number="form.evaluationInline!.puntajeTotal"
+                  :model-value="calculatedPuntajeTotal"
                   filled
                   type="number"
                   label="Puntaje total *"
-                  hint="Puntaje máximo de la evaluación"
+                  hint="Calculado automáticamente: suma de los puntajes de todas las preguntas"
                   :dense="false"
-                  min="0"
-                  step="0.01"
+                  readonly
+                  class="readonly-field"
                 >
                   <template #prepend>
-                    <q-icon name="star" />
+                    <q-icon name="calculate" />
                   </template>
                 </q-input>
               </div>
               <div class="col-12 col-md-6">
                 <q-input
-                  v-model.number="form.evaluationInline!.minimoAprobacion"
+                  v-model.number="form.evaluationInline.minimoAprobacion"
                   filled
                   type="number"
                   label="Mínimo para aprobar (%) *"
@@ -606,15 +635,22 @@
               </div>
             </div>
 
-            <q-toggle
-              v-model="form.evaluationInline!.mostrarResultados"
-              label="Mostrar resultados al finalizar"
-            />
-
-            <q-toggle
-              v-model="form.evaluationInline!.mostrarRespuestasCorrectas"
-              label="Mostrar respuestas correctas"
-            />
+            <div class="row q-col-gutter-md q-mt-sm">
+              <div class="col-12 col-md-6">
+                <q-toggle
+                  v-model="form.evaluationInline.mostrarResultados"
+                  label="Mostrar resultados al finalizar"
+                  color="primary"
+                />
+              </div>
+              <div class="col-12 col-md-6">
+                <q-toggle
+                  v-model="form.evaluationInline.mostrarRespuestasCorrectas"
+                  label="Mostrar respuestas correctas"
+                  color="primary"
+                />
+              </div>
+            </div>
 
             <!-- Sección de preguntas -->
             <q-separator class="q-my-md" />
@@ -624,7 +660,7 @@
             </div>
 
             <div
-              v-for="(pregunta, preguntaIndex) in form.evaluationInline!.preguntas"
+              v-for="(pregunta, preguntaIndex) in form.evaluationInline.preguntas"
               :key="preguntaIndex"
               class="q-mb-lg"
             >
@@ -635,7 +671,7 @@
                   </div>
                   <q-space />
                   <q-btn
-                    v-if="form.evaluationInline!.preguntas.length > 1"
+                    v-if="form.evaluationInline.preguntas.length > 1"
                     flat
                     dense
                     round
@@ -765,10 +801,10 @@
             />
           </div>
         </div>
-      </q-card>
+    </q-card>
 
-      <!-- Enlaces externos (mantener compatibilidad) -->
-      <q-separator class="q-my-md" />
+    <!-- Enlaces externos (mantener compatibilidad) -->
+    <q-card flat bordered class="q-pa-md q-mt-md">
       <div class="text-subtitle2 q-mb-sm text-weight-medium">
         <q-icon name="link" size="18px" class="q-mr-xs" />
         Enlaces Externos (Legacy)
@@ -827,74 +863,171 @@
           class="q-mt-sm"
         />
       </div>
-
-      <!-- Dialog para agregar/editar material -->
-      <q-dialog v-model="showAddMaterialDialog">
-        <q-card style="min-width: 500px">
-          <q-card-section>
-            <div class="text-h6">
-              {{ editingMaterialIndex !== null ? 'Editar Material' : 'Agregar Material' }}
-            </div>
-          </q-card-section>
-
-          <q-card-section class="q-pt-none">
-            <q-input
-              v-model="newMaterial.name"
-              filled
-              label="Nombre del material *"
-              placeholder="Ej: Guía de estudio PDF"
-              :rules="[(val) => !!val || 'El nombre es requerido']"
-              class="q-mb-md"
-            />
-            <q-select
-              v-model="newMaterial.type"
-              filled
-              :options="materialTypes"
-              label="Tipo de material *"
-              emit-value
-              map-options
-              :rules="[(val) => !!val || 'Seleccione un tipo']"
-              class="q-mb-md"
-            />
-            <q-input
-              v-model="newMaterial.url"
-              filled
-              label="URL *"
-              placeholder="https://..."
-              :rules="[
-                (val) => !!val || 'La URL es requerida',
-                (val) => validateMaterialUrl(val, newMaterial.type) || 'URL no válida para el tipo seleccionado',
-              ]"
-              hint="Ingrese la URL del material (PDF, imagen, video, etc.)"
-              class="q-mb-md"
-            />
-            <q-input
-              v-model="newMaterial.description"
-              type="textarea"
-              filled
-              label="Descripción (opcional)"
-              placeholder="Descripción breve del material..."
-              autogrow
-              rows="2"
-            />
-          </q-card-section>
-
-          <q-card-actions align="right">
-            <q-btn
-              flat
-              label="Cancelar"
-              color="grey-7"
-              @click="cancelAddMaterial"
-            />
-            <q-btn
-              color="primary"
-              label="Guardar"
-              @click="saveMaterial"
-            />
-          </q-card-actions>
-        </q-card>
-      </q-dialog>
     </q-card>
+
+    <!-- Dialog para agregar/editar video -->
+    <q-dialog v-model="showAddVideoDialog">
+      <q-card style="min-width: 500px">
+        <q-card-section>
+          <div class="text-h6">
+            {{ editingVideoIndex !== null ? 'Editar Video' : 'Agregar Video' }}
+          </div>
+        </q-card-section>
+
+        <q-card-section class="q-pt-none">
+          <q-input
+            v-model="newVideo.name"
+            filled
+            label="Nombre del video *"
+            placeholder="Ej: Introducción al curso"
+            :rules="[(val) => !!val || 'El nombre es requerido']"
+            class="q-mb-md"
+          />
+          <q-input
+            v-model="newVideo.url"
+            filled
+            label="URL del Video *"
+            placeholder="https://youtube.com/watch?v=... o https://vimeo.com/..."
+            :rules="[
+              (val) => !!val || 'La URL es requerida',
+              (val) => isValidVideoUrl(val) || 'URL de video no válida (YouTube, Vimeo, etc.)'
+            ]"
+            hint="Soporta YouTube, Vimeo y otros servicios de video"
+            class="q-mb-md"
+          >
+            <template #append>
+              <q-btn
+                v-if="newVideo.url"
+                flat
+                dense
+                round
+                icon="play_circle"
+                @click="previewVideo(newVideo.url)"
+              >
+                <q-tooltip>Previsualizar video</q-tooltip>
+              </q-btn>
+            </template>
+          </q-input>
+          <q-input
+            v-model="newVideo.description"
+            type="textarea"
+            filled
+            label="Descripción (opcional)"
+            rows="2"
+          />
+        </q-card-section>
+
+        <q-card-actions align="right">
+          <q-btn
+            flat
+            label="Cancelar"
+            color="grey-7"
+            @click="cancelAddVideo"
+          />
+          <q-btn
+            color="primary"
+            label="Agregar"
+            @click="saveVideo"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <!-- Dialog para subir archivo -->
+    <q-dialog v-model="showUploadFileDialog">
+      <q-card style="min-width: 500px">
+        <q-card-section>
+          <div class="text-h6">
+            {{ editingFileIndex !== null ? 'Editar Archivo' : 'Subir Archivo o Imagen' }}
+          </div>
+        </q-card-section>
+
+        <q-card-section class="q-pt-none">
+          <q-input
+            v-model="newFile.name"
+            filled
+            label="Nombre del archivo *"
+            placeholder="Ej: Guía de estudio"
+            :rules="[(val) => !!val || 'El nombre es requerido']"
+            class="q-mb-md"
+          />
+
+          <q-select
+            v-model="newFile.type"
+            filled
+            :options="fileTypes"
+            label="Tipo de archivo *"
+            emit-value
+            map-options
+            :rules="[(val) => !!val || 'Seleccione un tipo']"
+            class="q-mb-md"
+          />
+
+          <q-file
+            v-model="newFile.file"
+            filled
+            :label="getFileUploadLabel()"
+            :accept="getFileAcceptTypes()"
+            :max-file-size="10 * 1024 * 1024"
+            @update:model-value="handleFileSelected"
+            class="q-mb-md"
+          >
+            <template #prepend>
+              <q-icon name="upload_file" />
+            </template>
+            <template #append>
+              <q-btn
+                v-if="newFile.file && isImageFile(newFile.file)"
+                flat
+                dense
+                round
+                icon="visibility"
+                @click="previewFile(newFile.file)"
+              />
+            </template>
+          </q-file>
+
+          <!-- Preview del archivo seleccionado -->
+          <div v-if="newFile.file && isImageFile(newFile.file)" class="q-mb-md">
+            <q-img
+              :src="getFilePreviewUrl(newFile.file)"
+              style="max-height: 200px; border-radius: 8px"
+            />
+          </div>
+
+          <!-- Barra de progreso de upload -->
+          <q-linear-progress
+            v-if="uploading"
+            :value="uploadProgress"
+            color="primary"
+            class="q-mb-md"
+          />
+
+          <q-input
+            v-model="newFile.description"
+            type="textarea"
+            filled
+            label="Descripción (opcional)"
+            rows="2"
+          />
+        </q-card-section>
+
+        <q-card-actions align="right">
+          <q-btn
+            flat
+            label="Cancelar"
+            color="grey-7"
+            @click="cancelUploadFile"
+          />
+          <q-btn
+            color="primary"
+            label="Subir y Agregar"
+            :loading="uploading"
+            @click="uploadAndSaveFile"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
 
     <!-- Botones de Acción -->
     <div class="row justify-between items-center q-mt-lg q-pt-md" style="border-top: 1px solid rgba(0,0,0,0.12)">
@@ -914,7 +1047,7 @@
           type="submit"
           color="primary"
           unelevated
-          label="Crear capacitación"
+          :label="isEditMode ? 'Actualizar capacitación' : 'Crear capacitación'"
           icon="check"
           :loading="false"
           class="q-px-xl"
@@ -927,10 +1060,10 @@
 <script setup lang="ts">
 import { reactive, ref, onMounted, computed, watch } from 'vue';
 import { useQuasar } from 'quasar';
-import { useRouter } from 'vue-router';
 import MaterialViewer from '../../../shared/components/MaterialViewer.vue';
 import type { Material } from '../../../shared/components/MaterialViewer.vue';
-import { evaluationsService } from '../../../infrastructure/http/evaluations/evaluations.service';
+import { materialsService } from '../../../infrastructure/http/materials/materials.service';
+import { useMaterialUrl } from '../../../shared/composables/useMaterialUrl';
 
 export interface EvaluationOption {
   id?: number; // ID de la opción (para edición)
@@ -1021,36 +1154,59 @@ const emit = defineEmits<{
   submit: [TrainingFormModel, Material[]];
 }>();
 
-// Toggle para elegir entre vincular evaluación existente o crear nueva
-const evaluationMode = ref<'link' | 'create'>('link');
-
 const $q = useQuasar();
-const router = useRouter();
 const showImagePreview = ref(false);
-const showAddMaterialDialog = ref(false);
-const editingMaterialIndex = ref<number | null>(null);
-const materials = ref<Material[]>([]);
+
+// Composables
+const { buildFullUrl } = useMaterialUrl();
+
+// Detectar modo edición
+const isEditMode = computed(() => {
+  return !!props.initialData?.id;
+});
+
+// Estados para videos
+const showAddVideoDialog = ref(false);
+const editingVideoIndex = ref<number | null>(null);
+const videos = ref<Material[]>([]);
+
+// Estados para archivos
+const showUploadFileDialog = ref(false);
+const editingFileIndex = ref<number | null>(null);
+const files = ref<Material[]>([]);
+const uploading = ref(false);
+const uploadProgress = ref(0);
+
+// Materiales combinados (para compatibilidad con el emit)
+const materials = computed(() => [...videos.value, ...files.value]);
 
 // Estados de validación en tiempo real
 const titleError = ref('');
 const descriptionError = ref('');
 
-const newMaterial = reactive<Material>({
+const newVideo = reactive<Material>({
   name: '',
   url: '',
-  type: 'PDF',
+  type: 'VIDEO',
   description: '',
   order: 0,
 });
 
-const materialTypes = [
+const newFile = reactive<{
+  name: string;
+  type: string;
+  file: File | null;
+  description: string;
+}>({
+  name: '',
+  type: 'PDF',
+  file: null,
+  description: '',
+});
+
+const fileTypes = [
   { label: 'PDF', value: 'PDF' },
   { label: 'Imagen', value: 'IMAGE' },
-  { label: 'Video', value: 'VIDEO' },
-  { label: 'Documento Word', value: 'DOC' },
-  { label: 'Enlace externo', value: 'LINK' },
-  { label: 'Presentación', value: 'PRESENTATION' },
-  { label: 'Audio', value: 'AUDIO' },
 ];
 
 const trainingTypes = [
@@ -1066,17 +1222,13 @@ const modalities = [
 ];
 
 const targetAudiences = [
-  'Todos los colaboradores',
-  'Jefaturas',
-  'Operaciones',
-  'Backoffice',
-  'Desarrolladores',
-  'Diseñadores',
+  'Conductores',
+  'Administrativos',
+  'Operadores',
+  'Clientes',
+  'Proveedores',
+  'Otros',
 ];
-
-// Opciones de evaluaciones (cargadas dinámicamente desde backend)
-const evaluationOptions = ref<Array<{ label: string; value: number }>>([]);
-const loadingEvaluations = ref(false);
 
 // Tipos de pregunta (RF-16)
 const questionTypes = [
@@ -1087,17 +1239,28 @@ const questionTypes = [
   { label: 'Sí o No', value: 5 },
 ];
 
-// Computed para verificar si hay evaluación (link o inline)
+// Computed para verificar si hay evaluación (siempre inline ahora)
 const hasEvaluation = computed(() => {
-  return (
-    (evaluationMode.value === 'link' && !!form.evaluationId) ||
-    (evaluationMode.value === 'create' && !!form.evaluationInline && form.evaluationInline.preguntas.length > 0)
+  return !!form.evaluationInline && form.evaluationInline.preguntas.length > 0;
+});
+
+/**
+ * Calcula automáticamente el puntaje total de la evaluación
+ * como la suma de los puntajes de todas las preguntas
+ */
+const calculatedPuntajeTotal = computed(() => {
+  if (!form.evaluationInline?.preguntas || form.evaluationInline.preguntas.length === 0) {
+    return 0;
+  }
+  return form.evaluationInline.preguntas.reduce(
+    (sum, pregunta) => sum + (pregunta.puntaje || 0),
+    0
   );
 });
 
-// Inicializar evaluación inline cuando se cambia a modo 'create'
-watch(evaluationMode, (newMode: 'link' | 'create') => {
-  if (newMode === 'create' && !form.evaluationInline) {
+// Inicializar evaluación inline si no existe (para modo edición)
+onMounted(() => {
+  if (!form.evaluationInline) {
     form.evaluationInline = {
       titulo: '',
       descripcion: '',
@@ -1121,44 +1284,290 @@ watch(evaluationMode, (newMode: 'link' | 'create') => {
         },
       ],
     };
-    form.evaluationId = null;
-  } else if (newMode === 'link') {
-    form.evaluationInline = null;
   }
 });
 
-// Cargar evaluaciones disponibles desde el backend
-async function loadEvaluations(): Promise<void> {
-  loadingEvaluations.value = true;
-  try {
-    const response = await evaluationsService.findAll({
-      page: 1,
-      limit: 100, // Cargar todas las evaluaciones disponibles
-    });
+// Funciones para manejar videos
+function isValidVideoUrl(url: string): boolean {
+  if (!url || !url.startsWith('http')) return false;
+  const urlLower = url.toLowerCase();
+  return (
+    urlLower.includes('youtube.com') ||
+    urlLower.includes('youtu.be') ||
+    urlLower.includes('vimeo.com') ||
+    urlLower.includes('drive.google.com') ||
+    /\.(mp4|webm|ogg)$/i.test(urlLower)
+  );
+}
 
-    evaluationOptions.value = response.data.map((evaluation) => ({
-      label: evaluation.description
-        ? `${evaluation.courseName} - ${evaluation.description}`
-        : evaluation.courseName,
-      value: parseInt(evaluation.id),
-    }));
-  } catch (error) {
-    console.error('Error al cargar evaluaciones:', error);
-    // En caso de error, usar opciones mock como fallback
-    evaluationOptions.value = [
-      { label: 'Evaluación de Manejo Defensivo', value: 1 },
-      { label: 'Evaluación de Primeros Auxilios', value: 2 },
-      { label: 'Evaluación de Transporte de Mercancías Peligrosas', value: 3 },
-    ];
+function previewVideo(url: string): void {
+  // Abrir preview en nueva ventana o mostrar en modal
+  window.open(url, '_blank');
+}
+
+function saveVideo(): void {
+  if (!newVideo.name || !newVideo.url) {
     $q.notify({
-      type: 'warning',
-      message: 'No se pudieron cargar las evaluaciones. Usando opciones predeterminadas.',
+      type: 'negative',
+      message: 'Complete todos los campos requeridos',
       position: 'top',
-      timeout: 3000,
+    });
+    return;
+  }
+
+  if (!isValidVideoUrl(newVideo.url)) {
+    $q.notify({
+      type: 'negative',
+      message: 'La URL de video no es válida',
+      position: 'top',
+    });
+    return;
+  }
+
+  if (editingVideoIndex.value !== null) {
+    const existingVideo = videos.value[editingVideoIndex.value];
+    if (existingVideo) {
+      videos.value[editingVideoIndex.value] = {
+        ...newVideo,
+        id: existingVideo.id || generateId(),
+        order: editingVideoIndex.value,
+      };
+    }
+  } else {
+    videos.value.push({
+      ...newVideo,
+      id: generateId(),
+      order: videos.value.length,
+    });
+  }
+
+  cancelAddVideo();
+  $q.notify({
+    type: 'positive',
+    message: editingVideoIndex.value !== null ? 'Video actualizado' : 'Video agregado',
+    position: 'top',
+  });
+}
+
+function editVideo(index: number): void {
+  editingVideoIndex.value = index;
+  const video = videos.value[index];
+  if (!video) return;
+  newVideo.name = video.name;
+  newVideo.url = video.url;
+  newVideo.description = video.description || '';
+  showAddVideoDialog.value = true;
+}
+
+function removeVideo(index: number): void {
+  $q.dialog({
+    title: 'Confirmar eliminación',
+    message: '¿Está seguro de que desea eliminar este video?',
+    cancel: true,
+    persistent: true,
+  }).onOk(() => {
+    videos.value.splice(index, 1);
+    videos.value.forEach((v, idx) => {
+      v.order = idx;
+    });
+    $q.notify({
+      type: 'positive',
+      message: 'Video eliminado',
+      position: 'top',
+    });
+  });
+}
+
+function cancelAddVideo(): void {
+  showAddVideoDialog.value = false;
+  editingVideoIndex.value = null;
+  newVideo.name = '';
+  newVideo.url = '';
+  newVideo.description = '';
+  newVideo.order = 0;
+}
+
+// Funciones para manejar archivos
+function getFileUploadLabel(): string {
+  if (newFile.type === 'PDF') {
+    return 'Seleccionar archivo PDF *';
+  }
+  return 'Seleccionar imagen *';
+}
+
+function getFileAcceptTypes(): string {
+  if (newFile.type === 'PDF') {
+    return '.pdf';
+  }
+  return 'image/*';
+}
+
+function isImageFile(file: File): boolean {
+  return file.type.startsWith('image/');
+}
+
+function getFilePreviewUrl(file: File): string {
+  return URL.createObjectURL(file);
+}
+
+function previewFile(file: File | null): void {
+  if (!file) return;
+  if (isImageFile(file)) {
+    const url = getFilePreviewUrl(file);
+    $q.dialog({
+      component: 'div',
+      componentProps: {
+        style: 'text-align: center; padding: 20px;',
+      },
+    }).onOk(() => {
+      URL.revokeObjectURL(url);
+    });
+    // Mostrar imagen en un modal simple
+    window.open(url, '_blank');
+  }
+}
+
+function handleFileSelected(file: File | null): void {
+  if (file) {
+    // Validar tipo
+    if (newFile.type === 'PDF' && file.type !== 'application/pdf') {
+      $q.notify({
+        type: 'negative',
+        message: 'El archivo seleccionado no es un PDF',
+        position: 'top',
+      });
+      newFile.file = null;
+      return;
+    }
+    if (newFile.type === 'IMAGE' && !isImageFile(file)) {
+      $q.notify({
+        type: 'negative',
+        message: 'El archivo seleccionado no es una imagen',
+        position: 'top',
+      });
+      newFile.file = null;
+      return;
+    }
+    // Validar tamaño (10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      $q.notify({
+        type: 'negative',
+        message: 'El archivo excede el tamaño máximo de 10MB',
+        position: 'top',
+      });
+      newFile.file = null;
+      return;
+    }
+  }
+}
+
+async function uploadAndSaveFile(): Promise<void> {
+  if (!newFile.name || !newFile.file) {
+    $q.notify({
+      type: 'negative',
+      message: 'Complete todos los campos requeridos',
+      position: 'top',
+    });
+    return;
+  }
+
+  uploading.value = true;
+  uploadProgress.value = 0;
+
+  try {
+    const response = await materialsService.uploadFile(
+      newFile.file,
+      (progress) => {
+        uploadProgress.value = progress;
+      },
+    );
+
+    // Guardar URL relativa para el backend, pero construir URL completa para visualización
+    // El backend espera URLs relativas o URLs completas válidas
+    // Para archivos locales, guardamos la URL relativa que viene del backend
+    // Para visualización, construimos la URL completa
+    const relativeUrl = response.url; // El backend ya retorna la URL relativa
+    const fullUrl = buildFullUrl(relativeUrl); // Para visualización en el frontend
+
+    // Tipo extendido para incluir URL relativa temporal
+    interface MaterialWithRelativeUrl extends Material {
+      _relativeUrl?: string;
+    }
+    
+    const fileMaterial: MaterialWithRelativeUrl = {
+      id: generateId(),
+      name: newFile.name,
+      url: fullUrl, // URL completa para visualización en el frontend
+      type: newFile.type as 'PDF' | 'IMAGE',
+      description: newFile.description || '',
+      order: files.value.length,
+      // Guardar también la URL relativa para cuando se envíe al backend
+      _relativeUrl: relativeUrl,
+    };
+
+    if (editingFileIndex.value !== null) {
+      files.value[editingFileIndex.value] = fileMaterial;
+    } else {
+      files.value.push(fileMaterial);
+    }
+
+    cancelUploadFile();
+    $q.notify({
+      type: 'positive',
+      message: editingFileIndex.value !== null ? 'Archivo actualizado' : 'Archivo subido exitosamente',
+      position: 'top',
+    });
+  } catch (error) {
+    console.error('Error al subir archivo:', error);
+    $q.notify({
+      type: 'negative',
+      message: error instanceof Error ? error.message : 'Error al subir el archivo',
+      position: 'top',
     });
   } finally {
-    loadingEvaluations.value = false;
+    uploading.value = false;
+    uploadProgress.value = 0;
   }
+}
+
+function editFile(index: number): void {
+  editingFileIndex.value = index;
+  const file = files.value[index];
+  if (!file) return;
+  newFile.name = file.name;
+  newFile.type = file.type as 'PDF' | 'IMAGE';
+  newFile.description = file.description || '';
+  newFile.file = null; // No se puede editar el archivo, solo los metadatos
+  showUploadFileDialog.value = true;
+}
+
+function removeFile(index: number): void {
+  $q.dialog({
+    title: 'Confirmar eliminación',
+    message: '¿Está seguro de que desea eliminar este archivo?',
+    cancel: true,
+    persistent: true,
+  }).onOk(() => {
+    files.value.splice(index, 1);
+    files.value.forEach((f, idx) => {
+      f.order = idx;
+    });
+    $q.notify({
+      type: 'positive',
+      message: 'Archivo eliminado',
+      position: 'top',
+    });
+  });
+}
+
+function cancelUploadFile(): void {
+  showUploadFileDialog.value = false;
+  editingFileIndex.value = null;
+  newFile.name = '';
+  newFile.type = 'PDF';
+  newFile.file = null;
+  newFile.description = '';
+  uploadProgress.value = 0;
 }
 
 // Funciones para manejar preguntas y opciones
@@ -1238,13 +1647,35 @@ const form = reactive<TrainingFormModel>({
   capacity: null,
   instructor: '',
   area: '',
-  targetAudience: null,
+  targetAudience: 'Conductores',
   startDate: '',
   endDate: '',
   coverImageUrl: '',
   promoVideoUrl: '',
   evaluationId: null, // RF-09: Evaluación obligatoria (para vincular existente)
-  evaluationInline: null, // RF-09: Evaluación a crear inline
+  evaluationInline: {
+    titulo: '',
+    descripcion: '',
+    intentosPermitidos: 1,
+    mostrarResultados: true,
+    mostrarRespuestasCorrectas: false,
+    puntajeTotal: 100,
+    minimoAprobacion: 70,
+    orden: 0,
+    preguntas: [
+      {
+        tipoPreguntaId: 1,
+        enunciado: '',
+        puntaje: 1,
+        orden: 0,
+        requerida: true,
+        opciones: [
+          { texto: '', esCorrecta: false, puntajeParcial: 0, orden: 0 },
+          { texto: '', esCorrecta: false, puntajeParcial: 0, orden: 1 },
+        ],
+      },
+    ],
+  }, // RF-09: Evaluación a crear inline
   attachments: [],
   links: [],
 });
@@ -1259,19 +1690,42 @@ function reset() {
   form.capacity = null;
   form.instructor = '';
   form.area = '';
-  form.targetAudience = null;
+  form.targetAudience = 'Conductores';
   form.startDate = '';
   form.endDate = '';
   form.coverImageUrl = '';
   form.promoVideoUrl = '';
   form.evaluationId = null;
-  form.evaluationInline = null;
+  form.evaluationInline = {
+    titulo: '',
+    descripcion: '',
+    intentosPermitidos: 1,
+    mostrarResultados: true,
+    mostrarRespuestasCorrectas: false,
+    puntajeTotal: 100,
+    minimoAprobacion: 70,
+    orden: 0,
+    preguntas: [
+      {
+        tipoPreguntaId: 1,
+        enunciado: '',
+        puntaje: 1,
+        orden: 0,
+        requerida: true,
+        opciones: [
+          { texto: '', esCorrecta: false, puntajeParcial: 0, orden: 0 },
+          { texto: '', esCorrecta: false, puntajeParcial: 0, orden: 1 },
+        ],
+      },
+    ],
+  };
   form.attachments = [];
   form.links = [];
+  videos.value = [];
+  files.value = [];
   showImagePreview.value = false;
   titleError.value = '';
   descriptionError.value = '';
-  evaluationMode.value = 'link';
 }
 
 // Inicializar formulario con datos existentes (modo edición)
@@ -1289,28 +1743,21 @@ function initializeFormWithData() {
   form.capacity = data.capacity ?? null;
   form.instructor = data.instructor || '';
   form.area = data.area || '';
-  form.targetAudience = data.targetAudience ?? null;
+  form.targetAudience = data.targetAudience ?? 'Conductores';
   form.startDate = data.startDate || '';
   form.endDate = data.endDate || '';
   form.coverImageUrl = data.coverImageUrl || '';
   form.promoVideoUrl = data.promoVideoUrl || '';
 
-  // Cargar materiales iniciales
+  // Cargar materiales iniciales y separar videos de archivos
   if (props.initialMaterials && props.initialMaterials.length > 0) {
-    materials.value = [...props.initialMaterials];
+    videos.value = props.initialMaterials.filter(m => m.type === 'VIDEO');
+    files.value = props.initialMaterials.filter(m => m.type !== 'VIDEO');
   }
 
   // Cargar evaluación inline si se proporciona (modo edición)
   if (props.initialEvaluationInline) {
     form.evaluationInline = { ...props.initialEvaluationInline };
-    evaluationMode.value = 'create';
-  } else if (props.initialEvaluationId) {
-    // Cargar evaluación vinculada
-    form.evaluationId = props.initialEvaluationId;
-    evaluationMode.value = 'link';
-  } else if (data.evaluations && data.evaluations.length > 0 && data.evaluations[0]) {
-    form.evaluationId = data.evaluations[0].id;
-    evaluationMode.value = 'link';
   }
 }
 
@@ -1328,63 +1775,36 @@ watch(
   () => props.initialMaterials,
   (newMaterials) => {
     if (newMaterials && newMaterials.length > 0) {
-      materials.value = [...newMaterials];
+      videos.value = newMaterials.filter(m => m.type === 'VIDEO');
+      files.value = newMaterials.filter(m => m.type !== 'VIDEO');
     }
   },
   { immediate: true }
 );
 
-// Función para ver detalles de evaluación
-function handleViewEvaluationDetails(): void {
-  if (form.evaluationId) {
-    void router.push(`/evaluations/${form.evaluationId}`);
-  }
-}
-
-// Cargar evaluaciones al montar el componente
-onMounted(() => {
-  void loadEvaluations();
-});
 
 
 function onSubmit() {
-  // Validar evaluación obligatoria (RF-09)
-  if (evaluationMode.value === 'link' && !form.evaluationId) {
+  // Validar evaluación obligatoria (RF-09) - siempre inline ahora
+  if (!form.evaluationInline || !form.evaluationInline.titulo) {
     $q.notify({
       type: 'warning',
-      message: 'Debe seleccionar una evaluación antes de crear la capacitación (RF-09)',
+      message: 'Debe completar el título de la evaluación',
       position: 'top',
-      timeout: 5000,
-      actions: [
-        {
-          label: 'Entendido',
-          color: 'white',
-        },
-      ],
+      timeout: 3000,
     });
     return;
   }
 
-  if (evaluationMode.value === 'create') {
-    if (!form.evaluationInline || !form.evaluationInline.titulo) {
-      $q.notify({
-        type: 'warning',
-        message: 'Debe completar el título de la evaluación',
-        position: 'top',
-        timeout: 3000,
-      });
-      return;
-    }
-
-    if (!form.evaluationInline.preguntas || form.evaluationInline.preguntas.length === 0) {
-      $q.notify({
-        type: 'warning',
-        message: 'Debe agregar al menos una pregunta (RF-08)',
-        position: 'top',
-        timeout: 3000,
-      });
-      return;
-    }
+  if (!form.evaluationInline.preguntas || form.evaluationInline.preguntas.length === 0) {
+    $q.notify({
+      type: 'warning',
+      message: 'Debe agregar al menos una pregunta (RF-08)',
+      position: 'top',
+      timeout: 3000,
+    });
+    return;
+  }
 
     // Validar que todas las preguntas tengan enunciado y al menos una opción correcta
     for (let i = 0; i < form.evaluationInline.preguntas.length; i++) {
@@ -1444,7 +1864,6 @@ function onSubmit() {
         }
       }
     }
-  }
 
   emit('submit', { ...form }, materials.value);
 }
@@ -1501,6 +1920,15 @@ function validateImageUrl() {
   }
 }
 
+function handleDurationChange(value: string | number | null) {
+  // Convertir a entero si tiene valor
+  if (value !== null && value !== undefined && value !== '') {
+    form.durationHours = Math.round(Number(value));
+  } else {
+    form.durationHours = null;
+  }
+}
+
 // Funciones para gestión de materiales
 function getMaterialTypeColor(type: string): string {
   switch (type) {
@@ -1524,130 +1952,19 @@ function getMaterialTypeColor(type: string): string {
 }
 
 function getMaterialTypeLabel(type: string): string {
-  const typeOption = materialTypes.find((t) => t.value === type);
-  return typeOption?.label || type;
+  const typeMap: Record<string, string> = {
+    PDF: 'PDF',
+    IMAGE: 'Imagen',
+    VIDEO: 'Video',
+    DOC: 'Documento Word',
+    LINK: 'Enlace externo',
+    PRESENTATION: 'Presentación',
+    AUDIO: 'Audio',
+  };
+  return typeMap[type] || type;
 }
 
-function validateMaterialUrl(url: string, type: string): boolean {
-  if (!url || !url.startsWith('http')) {
-    return false;
-  }
 
-  const urlLower = url.toLowerCase();
-
-  switch (type) {
-    case 'PDF':
-      return urlLower.endsWith('.pdf') || urlLower.includes('pdf');
-    case 'IMAGE':
-      return /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(urlLower) || urlLower.includes('image');
-    case 'VIDEO':
-      return (
-        urlLower.includes('youtube.com') ||
-        urlLower.includes('youtu.be') ||
-        urlLower.includes('drive.google.com') ||
-        urlLower.includes('onedrive.live.com') ||
-        urlLower.includes('1drv.ms') ||
-        /\.(mp4|webm|ogg)$/i.test(urlLower)
-      );
-    case 'DOC':
-      return /\.(doc|docx)$/i.test(urlLower) || urlLower.includes('document');
-    case 'LINK':
-      return true; // Cualquier URL válida
-    case 'PRESENTATION':
-      return /\.(ppt|pptx)$/i.test(urlLower) || urlLower.includes('presentation');
-    case 'AUDIO':
-      return /\.(mp3|wav|ogg)$/i.test(urlLower) || urlLower.includes('audio');
-    default:
-      return true;
-  }
-}
-
-function saveMaterial() {
-  if (!newMaterial.name || !newMaterial.url || !newMaterial.type) {
-    $q.notify({
-      type: 'negative',
-      message: 'Complete todos los campos requeridos',
-      position: 'top',
-    });
-    return;
-  }
-
-  if (!validateMaterialUrl(newMaterial.url, newMaterial.type)) {
-    $q.notify({
-      type: 'negative',
-      message: 'La URL no es válida para el tipo de material seleccionado',
-      position: 'top',
-    });
-    return;
-  }
-
-  if (editingMaterialIndex.value !== null) {
-    // Editar material existente
-    const existingMaterial = materials.value[editingMaterialIndex.value];
-    if (existingMaterial) {
-      materials.value[editingMaterialIndex.value] = {
-        ...newMaterial,
-        id: existingMaterial.id || generateId(),
-        order: editingMaterialIndex.value,
-      };
-    }
-  } else {
-    // Agregar nuevo material
-    materials.value.push({
-      ...newMaterial,
-      id: generateId(),
-      order: materials.value.length,
-    });
-  }
-
-  cancelAddMaterial();
-  $q.notify({
-    type: 'positive',
-    message: editingMaterialIndex.value !== null ? 'Material actualizado' : 'Material agregado',
-    position: 'top',
-  });
-}
-
-function editMaterial(index: number) {
-  editingMaterialIndex.value = index;
-  const material = materials.value[index];
-  if (!material) return;
-  newMaterial.name = material.name;
-  newMaterial.url = material.url;
-  newMaterial.type = material.type;
-  newMaterial.description = material.description || '';
-  showAddMaterialDialog.value = true;
-}
-
-function removeMaterial(index: number) {
-  $q.dialog({
-    title: 'Confirmar eliminación',
-    message: '¿Está seguro de que desea eliminar este material?',
-    cancel: true,
-    persistent: true,
-  }).onOk(() => {
-    materials.value.splice(index, 1);
-    // Reordenar
-    materials.value.forEach((mat, idx) => {
-      mat.order = idx;
-    });
-    $q.notify({
-      type: 'positive',
-      message: 'Material eliminado',
-      position: 'top',
-    });
-  });
-}
-
-function cancelAddMaterial() {
-  showAddMaterialDialog.value = false;
-  editingMaterialIndex.value = null;
-  newMaterial.name = '';
-  newMaterial.url = '';
-  newMaterial.type = 'PDF';
-  newMaterial.description = '';
-  newMaterial.order = 0;
-}
 
 function generateId(): string {
   return Date.now().toString() + Math.random().toString(16).slice(2);
@@ -1740,6 +2057,30 @@ body.body--dark {
     &.evaluation-selected {
       border-color: rgba(var(--q-primary-rgb), 0.4);
       background-color: rgba(var(--q-primary-rgb), 0.05);
+    }
+  }
+}
+
+// Estilos para campos readonly compatibles con modo oscuro
+.readonly-field {
+  .q-field__control {
+    opacity: 0.7;
+    cursor: not-allowed;
+  }
+}
+
+body.body--light {
+  .readonly-field {
+    .q-field__control {
+      background-color: rgba(0, 0, 0, 0.04);
+    }
+  }
+}
+
+body.body--dark {
+  .readonly-field {
+    .q-field__control {
+      background-color: rgba(255, 255, 255, 0.05);
     }
   }
 }

@@ -1,18 +1,12 @@
-// Implementación HTTP del repositorio de materiales
-// Adaptador que conecta la capa de aplicación con la API REST
-
 import { api } from '../../../boot/axios';
-import type { AxiosError } from 'axios';
-import type {
-  IMaterialRepository,
-  CreateMaterialDto,
-  UpdateMaterialDto,
-} from '../../../application/material/material.repository.port';
 import type { Material } from '../../../domain/material/models';
+import type { CreateMaterialDto, UpdateMaterialDto } from '../../../application/material/material.repository.port';
 
-/**
- * Tipos para las respuestas del backend
- */
+export interface UploadFileResponse {
+  url: string;
+  originalName: string;
+}
+
 interface BackendTipoMaterial {
   id: number;
   nombre: string;
@@ -21,10 +15,10 @@ interface BackendTipoMaterial {
 
 interface BackendMaterial {
   id: number;
-  capacitacion: {
+  capacitacion?: {
     id: number;
   };
-  tipoMaterial: BackendTipoMaterial;
+  tipoMaterial?: BackendTipoMaterial;
   nombre: string;
   url: string;
   descripcion?: string;
@@ -34,26 +28,48 @@ interface BackendMaterial {
 }
 
 /**
+ * Construye una URL completa para un material
+ * @param url - URL relativa o absoluta del material
+ * @returns URL completa que puede ser usada directamente en el frontend
+ */
+function buildFullMaterialUrl(url: string | undefined | null): string {
+  if (!url) return '';
+  
+  // Si ya es una URL completa (http/https), retornarla tal cual
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    return url;
+  }
+  
+  // Si es una ruta relativa, construir URL completa
+  const baseUrl = api.defaults.baseURL || import.meta.env.VITE_API_URL || 'http://localhost:3000';
+  const cleanUrl = url.startsWith('/') ? url : `/${url}`;
+  
+  return `${baseUrl}${cleanUrl}`;
+}
+
+/**
  * Mapea la respuesta del backend al modelo de dominio
+ * Aplica principios SOLID:
+ * - Single Responsibility: Solo mapea datos del backend al dominio
+ * - Dependency Inversion: No depende de implementaciones concretas
  */
 function mapBackendToDomain(backendData: BackendMaterial): Material {
   const material: Material = {
-    id: backendData.id.toString(),
-    capacitacionId: backendData.capacitacion.id,
-    tipoMaterialId: backendData.tipoMaterial.id,
+    id: backendData.id?.toString() ?? '',
+    capacitacionId: backendData.capacitacion?.id ?? 0,
+    tipoMaterialId: backendData.tipoMaterial?.id ?? 0,
     tipoMaterial: {
-      id: backendData.tipoMaterial.id,
-      nombre: backendData.tipoMaterial.nombre,
-      codigo: backendData.tipoMaterial.codigo,
+      id: backendData.tipoMaterial?.id ?? 0,
+      nombre: backendData.tipoMaterial?.nombre ?? '',
+      codigo: backendData.tipoMaterial?.codigo ?? '',
     },
-    nombre: backendData.nombre,
-    url: backendData.url,
-    orden: backendData.orden,
-    activo: backendData.activo,
-    fechaCreacion: backendData.fechaCreacion,
+    nombre: backendData.nombre ?? '',
+    url: buildFullMaterialUrl(backendData.url), // Construir URL completa
+    orden: backendData.orden ?? 0,
+    activo: backendData.activo ?? true,
+    fechaCreacion: backendData.fechaCreacion ?? new Date().toISOString(),
   };
 
-  // Agregar descripción solo si existe (exactOptionalPropertyTypes: true)
   if (backendData.descripcion) {
     material.descripcion = backendData.descripcion;
   }
@@ -61,82 +77,79 @@ function mapBackendToDomain(backendData: BackendMaterial): Material {
   return material;
 }
 
-/**
- * Servicio HTTP para materiales
- * Implementa el puerto IMaterialRepository usando axios
- */
-export class MaterialsService implements IMaterialRepository {
-  private readonly baseUrl = '/materiales';
+export const materialsService = {
+  /**
+   * Sube un archivo (PDF o imagen) al servidor
+   * @param file Archivo a subir
+   * @param onUploadProgress Callback para el progreso de upload
+   * @returns URL del archivo subido
+   */
+  async uploadFile(
+    file: File,
+    onUploadProgress?: (progress: number) => void,
+  ): Promise<UploadFileResponse> {
+    const formData = new FormData();
+    formData.append('file', file);
 
+    const response = await api.post<UploadFileResponse>(
+      '/materiales/upload',
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+        onUploadProgress: (progressEvent) => {
+          if (onUploadProgress && progressEvent.total) {
+            const percentCompleted = Math.round(
+              (progressEvent.loaded * 100) / progressEvent.total,
+            );
+            onUploadProgress(percentCompleted);
+          }
+        },
+      },
+    );
+
+    return response.data;
+  },
+
+  /**
+   * Crear un nuevo material
+   */
   async create(dto: CreateMaterialDto): Promise<Material> {
-    try {
-      const response = await api.post<BackendMaterial>(this.baseUrl, dto);
-      return mapBackendToDomain(response.data);
-    } catch (error) {
-      const axiosError = error as AxiosError<{ message?: string }>;
-      throw new Error(
-        axiosError.response?.data?.message ?? 'Error al crear el material',
-      );
-    }
-  }
+    const response = await api.post<BackendMaterial>('/materiales', dto);
+    return mapBackendToDomain(response.data);
+  },
 
+  /**
+   * Obtener todos los materiales de una capacitación
+   */
   async findByCapacitacion(capacitacionId: number): Promise<Material[]> {
-    try {
-      const response = await api.get<BackendMaterial[]>(
-        `${this.baseUrl}/capacitacion/${capacitacionId}`,
-      );
-      return response.data.map(mapBackendToDomain);
-    } catch (error) {
-      const axiosError = error as AxiosError<{ message?: string }>;
-      throw new Error(
-        axiosError.response?.data?.message ??
-          `Error al obtener materiales de la capacitación ${capacitacionId}`,
-      );
-    }
-  }
+    const response = await api.get<BackendMaterial[]>(
+      `/materiales/capacitacion/${capacitacionId}`,
+    );
+    return response.data.map(mapBackendToDomain);
+  },
 
+  /**
+   * Obtener un material por ID
+   */
   async findOne(id: number): Promise<Material> {
-    try {
-      const response = await api.get<BackendMaterial>(`${this.baseUrl}/${id}`);
-      return mapBackendToDomain(response.data);
-    } catch (error) {
-      const axiosError = error as AxiosError<{ message?: string }>;
-      throw new Error(
-        axiosError.response?.data?.message ??
-          `Error al obtener el material con ID ${id}`,
-      );
-    }
-  }
+    const response = await api.get<BackendMaterial>(`/materiales/${id}`);
+    return mapBackendToDomain(response.data);
+  },
 
+  /**
+   * Actualizar un material existente
+   */
   async update(id: number, dto: UpdateMaterialDto): Promise<Material> {
-    try {
-      const response = await api.patch<BackendMaterial>(
-        `${this.baseUrl}/${id}`,
-        dto,
-      );
-      return mapBackendToDomain(response.data);
-    } catch (error) {
-      const axiosError = error as AxiosError<{ message?: string }>;
-      throw new Error(
-        axiosError.response?.data?.message ??
-          `Error al actualizar el material con ID ${id}`,
-      );
-    }
-  }
+    const response = await api.patch<BackendMaterial>(`/materiales/${id}`, dto);
+    return mapBackendToDomain(response.data);
+  },
 
+  /**
+   * Eliminar un material
+   */
   async remove(id: number): Promise<void> {
-    try {
-      await api.delete(`${this.baseUrl}/${id}`);
-    } catch (error) {
-      const axiosError = error as AxiosError<{ message?: string }>;
-      throw new Error(
-        axiosError.response?.data?.message ??
-          `Error al eliminar el material con ID ${id}`,
-      );
-    }
-  }
-}
-
-// Exportar instancia singleton
-export const materialsService = new MaterialsService();
-
+    await api.delete(`/materiales/${id}`);
+  },
+};

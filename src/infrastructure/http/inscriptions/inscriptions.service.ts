@@ -3,6 +3,7 @@
 
 import { api } from '../../../boot/axios';
 import type { AxiosError } from 'axios';
+import axios from 'axios';
 import type {
   IInscriptionRepository,
   Inscription,
@@ -84,19 +85,30 @@ function mapStatusToBackend(
 /**
  * Mapea la respuesta del backend al modelo de dominio
  */
-function mapBackendToDomain(backendData: BackendInscripcion): Inscription {
-  const estudiante = backendData.estudiante;
-  const nombreCompleto = `${estudiante.nombres || ''} ${estudiante.apellidos || ''}`.trim();
+// Extender Inscription para incluir documentNumber
+export interface InscriptionWithDocument extends Inscription {
+  documentNumber?: string;
+  inscriptionId?: string; // ID de la inscripción para poder actualizar
+}
 
-  const inscription: Inscription = {
+function mapBackendToDomain(backendData: BackendInscripcion): InscriptionWithDocument {
+  // Manejar caso cuando estudiante no está cargado (puede pasar en findByEstudiante)
+  const estudiante = backendData.estudiante;
+  const nombreCompleto = estudiante 
+    ? `${estudiante.nombres || ''} ${estudiante.apellidos || ''}`.trim()
+    : '';
+
+  const inscription: InscriptionWithDocument = {
     id: backendData.id?.toString() ?? '',
+    inscriptionId: backendData.id?.toString() ?? '', // Guardar ID de inscripción para actualizaciones
     courseId: backendData.capacitacion?.id?.toString() ?? '',
     courseName: backendData.capacitacion?.titulo ?? '',
-    userId: backendData.estudiante?.id?.toString() ?? '',
-    userName: nombreCompleto || estudiante.numeroDocumento || '',
+    userId: estudiante?.id?.toString() ?? '',
+    userName: nombreCompleto || estudiante?.numeroDocumento || 'Usuario desconocido',
     enrolledDate: backendData.fechaInscripcion ?? new Date().toISOString(),
     progress: backendData.progresoPorcentaje ? backendData.progresoPorcentaje / 100 : 0,
     status: mapStatus(backendData.estado),
+    ...(estudiante?.numeroDocumento && { documentNumber: estudiante.numeroDocumento }),
   };
 
   if (backendData.fechaFinalizacion) {
@@ -191,33 +203,177 @@ export class InscriptionsService implements IInscriptionRepository {
 
   async findByUser(userId: string): Promise<Inscription[]> {
     try {
-      const response = await api.post<BackendPaginatedResponse>(
-        `${this.baseUrl}/estudiante/${userId}`,
-        {
-          page: 1,
-          limit: 1000, // Límite alto para obtener todas
-        },
-      );
-      return response.data.data.map(mapBackendToDomain);
+      console.log(`📡 Obteniendo inscripciones para userId: ${userId}`);
+      
+      // Usar el endpoint específico /estudiante/:estudianteId que SÍ permite ALUMNO
+      // El PaginationDto es opcional, pero si lo enviamos debe tener el formato correcto
+      const pageSize = 100; // Máximo permitido por el backend
+      let allInscriptions: BackendInscripcion[] = [];
+      let currentPage = 1;
+      let hasMore = true;
+      
+      while (hasMore) {
+        console.log(`📡 Llamando a ${this.baseUrl}/estudiante/${userId}, página=${currentPage}`);
+        
+        // Enviar PaginationDto con tipos correctos (números, no strings)
+        const response = await api.post<BackendPaginatedResponse>(
+          `${this.baseUrl}/estudiante/${userId}`,
+          {
+            page: currentPage,
+            limit: pageSize,
+          },
+        );
+        
+        console.log(`✅ Respuesta página ${currentPage}:`, response.data);
+        
+        if (response.data?.data && Array.isArray(response.data.data)) {
+          allInscriptions = [...allInscriptions, ...response.data.data];
+          
+          // Verificar si hay más páginas
+          hasMore = currentPage < (response.data.totalPages || 0);
+          currentPage++;
+        } else {
+          hasMore = false;
+        }
+      }
+      
+      console.log(`✅ Total de inscripciones obtenidas: ${allInscriptions.length}`);
+      // Mapear todas las inscripciones obtenidas
+      return allInscriptions.map(mapBackendToDomain);
     } catch (error) {
-      const axiosError = error as AxiosError<{ message?: string }>;
-      throw new Error(
-        axiosError.response?.data?.message ?? `Error al obtener las inscripciones del usuario ${userId}`,
-      );
+      // Log completo del error para depuración
+      console.error('❌ Error completo capturado:', error);
+      console.error('❌ Tipo de error:', error instanceof Error ? error.constructor.name : typeof error);
+      console.error('❌ Stack del error:', error instanceof Error ? error.stack : 'No hay stack');
+      
+      // El interceptor de axios puede transformar el error, pero el error original
+      // puede estar en error.cause o podemos acceder directamente al error de axios
+      // Intentar obtener el error original de axios si está disponible
+      let axiosError: AxiosError<{ message?: string | string[]; error?: string }> | null = null;
+      
+      // Verificar si es un error de axios directamente
+      if (axios.isAxiosError(error)) {
+        axiosError = error;
+      } else if (error instanceof Error && 'cause' in error && axios.isAxiosError(error.cause)) {
+        // El interceptor puede haber envuelto el error, intentar obtenerlo del cause
+        axiosError = error.cause as AxiosError<{ message?: string | string[]; error?: string }>;
+      }
+      
+      if (axiosError) {
+        const axiosError = error as AxiosError<{ message?: string | string[]; error?: string }>;
+        const status = axiosError.response?.status;
+        const statusText = axiosError.response?.statusText;
+        const errorData = axiosError.response?.data;
+        const requestUrl = axiosError.config?.url;
+        const requestMethod = axiosError.config?.method;
+        
+        console.error('❌ Error detallado de Axios:', {
+          status,
+          statusText,
+          data: errorData,
+          url: requestUrl,
+          method: requestMethod,
+          code: axiosError.code,
+          message: axiosError.message,
+          hasResponse: !!axiosError.response,
+          fullResponse: axiosError.response,
+        });
+        
+        // Proporcionar mensaje más descriptivo
+        let errorMessage = `Error al obtener las inscripciones del usuario ${userId}`;
+        
+        // Si no hay respuesta, es un error de red
+        if (!axiosError.response) {
+          if (axiosError.code === 'ECONNABORTED' || axiosError.message.includes('timeout')) {
+            errorMessage = 'Timeout: El servidor tardó demasiado en responder';
+          } else if (axiosError.code === 'ERR_NETWORK' || axiosError.message.includes('Network Error')) {
+            errorMessage = 'Error de red: No se pudo conectar al servidor';
+          } else {
+            errorMessage = `Error de conexión: ${axiosError.message || 'No se pudo establecer conexión con el servidor'}`;
+          }
+        } else if (status === 400) {
+          // Error de validación - mostrar detalles del error
+          if (Array.isArray(errorData?.message)) {
+            errorMessage = `Errores de validación: ${errorData.message.join(', ')}`;
+          } else {
+            const validationErrors = errorData?.message || errorData?.error || 'Datos de petición inválidos';
+            errorMessage = `Error de validación: ${validationErrors}`;
+          }
+        } else if (status === 404) {
+          errorMessage = `No se encontraron inscripciones para el usuario ${userId}`;
+        } else if (status === 401) {
+          errorMessage = 'No autorizado. Verifique su sesión.';
+        } else if (status === 403) {
+          errorMessage = 'No tiene permisos para ver estas inscripciones.';
+        } else if (errorData?.message) {
+          errorMessage = Array.isArray(errorData.message) 
+            ? errorData.message.join(', ') 
+            : errorData.message;
+        } else if (errorData?.error) {
+          errorMessage = errorData.error;
+        } else if (status) {
+          errorMessage = `Error del servidor (${status}): ${statusText || 'Error desconocido'}`;
+        }
+        
+        throw new Error(errorMessage);
+      } else {
+        // Error que no es de axios o fue transformado por el interceptor
+        const errorMessage = error instanceof Error ? error.message : 'Error desconocido al obtener inscripciones';
+        console.error('❌ Error no relacionado con Axios o transformado:', errorMessage);
+        console.error('❌ Error completo para análisis:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
+        
+        // Si el mensaje contiene información del error HTTP, intentar extraerla
+        if (errorMessage.includes('Error 400') || errorMessage.includes('400')) {
+          throw new Error('Error de validación: Los datos enviados no son válidos. Verifique los logs del servidor.');
+        } else if (errorMessage.includes('Error 404') || errorMessage.includes('404')) {
+          throw new Error(`No se encontraron inscripciones para el usuario ${userId}`);
+        } else {
+          throw new Error(`Error al obtener inscripciones: ${errorMessage}`);
+        }
+      }
     }
   }
 
-  async findByCourse(courseId: string): Promise<Inscription[]> {
+  async findByCourse(courseId: string): Promise<InscriptionWithDocument[]> {
     try {
-      const response = await api.post<BackendPaginatedResponse>(
-        `${this.baseUrl}/capacitacion/${courseId}`,
-        {
-          page: 1,
-          limit: 1000, // Límite alto para obtener todas
-        },
-      );
-      return response.data.data.map(mapBackendToDomain);
+      
+      // El backend tiene un límite máximo de 100 por página según PaginationDto
+      // Hacer múltiples peticiones si es necesario para obtener todas las inscripciones
+      const pageSize = 100; // Máximo permitido por el backend
+      let allInscriptions: BackendInscripcion[] = [];
+      let currentPage = 1;
+      let hasMore = true;
+      
+      while (hasMore) {
+        console.log(`📡 Llamando a ${this.baseUrl}/capacitacion/${courseId}, página=${currentPage}`);
+        
+        // Enviar PaginationDto con tipos correctos (números, no strings)
+        const response = await api.post<BackendPaginatedResponse>(
+          `${this.baseUrl}/capacitacion/${courseId}`,
+          {
+            page: currentPage,
+            limit: pageSize,
+          },
+        );
+        
+        console.log(`✅ Respuesta página ${currentPage}:`, response.data);
+        
+        if (response.data?.data && Array.isArray(response.data.data)) {
+          allInscriptions = [...allInscriptions, ...response.data.data];
+          
+          // Verificar si hay más páginas
+          hasMore = currentPage < (response.data.totalPages || 0);
+          currentPage++;
+        } else {
+          hasMore = false;
+        }
+      }
+      
+      console.log(`✅ Total de inscripciones obtenidas: ${allInscriptions.length}`);
+      // Mapear todas las inscripciones obtenidas
+      return allInscriptions.map(mapBackendToDomain);
     } catch (error) {
+      console.error('❌ Error al obtener inscripciones del curso:', error);
       const axiosError = error as AxiosError<{ message?: string }>;
       throw new Error(
         axiosError.response?.data?.message ?? `Error al obtener las inscripciones del curso ${courseId}`,
