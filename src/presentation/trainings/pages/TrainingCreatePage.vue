@@ -75,8 +75,12 @@ async function handleSubmit(payload: TrainingFormModel, formMaterials: Material[
     if (payload.description) {
       dto.descripcion = payload.description;
     }
-    if (payload.area) {
-      dto.areaId = parseInt(payload.area);
+    // Área oculta temporalmente - no enviar si está vacía o no es válida
+    if (payload.area && payload.area.trim() !== '') {
+      const areaId = parseInt(payload.area);
+      if (!isNaN(areaId) && areaId > 0) {
+        dto.areaId = areaId;
+      }
     }
     if (payload.targetAudience) {
       dto.publicoObjetivo = payload.targetAudience;
@@ -131,6 +135,8 @@ async function handleSubmit(payload: TrainingFormModel, formMaterials: Material[
         intentosPermitidos: payload.evaluationInline.intentosPermitidos || 1,
         mostrarResultados: payload.evaluationInline.mostrarResultados ?? true,
         mostrarRespuestasCorrectas: payload.evaluationInline.mostrarRespuestasCorrectas ?? false,
+        // El puntajeTotal se calculará automáticamente en el backend como la suma de los puntajes de las preguntas
+        // Se envía aquí solo para compatibilidad, pero el backend lo recalculará
         puntajeTotal: payload.evaluationInline.puntajeTotal || 100,
         minimoAprobacion: payload.evaluationInline.minimoAprobacion || 70,
         orden: payload.evaluationInline.orden || 0,

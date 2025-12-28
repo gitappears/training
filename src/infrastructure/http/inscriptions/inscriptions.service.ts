@@ -12,6 +12,13 @@ import type {
 } from '../../../application/inscription/inscription.repository.port';
 
 /**
+ * Tipo extendido de Inscription que incluye documentNumber
+ */
+export type InscriptionWithDocument = Inscription & {
+  documentNumber?: string;
+};
+
+/**
  * Tipos para las respuestas del backend
  */
 interface BackendCapacitacion {
@@ -84,7 +91,7 @@ function mapStatusToBackend(
 /**
  * Mapea la respuesta del backend al modelo de dominio
  */
-function mapBackendToDomain(backendData: BackendInscripcion): Inscription {
+function mapBackendToDomain(backendData: BackendInscripcion): InscriptionWithDocument {
   // Validar que los datos necesarios estén presentes
   if (!backendData) {
     throw new Error('Datos de inscripción no válidos');
@@ -101,7 +108,7 @@ function mapBackendToDomain(backendData: BackendInscripcion): Inscription {
     nombreCompleto = `${nombres} ${apellidos}`.trim();
   }
 
-  const inscription: Inscription = {
+  const inscription: InscriptionWithDocument = {
     id: backendData.id?.toString() ?? '',
     courseId: capacitacion?.id?.toString() ?? '',
     courseName: capacitacion?.titulo ?? 'Curso sin nombre',
@@ -110,6 +117,7 @@ function mapBackendToDomain(backendData: BackendInscripcion): Inscription {
     enrolledDate: backendData.fechaInscripcion ?? new Date().toISOString(),
     progress: backendData.progresoPorcentaje ? backendData.progresoPorcentaje / 100 : 0,
     status: mapStatus(backendData.estado),
+    ...(estudiante?.numeroDocumento && { documentNumber: estudiante.numeroDocumento }),
   };
 
   if (backendData.fechaFinalizacion) {
@@ -173,7 +181,10 @@ export class InscriptionsService implements IInscriptionRepository {
         requestBody.sortOrder = params.sortOrder?.toUpperCase() || 'ASC';
       }
 
-      const response = await api.post<BackendPaginatedResponse>(`${this.baseUrl}/list`, requestBody);
+      const response = await api.post<BackendPaginatedResponse>(
+        `${this.baseUrl}/list`,
+        requestBody,
+      );
 
       return {
         data: response.data.data.map(mapBackendToDomain),
@@ -217,13 +228,13 @@ export class InscriptionsService implements IInscriptionRepository {
           limit: 100, // Máximo permitido por el backend
         },
       );
-      
+
       // Verificar que la respuesta tenga la estructura esperada
       if (!response.data || !Array.isArray(response.data.data)) {
         console.warn('Respuesta inesperada del backend:', response.data);
         return [];
       }
-      
+
       // Mapear las inscripciones con manejo de errores individual
       const inscriptions: Inscription[] = [];
       for (const item of response.data.data) {
@@ -235,11 +246,11 @@ export class InscriptionsService implements IInscriptionRepository {
           // Continuar con las siguientes inscripciones
         }
       }
-      
+
       return inscriptions;
     } catch (error) {
       const axiosError = error as AxiosError<{ message?: string; error?: string }>;
-      
+
       // Log detallado del error para debugging
       console.error('Error en findByUser:', {
         userId,
@@ -248,36 +259,67 @@ export class InscriptionsService implements IInscriptionRepository {
         data: axiosError.response?.data,
         message: axiosError.message,
       });
-      
+
       // Si es un error 404, retornar array vacío en lugar de lanzar error
       if (axiosError.response?.status === 404) {
         console.warn(`No se encontraron inscripciones para el usuario ${userId}`);
         return [];
       }
-      
+
       const errorMessage =
         axiosError.response?.data?.message ??
         axiosError.response?.data?.error ??
         `Error al obtener las inscripciones del usuario ${userId}`;
-      
+
       throw new Error(errorMessage);
     }
   }
 
-  async findByCourse(courseId: string): Promise<Inscription[]> {
+  async findByCourse(courseId: string): Promise<InscriptionWithDocument[]> {
     try {
-      const response = await api.post<BackendPaginatedResponse>(
-        `${this.baseUrl}/capacitacion/${courseId}`,
-        {
-          page: 1,
-          limit: 100, // Máximo permitido por el backend
-        },
-      );
-      return response.data.data.map(mapBackendToDomain);
+      // El backend tiene un límite máximo de 100 por página según PaginationDto
+      // Hacer múltiples peticiones si es necesario para obtener todas las inscripciones
+      const pageSize = 100; // Máximo permitido por el backend
+      let allInscriptions: BackendInscripcion[] = [];
+      let currentPage = 1;
+      let hasMore = true;
+
+      while (hasMore) {
+        console.log(
+          `📡 Llamando a ${this.baseUrl}/capacitacion/${courseId}, página=${currentPage}`,
+        );
+
+        // Enviar PaginationDto con tipos correctos (números, no strings)
+        const response = await api.post<BackendPaginatedResponse>(
+          `${this.baseUrl}/capacitacion/${courseId}`,
+          {
+            page: currentPage,
+            limit: pageSize,
+          },
+        );
+
+        console.log(`✅ Respuesta página ${currentPage}:`, response.data);
+
+        if (response.data?.data && Array.isArray(response.data.data)) {
+          allInscriptions = [...allInscriptions, ...response.data.data];
+
+          // Verificar si hay más páginas
+          hasMore = currentPage < (response.data.totalPages || 0);
+          currentPage++;
+        } else {
+          hasMore = false;
+        }
+      }
+
+      console.log(`✅ Total de inscripciones obtenidas: ${allInscriptions.length}`);
+      // Mapear todas las inscripciones obtenidas
+      return allInscriptions.map(mapBackendToDomain);
     } catch (error) {
+      console.error('❌ Error al obtener inscripciones del curso:', error);
       const axiosError = error as AxiosError<{ message?: string }>;
       throw new Error(
-        axiosError.response?.data?.message ?? `Error al obtener las inscripciones del curso ${courseId}`,
+        axiosError.response?.data?.message ??
+          `Error al obtener las inscripciones del curso ${courseId}`,
       );
     }
   }
@@ -301,8 +343,7 @@ export class InscriptionsService implements IInscriptionRepository {
       return mapBackendToDomain(response.data);
     } catch (error) {
       const axiosError = error as AxiosError<{ message?: string }>;
-      const errorMessage =
-        axiosError.response?.data?.message ?? 'Error al crear la inscripción';
+      const errorMessage = axiosError.response?.data?.message ?? 'Error al crear la inscripción';
       throw new Error(errorMessage);
     }
   }

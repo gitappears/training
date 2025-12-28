@@ -73,9 +73,8 @@
               align="left"
             >
               <q-tab name="overview" label="Resumen" icon="description" />
-              <q-tab name="content" label="Contenido" icon="menu_book" />
-              <q-tab name="students" label="Estudiantes" icon="people" />
               <q-tab name="resources" label="Recursos" icon="attach_file" />
+              <q-tab v-if="!isAlumno" name="students" label="Estudiantes" icon="people" />
               <q-tab name="reviews" label="Reseñas" icon="star" />
             </q-tabs>
             <q-separator />
@@ -157,110 +156,6 @@
                 </div>
               </q-tab-panel>
 
-              <q-tab-panel name="content">
-                <div class="content-section">
-                  <div class="text-h6 q-mb-md text-weight-medium">Contenido del Curso</div>
-                  <div v-if="training.sections.length === 0" class="empty-state">
-                    <q-icon name="menu_book" size="48px" color="grey-5" class="q-mb-sm" />
-                    <div class="text-body1 text-grey-6">No hay secciones disponibles</div>
-                  </div>
-                  <div v-else class="sections-list">
-                    <q-expansion-item
-                      v-for="(section, index) in training.sections"
-                      :key="section.id"
-                      expand-separator
-                      class="section-item"
-                      :default-opened="index === 0"
-                    >
-                      <template #header>
-                        <q-item-section avatar>
-                          <q-avatar color="primary" text-color="white" size="32px">
-                            {{ index + 1 }}
-                          </q-avatar>
-                        </q-item-section>
-                        <q-item-section>
-                          <q-item-label class="text-weight-medium">{{ section.title }}</q-item-label>
-                          <q-item-label caption>
-                            <q-icon name="play_circle_outline" size="14px" class="q-mr-xs" />
-                            {{ section.lessonsCount }} lecciones
-                            <span class="q-mx-sm">·</span>
-                            <q-icon name="schedule" size="14px" class="q-mr-xs" />
-                            {{ section.durationMinutes }} min
-                          </q-item-label>
-                        </q-item-section>
-                      </template>
-                      <q-card>
-                        <q-card-section>
-                          <div v-if="section.description" class="text-body2 text-grey-7">
-                            {{ section.description }}
-                          </div>
-                          <div v-else class="text-body2 text-grey-5">
-                            Sin descripción disponible para esta sección
-                          </div>
-                        </q-card-section>
-                      </q-card>
-                    </q-expansion-item>
-                  </div>
-                </div>
-              </q-tab-panel>
-
-              <q-tab-panel name="students">
-                <div class="students-section">
-                  <div class="row items-center justify-between q-mb-md">
-                    <div class="text-h6 text-weight-medium">Estudiantes Inscritos</div>
-                    <q-badge color="primary" :label="`${training.students.length} estudiantes`" />
-                  </div>
-                  <div v-if="training.students.length === 0" class="empty-state">
-                    <q-icon name="people" size="48px" color="grey-5" class="q-mb-sm" />
-                    <div class="text-body1 text-grey-6">No hay estudiantes inscritos</div>
-                  </div>
-                  <q-table
-                    v-else
-                    :rows="training.students"
-                    :columns="studentColumns"
-                    row-key="id"
-                    flat
-                    class="students-table"
-                    :pagination="{ rowsPerPage: 10 }"
-                  >
-                    <template #body-cell-progress="props">
-                      <div class="progress-cell">
-                        <q-linear-progress
-                          :value="props.row.progress"
-                          rounded
-                          size="20px"
-                          color="primary"
-                          class="q-mb-xs"
-                        />
-                        <span class="text-caption text-grey-7">
-                          {{ Math.round(props.row.progress * 100) }}%
-                        </span>
-                      </div>
-                    </template>
-                    <template #body-cell-score="props">
-                      <q-input
-                        v-model.number="props.row.score"
-                        dense
-                        outlined
-                        type="number"
-                        min="0"
-                        max="100"
-                        style="max-width: 100px"
-                      />
-                    </template>
-                    <template #body-cell-rating="props">
-                      <q-rating
-                        v-model="props.row.rating"
-                        max="5"
-                        size="20px"
-                        color="amber"
-                        readonly
-                      />
-                    </template>
-                  </q-table>
-                </div>
-              </q-tab-panel>
-
               <q-tab-panel name="resources">
                 <div class="resources-section">
                   <div class="row items-center justify-between q-mb-md">
@@ -337,6 +232,107 @@
                   </div>
                 </div>
               </q-tab-panel>
+              
+              <q-tab-panel name="students">
+                <div class="students-section">
+                  <q-inner-loading :showing="loadingStudents" />
+                  <div class="row items-center justify-between q-mb-md">
+                    <div class="text-h6 text-weight-medium">Estudiantes Inscritos</div>
+                    <q-badge color="primary" :label="`${enrolledStudents.length} estudiantes`" />
+                  </div>
+                  <div v-if="!loadingStudents && enrolledStudents.length === 0" class="empty-state">
+                    <q-icon name="people" size="48px" color="grey-5" class="q-mb-sm" />
+                    <div class="text-body1 text-grey-6">No hay estudiantes inscritos</div>
+                  </div>
+                  <q-table
+                    v-else-if="!loadingStudents"
+                    :rows="enrolledStudents"
+                    :columns="studentColumns"
+                    row-key="id"
+                    flat
+                    class="students-table"
+                    :pagination="{ rowsPerPage: 10 }"
+                    :filter="studentFilter"
+                    :loading="savingScore"
+                  >
+                    <template #top>
+                      <div class="row full-width items-center q-gutter-md">
+                        <q-input
+                          v-model="studentFilter"
+                          filled
+                          dense
+                          placeholder="Buscar por nombre o documento..."
+                          class="col"
+                          clearable
+                        >
+                          <template #prepend>
+                            <q-icon name="search" />
+                          </template>
+                        </q-input>
+                      </div>
+                    </template>
+
+                    <template #body-cell-name="props">
+                      <q-td :props="props">
+                        <div class="text-weight-medium">{{ props.value }}</div>
+                      </q-td>
+                    </template>
+
+                    <template #body-cell-documentNumber="props">
+                      <q-td :props="props">
+                        <div class="text-body2">{{ props.value || 'N/A' }}</div>
+                      </q-td>
+                    </template>
+
+                    <template #body-cell-score="props">
+                      <q-td :props="props" class="text-center">
+                        <q-input
+                          v-model.number="props.row.score"
+                          dense
+                          outlined
+                          type="number"
+                          min="0"
+                          max="100"
+                          step="0.01"
+                          style="max-width: 120px"
+                          :readonly="!canManageTrainings"
+                          :class="getScoreClass(props.row.score)"
+                          @blur="handleScoreChange(props.row)"
+                        >
+                          <template #append>
+                            <q-icon
+                              v-if="props.row.score !== undefined && props.row.score !== null"
+                              :name="props.row.score >= 70 ? 'check_circle' : 'cancel'"
+                              :color="props.row.score >= 70 ? 'positive' : 'negative'"
+                              size="xs"
+                            />
+                          </template>
+                        </q-input>
+                      </q-td>
+                    </template>
+
+                    <template #no-data>
+                      <div class="full-width row justify-center items-center text-grey-6 q-pa-lg">
+                        <q-icon name="people" size="48px" class="q-mr-sm" />
+                        <div>No hay estudiantes inscritos</div>
+                      </div>
+                    </template>
+                  </q-table>
+
+                  <!-- Botón de guardar si hay cambios pendientes -->
+                  <div v-if="hasUnsavedChanges && canManageTrainings" class="row justify-end q-mt-md">
+                    <q-btn
+                      color="primary"
+                      label="Guardar Cambios"
+                      icon="save"
+                      :loading="savingScore"
+                      @click="saveAllScores"
+                    />
+                  </div>
+                </div>
+              </q-tab-panel>
+
+          
 
               <q-tab-panel name="reviews">
                 <div class="reviews-section">
@@ -449,15 +445,16 @@
                   </div>
                 </div>
 
-                <!-- Botón de Presentar Evaluación - Visible para todos los roles -->
+                <!-- Botón de Presentar Evaluación - Solo visible si el usuario está inscrito -->
                 <q-btn
+                  v-if="isEnrolled"
                   color="info"
                   unelevated
                   size="lg"
                   label="Presentar Evaluación"
                   icon="quiz"
                   class="full-width q-mb-sm"
-                  :loading="loadingEvaluation"
+                  :loading="loadingEvaluation || loadingEnrollment"
                   @click="handlePresentEvaluation"
                 />
 
@@ -543,14 +540,18 @@ import { trainingsService } from '../../../infrastructure/http/trainings/trainin
 import type { Material } from '../../../domain/material/models';
 import { useRole } from '../../../shared/composables/useRole';
 import { useTrainingEvaluation, type TrainingWithEvaluations } from '../../../shared/composables/useTrainingEvaluation';
+import { useEnrollmentCheck } from '../../../shared/composables/useEnrollmentCheck';
+import { useAuthStore } from '../../../stores/auth.store';
+import { inscriptionsService, type InscriptionWithDocument } from '../../../infrastructure/http/inscriptions/inscriptions.service';
 
 const route = useRoute();
 const router = useRouter();
 const $q = useQuasar();
+const authStore = useAuthStore();
 const tab = ref<'overview' | 'content' | 'students' | 'resources' | 'reviews'>('overview');
 
 // Control de roles y permisos
-const { canManageTrainings, canActivateTrainings, canEnrollStudents } = useRole();
+const { canManageTrainings, canActivateTrainings, canEnrollStudents, isAlumno } = useRole();
 
 const trainingId = parseInt(route.params.id as string);
 const training = ref<Training | null>(null);
@@ -558,9 +559,27 @@ const loading = ref(false);
 const materials = ref<Material[]>([]);
 const loadingMaterials = ref(false);
 
+// Tipo extendido para estudiantes con documento e ID de inscripción
+interface StudentWithDocument extends TrainingStudent {
+  documentNumber?: string;
+  inscriptionId?: string;
+}
+
+const enrolledStudents = ref<StudentWithDocument[]>([]);
+const loadingStudents = ref(false);
+const studentFilter = ref('');
+const savingScore = ref(false);
+const hasUnsavedChanges = ref(false);
+const pendingScoreChanges = ref<Map<string, { inscriptionId: string; score: number }>>(new Map());
+
 // Composable para gestionar evaluaciones
 const { navigateToEvaluation } = useTrainingEvaluation();
 const loadingEvaluation = ref(false);
+
+// Composable para verificar inscripción del usuario
+const { isEnrolled, loading: loadingEnrollment, checkEnrollment } = useEnrollmentCheck({
+  courseId: computed(() => training.value?.id ?? ''),
+});
 
 /**
  * Carga los materiales de la capacitación desde el backend
@@ -638,6 +657,45 @@ const allAttachments = computed<TrainingAttachment[]>(() => {
   return Array.from(uniqueMap.values());
 });
 
+/**
+ * Carga todos los estudiantes inscritos en la capacitación
+ */
+async function loadEnrolledStudents(): Promise<void> {
+  if (isNaN(trainingId) || !training.value) return;
+
+  loadingStudents.value = true;
+  try {
+    const inscriptions = await inscriptionsService.findByCourse(training.value.id);
+    
+    // Mapear inscripciones a StudentWithDocument
+    enrolledStudents.value = inscriptions.map((inscription: InscriptionWithDocument): StudentWithDocument => {
+      const student: StudentWithDocument = {
+        id: inscription.userId,
+        name: inscription.userName,
+        email: '',
+        progress: inscription.progress,
+      };
+      if (inscription.documentNumber) {
+        student.documentNumber = inscription.documentNumber;
+      }
+      if (inscription.inscriptionId) {
+        student.inscriptionId = inscription.inscriptionId;
+      }
+      if (inscription.score !== undefined) {
+        student.score = inscription.score;
+      }
+      return student;
+    });
+  } catch (error) {
+    console.error('Error al cargar estudiantes inscritos:', error);
+    enrolledStudents.value = [];
+    // No mostrar notificación de error, solo log en consola
+    // para no interrumpir la experiencia del usuario
+  } finally {
+    loadingStudents.value = false;
+  }
+}
+
 async function loadTraining() {
   if (isNaN(trainingId)) {
     $q.notify({
@@ -656,6 +714,12 @@ async function loadTraining() {
     training.value = await getTrainingUseCase.execute(trainingId);
     // Cargar materiales (maneja sus propios errores)
     loadMaterials();
+    // Cargar estudiantes inscritos (solo si no es ALUMNO)
+    if (!isAlumno.value) {
+      await loadEnrolledStudents();
+    }
+    // Verificar si el usuario está inscrito en esta capacitación
+    await checkEnrollment();
   } catch (error) {
     // Mejorar mensajes de error con más contexto
     let errorMessage = 'Error al cargar la capacitación';
@@ -821,6 +885,18 @@ async function handleEnrollStudentConfirm(estudianteId: string): Promise<void> {
 
     // Recargar la capacitación para actualizar el contador de estudiantes
     await loadTraining();
+    // Recargar estudiantes inscritos
+    if (!isAlumno.value) {
+      await loadEnrolledStudents();
+    }
+    
+    // Si el usuario inscrito es el usuario actual, verificar inscripción
+    // Obtener personaId del perfil (puede venir como personaId directo o desde persona.id)
+    const profile = authStore.profile as { personaId?: number; persona?: { id?: number } } | null;
+    const currentPersonaId = profile?.personaId || profile?.persona?.id;
+    if (currentPersonaId && estudianteId === currentPersonaId.toString()) {
+      await checkEnrollment();
+    }
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : 'Error al inscribir el estudiante';
@@ -836,6 +912,98 @@ async function handleEnrollStudentConfirm(estudianteId: string): Promise<void> {
 
 function handleEditTraining() {
   void router.push({ name: 'training-edit', params: { id: training.value?.id } });
+}
+
+/**
+ * Obtiene la clase CSS para la nota según si está aprobada o no
+ */
+function getScoreClass(score: number | undefined): string {
+  if (score === undefined || score === null) return '';
+  return score >= 70 ? 'text-positive' : 'text-negative';
+}
+
+/**
+ * Maneja el cambio de nota de un estudiante
+ */
+function handleScoreChange(student: StudentWithDocument): void {
+  if (!canManageTrainings || !student.inscriptionId) return;
+  
+  hasUnsavedChanges.value = true;
+  if (student.score !== undefined && student.score !== null) {
+    pendingScoreChanges.value.set(student.id, {
+      inscriptionId: student.inscriptionId,
+      score: student.score,
+    });
+  } else {
+    // Si se borra la nota, también guardar el cambio
+    pendingScoreChanges.value.set(student.id, {
+      inscriptionId: student.inscriptionId,
+      score: 0,
+    });
+  }
+}
+
+/**
+ * Guarda todos los cambios de notas pendientes
+ */
+async function saveAllScores(): Promise<void> {
+  if (!canManageTrainings || pendingScoreChanges.value.size === 0) return;
+
+  savingScore.value = true;
+  try {
+    const { inscriptionsService } = await import(
+      '../../../infrastructure/http/inscriptions/inscriptions.service'
+    );
+
+    // Guardar todas las notas pendientes
+    const savePromises = Array.from(pendingScoreChanges.value.entries()).map(
+      async ([userId, { inscriptionId, score }]) => {
+        try {
+          const updateDto: { score?: number } = {};
+          if (score > 0) {
+            updateDto.score = score;
+          }
+          await inscriptionsService.update(inscriptionId, updateDto);
+          // Actualizar el estudiante en la lista local
+          const student = enrolledStudents.value.find(s => s.id === userId);
+          if (student) {
+            if (score > 0) {
+              student.score = score;
+            } else {
+              delete student.score;
+            }
+          }
+        } catch (error) {
+          console.error(`Error al guardar nota para estudiante ${userId}:`, error);
+          throw error;
+        }
+      }
+    );
+
+    await Promise.all(savePromises);
+
+    $q.notify({
+      type: 'positive',
+      message: 'Notas guardadas exitosamente',
+      icon: 'check_circle',
+      position: 'top',
+      timeout: 3000,
+    });
+
+    pendingScoreChanges.value.clear();
+    hasUnsavedChanges.value = false;
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+    $q.notify({
+      type: 'negative',
+      message: `Error al guardar las notas: ${errorMessage}`,
+      icon: 'error',
+      position: 'top',
+      timeout: 5000,
+    });
+  } finally {
+    savingScore.value = false;
+  }
 }
 
 /**
@@ -871,8 +1039,16 @@ async function handlePresentEvaluation(): Promise<void> {
   }
 }
 
+/**
+ * Determina si la capacitación está activa
+ * Considera 'published' y 'active' como estados activos
+ */
 const trainingStatus = computed(() => {
-  return training.value?.status || 'active';
+  if (!training.value?.status) return 'inactive';
+  
+  // Estados considerados como activos (permiten inscripciones)
+  const estadosActivos: string[] = ['published', 'active'];
+  return estadosActivos.includes(training.value.status) ? 'active' : 'inactive';
 });
 
 function handleToggleStatus(): void {
@@ -880,7 +1056,6 @@ function handleToggleStatus(): void {
 
   const currentStatus = trainingStatus.value;
   const action = currentStatus === 'active' ? 'desactivar' : 'activar';
-  const actionPast = currentStatus === 'active' ? 'desactivada' : 'activada';
 
   // Verificar si $q.dialog está disponible, si no usar confirm nativo
   if (typeof $q.dialog !== 'function') {
@@ -891,15 +1066,22 @@ function handleToggleStatus(): void {
     return;
   }
 
+  // Modal de confirmación mejorado
   $q.dialog({
     title: 'Confirmar cambio de estado',
-    message: `¿Está seguro de que desea ${action} esta capacitación? Los certificados ya emitidos no se afectarán (RF-10).`,
-    cancel: true,
-    persistent: true,
+    message: `¿Está seguro de que desea ${action} la capacitación "${training.value.title}"?`,
+    html: true,
+    cancel: {
+      label: 'Cancelar',
+      flat: true,
+      color: 'grey-7',
+    },
     ok: {
       label: 'Confirmar',
-      color: 'primary',
+      color: currentStatus === 'active' ? 'negative' : 'positive',
+      unelevated: true,
     },
+    persistent: true,
   }).onOk(() => {
     void handleToggleStatusConfirm();
   });
@@ -916,12 +1098,10 @@ async function handleToggleStatusConfirm(): Promise<void> {
     );
 
     // Llamar al endpoint de toggle
-    await trainingsToggleStatusService.toggleActivoInactivo(trainingId);
+    const updatedTraining = await trainingsToggleStatusService.toggleActivoInactivo(trainingId);
 
-    // Actualizar el estado localmente
-    if (training.value) {
-      training.value.status = currentStatus === 'active' ? 'inactive' : 'active';
-    }
+    // Recargar la capacitación para obtener el estado actualizado del backend
+    await loadTraining();
 
     $q.notify({
       type: 'positive',
@@ -930,14 +1110,27 @@ async function handleToggleStatusConfirm(): Promise<void> {
       position: 'top',
     });
   } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : 'Error al cambiar el estado';
+    // Mejorar mensajes de error
+    let errorMessage = 'Error al cambiar el estado';
+    
+    if (error instanceof Error) {
+      const errorStr = error.message.toLowerCase();
+      
+      if (errorStr.includes('evaluación') || errorStr.includes('evaluation')) {
+        errorMessage = 'No se puede activar: Debe vincular una evaluación primero (RF-09)';
+      } else if (errorStr.includes('network') || errorStr.includes('timeout')) {
+        errorMessage = 'Error de conexión: Verifique su conexión e intente nuevamente';
+      } else {
+        errorMessage = error.message;
+      }
+    }
+    
     $q.notify({
       type: 'negative',
       message: errorMessage,
       icon: 'error',
       position: 'top',
-      timeout: 5000,
+      timeout: 7000,
     });
   }
 }
@@ -955,36 +1148,30 @@ const modalityIcon = computed(() =>
   training.value ? modalityIcons[training.value.modality] || 'school' : 'school',
 );
 
-const studentColumns: QTableColumn<TrainingStudent>[] = [
+const studentColumns: QTableColumn<StudentWithDocument>[] = [
   {
     name: 'name',
     field: 'name',
     label: 'Estudiante',
     align: 'left',
+    sortable: true,
+    required: true,
   },
   {
-    name: 'email',
-    field: 'email',
-    label: 'Correo',
+    name: 'documentNumber',
+    field: 'documentNumber',
+    label: 'Documento',
     align: 'left',
-  },
-  {
-    name: 'progress',
-    field: 'progress',
-    label: 'Progreso',
-    align: 'left',
+    sortable: true,
+    format: (val: string) => val || 'N/A',
   },
   {
     name: 'score',
     field: 'score',
     label: 'Nota',
-    align: 'left',
-  },
-  {
-    name: 'rating',
-    field: 'rating',
-    label: 'Calificación',
-    align: 'left',
+    align: 'center',
+    sortable: true,
+    format: (val: number) => val !== undefined && val !== null ? val.toFixed(2) : 'Sin calificar',
   },
 ];
 

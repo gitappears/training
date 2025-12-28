@@ -2,6 +2,17 @@
   <q-page class="evaluation-take-page q-pa-xl">
     <q-inner-loading :showing="loading" />
 
+    <!-- Diálogo de vista previa antes de iniciar -->
+    <EvaluationPreviewDialog
+      v-model="showPreviewDialog"
+      :evaluation="evaluation"
+      :loading="startingAttempt"
+      confirm-label="Iniciar Evaluación"
+      cancel-label="Cancelar"
+      @confirm="handleStartEvaluation"
+      @cancel="handleCancelPreview"
+    />
+
     <!-- Header -->
     <div class="row items-center justify-between q-mb-xl">
       <div class="col">
@@ -11,7 +22,7 @@
         <div class="text-body1 text-grey-7">{{ evaluation.description }}</div>
       </div>
       <div class="row items-center q-gutter-md">
-        <div v-if="!evaluationCompleted && !reviewMode" class="row items-center q-gutter-sm">
+        <div v-if="!evaluationCompleted && !reviewMode && attemptStarted" class="row items-center q-gutter-sm">
           <q-icon name="schedule" size="20px" color="primary" />
           <div class="text-body2 text-weight-medium" :class="timeWarningClass">
             {{ formatTime(timeRemaining) }}
@@ -614,14 +625,19 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch, type Ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 import type { Evaluation, Question } from '../../../domain/evaluation/models';
+import { useEvaluationAttempt } from '../../../shared/composables/useEvaluationAttempt';
+import { evaluationsService } from '../../../infrastructure/http/evaluations/evaluations.service';
+import EvaluationPreviewDialog from '../components/EvaluationPreviewDialog.vue';
+import { useAuthStore } from '../../../stores/auth.store';
 
 const route = useRoute();
 const router = useRouter();
 const $q = useQuasar();
+const authStore = useAuthStore();
 
 // Estado
 const loading = ref(false);
@@ -630,71 +646,43 @@ const currentQuestionIndex = ref(0);
 const answers = ref<Record<string, string | string[]>>({});
 const evaluationCompleted = ref(false);
 const finalScore = ref(0);
+const finalPercentage = ref(0);
+const passed = ref(false);
 const reviewMode = ref(false);
-const timeRemaining = ref(0); // en segundos
-const timerInterval = ref<number | null>(null);
+const attemptStarted = ref(false);
+const showPreviewDialog = ref(false);
+const startingAttempt = ref(false);
 
 const evaluation = ref<Evaluation>({
   id: evaluationId,
-  courseId: '1',
-  courseName: 'Manejo Defensivo',
-  description: 'Evaluación sobre técnicas de manejo defensivo',
+  courseId: '',
+  courseName: '',
+  description: '',
   questions: [],
   questionsCount: 0,
-  durationMinutes: 30,
+  durationMinutes: 0,
   minimumScore: 70,
-  status: 'in_progress',
+  status: 'pending',
   attemptsAllowed: 2,
   attemptsRemaining: 2,
-  createdAt: '2025-01-15',
+  createdAt: '',
 });
 
-const questions = ref<Question[]>([
-  {
-    id: 'q1',
-    text: '¿Cuál es la distancia mínima recomendada para mantener con el vehículo de adelante?',
-    type: 'single',
-    options: [
-      { id: 'o1', text: '2 segundos', isCorrect: false },
-      { id: 'o2', text: '3 segundos', isCorrect: true },
-      { id: 'o3', text: '1 segundo', isCorrect: false },
-      { id: 'o4', text: '5 segundos', isCorrect: false },
-    ],
-    order: 1,
-  },
-  {
-    id: 'q2',
-    text: 'Selecciona las técnicas de manejo defensivo correctas:',
-    type: 'multiple',
-    options: [
-      { id: 'o5', text: 'Mantener distancia adecuada', isCorrect: true },
-      { id: 'o6', text: 'Anticipar situaciones de riesgo', isCorrect: true },
-      { id: 'o7', text: 'Acelerar en curvas', isCorrect: false },
-      { id: 'o8', text: 'Revisar espejos constantemente', isCorrect: true },
-    ],
-    order: 2,
-  },
-  {
-    id: 'q3',
-    text: '¿Es correcto usar el celular mientras se conduce?',
-    type: 'true_false',
-    options: [
-      { id: 'true', text: 'Verdadero', isCorrect: false },
-      { id: 'false', text: 'Falso', isCorrect: true },
-    ],
-    order: 3,
-  },
-  {
-    id: 'q4',
-    text: '¿Debes usar el cinturón de seguridad siempre?',
-    type: 'yes_no',
-    options: [
-      { id: 'yes', text: 'Sí', isCorrect: true },
-      { id: 'no', text: 'No', isCorrect: false },
-    ],
-    order: 4,
-  },
-]);
+const questions = ref<Question[]>([]);
+
+// Estado para el composable
+const capacitacionIdRef = ref(0);
+const tiempoLimiteRef = ref(0);
+
+// Composable para gestionar intentos
+const evaluationAttempt = useEvaluationAttempt({
+  evaluacionId: parseInt(evaluationId),
+  capacitacionId: capacitacionIdRef,
+  tiempoLimiteMinutos: tiempoLimiteRef,
+  autoSaveInterval: 30, // Auto-guardar cada 30 segundos
+});
+
+const timeRemaining = evaluationAttempt.timeRemaining;
 
 // Computed
 const currentQuestion = computed(() => questions.value[currentQuestionIndex.value]);
@@ -728,7 +716,7 @@ const isCurrentQuestionAnswered = computed(() => {
   return isQuestionAnswered(currentQuestion.value?.id ?? '');
 });
 
-const passed = computed(() => finalScore.value >= evaluation.value.minimumScore);
+// passed ahora es un ref que se actualiza desde el resultado del backend
 
 const correctAnswers = computed(() => {
   let count = 0;
@@ -762,7 +750,7 @@ const unansweredCount = computed(() => {
 });
 
 const timeWarningClass = computed(() => {
-  const minutes = Math.floor(timeRemaining.value / 60);
+  const minutes = Math.floor(evaluationAttempt.timeRemaining.value / 60);
   if (minutes < 5) return 'text-negative';
   if (minutes < 10) return 'text-warning';
   return 'text-primary';
@@ -795,38 +783,44 @@ function enterReviewMode() {
   currentQuestionIndex.value = 0;
 }
 
-function submitEvaluation() {
-  // Calcular puntuación
-  let correctCount = 0;
-  questions.value.forEach((question) => {
-    const answer = answers.value[question.id];
-    if (question.type === 'multiple') {
-      const selected = answer as string[];
-      const correct = question.options.filter((o) => o.isCorrect).map((o) => o.id);
-      if (
-        selected.length === correct.length &&
-        selected.every((id) => correct.includes(id))
-      ) {
-        correctCount++;
-      }
-    } else {
-      const correctOption = question.options.find((o) => o.isCorrect);
-      if (answer === correctOption?.id) {
-        correctCount++;
-      }
+async function submitEvaluation() {
+  if (!evaluationAttempt.hasActiveAttempt.value) {
+    $q.notify({
+      type: 'warning',
+      message: 'Debes iniciar un intento antes de finalizar la evaluación',
+      icon: 'warning',
+      position: 'top',
+    });
+    return;
+  }
+
+  // Guardar todas las respuestas antes de finalizar
+  for (const [questionId, answer] of Object.entries(answers.value)) {
+    const question = questions.value.find((q) => q.id === questionId);
+    if (!question) continue;
+
+    const answerData: any = {
+      preguntaId: parseInt(questionId),
+    };
+
+    if (question.type === 'multiple' && Array.isArray(answer)) {
+      answerData.opcionRespuestaIds = answer.map((id) => parseInt(id));
+    } else if (typeof answer === 'string') {
+      answerData.opcionRespuestaId = parseInt(answer);
     }
-  });
 
-  finalScore.value = Math.round((correctCount / questions.value.length) * 100);
-  evaluationCompleted.value = true;
-  stopTimer();
+    await evaluationAttempt.saveAnswer(answerData);
+  }
 
-  // Aquí se llamaría al servicio HTTP para guardar el intento
-  console.log('Evaluación completada:', {
-    evaluationId,
-    score: finalScore.value,
-    answers: answers.value,
-  });
+  // Finalizar el intento
+  const result = await evaluationAttempt.finishAttempt();
+  if (result) {
+    finalScore.value = result.puntajeObtenido;
+    finalPercentage.value = result.porcentaje;
+    passed.value = result.aprobado;
+    evaluationCompleted.value = true;
+    evaluationAttempt.stopTimer();
+  }
 }
 
 function downloadCertificate() {
@@ -839,28 +833,40 @@ function downloadCertificate() {
   });
 }
 
-function retryEvaluation() {
+async function retryEvaluation() {
   currentQuestionIndex.value = 0;
   answers.value = {};
   evaluationCompleted.value = false;
   finalScore.value = 0;
+  finalPercentage.value = 0;
+  passed.value = false;
   reviewMode.value = false;
-  if (evaluation.value.attemptsRemaining !== undefined) {
-    evaluation.value.attemptsRemaining--;
-  }
-  startTimer();
+  attemptStarted.value = false;
+  
+  // Iniciar nuevo intento
+  await evaluationAttempt.startAttempt();
+  attemptStarted.value = true;
 }
 
 function confirmCancel() {
-  $q.dialog({
-    title: 'Confirmar cancelación',
-    message: '¿Estás seguro de que deseas cancelar la evaluación? Tu progreso se perderá.',
-    cancel: true,
-    persistent: true,
-  }).onOk(() => {
-    stopTimer();
-    void router.push('/evaluations');
-  });
+  if (typeof $q.dialog === 'function') {
+    $q.dialog({
+      title: 'Confirmar cancelación',
+      message: '¿Estás seguro de que deseas cancelar la evaluación? Tu progreso se perderá.',
+      cancel: true,
+      persistent: true,
+    }).onOk(() => {
+      evaluationAttempt.stopTimer();
+      void router.push('/evaluations');
+    });
+  } else {
+    // Fallback: usar confirm nativo
+    const confirmed = window.confirm('¿Estás seguro de que deseas cancelar la evaluación? Tu progreso se perderá.');
+    if (confirmed) {
+      evaluationAttempt.stopTimer();
+      void router.push('/evaluations');
+    }
+  }
 }
 
 function toggleMultipleAnswer(optionId: string) {
@@ -921,35 +927,12 @@ function goBack() {
   void router.push('/evaluations');
 }
 
-function formatTime(seconds: number): string {
-  const mins = Math.floor(seconds / 60);
-  const secs = seconds % 60;
-  return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-}
-
-function startTimer() {
-  timeRemaining.value = evaluation.value.durationMinutes * 60;
-  timerInterval.value = window.setInterval(() => {
-    if (timeRemaining.value > 0) {
-      timeRemaining.value--;
-    } else {
-      stopTimer();
-      $q.dialog({
-        title: 'Tiempo agotado',
-        message: 'Se ha agotado el tiempo para completar la evaluación.',
-        persistent: true,
-      }).onOk(() => {
-        submitEvaluation();
-      });
-    }
-  }, 1000);
-}
-
-function stopTimer() {
-  if (timerInterval.value !== null) {
-    clearInterval(timerInterval.value);
-    timerInterval.value = null;
-  }
+function formatTime(seconds: Ref<number> | number): string {
+  const secs = typeof seconds === 'number' ? seconds : seconds.value;
+  if (secs <= 0) return '00:00';
+  const mins = Math.floor(secs / 60);
+  const remainingSecs = secs % 60;
+  return `${mins.toString().padStart(2, '0')}:${remainingSecs.toString().padStart(2, '0')}`;
 }
 
 // Watchers
@@ -961,19 +944,93 @@ watch(
   },
 );
 
+// Auto-guardar respuestas cuando cambian
+watch(
+  () => answers.value,
+  async (newAnswers, oldAnswers) => {
+    if (!evaluationAttempt.hasActiveAttempt.value || !attemptStarted.value) return;
+    
+    // Encontrar qué respuesta cambió
+    for (const [questionId, answer] of Object.entries(newAnswers)) {
+      const oldAnswer = oldAnswers?.[questionId];
+      if (oldAnswer === answer) continue;
+
+      const question = questions.value.find((q) => q.id === questionId);
+      if (!question) continue;
+
+      const answerData: any = {
+        preguntaId: parseInt(questionId),
+      };
+
+      if (question.type === 'multiple' && Array.isArray(answer)) {
+        answerData.opcionRespuestaIds = answer.map((id) => parseInt(id));
+      } else if (typeof answer === 'string') {
+        answerData.opcionRespuestaId = parseInt(answer);
+      }
+
+      // Guardar en cola para auto-guardado
+      await evaluationAttempt.saveAnswer(answerData);
+    }
+  },
+  { deep: true },
+);
+
+// Funciones para manejar el diálogo de vista previa
+async function handleStartEvaluation() {
+  startingAttempt.value = true;
+  try {
+    await evaluationAttempt.startAttempt();
+    attemptStarted.value = true;
+    showPreviewDialog.value = false;
+  } catch (error: any) {
+    console.error('Error al iniciar evaluación:', error);
+    $q.notify({
+      type: 'negative',
+      message: error.response?.data?.message || 'Error al iniciar la evaluación',
+      icon: 'error',
+      position: 'top',
+    });
+  } finally {
+    startingAttempt.value = false;
+  }
+}
+
+function handleCancelPreview() {
+  showPreviewDialog.value = false;
+  void router.push('/evaluations');
+}
+
 // Lifecycle
-onMounted(() => {
+onMounted(async () => {
   loading.value = true;
-  // Simular carga de datos
-  setTimeout(() => {
-    evaluation.value.questionsCount = questions.value.length;
+  try {
+    // Cargar evaluación real desde el backend
+    const loadedEvaluation = await evaluationsService.findOne(evaluationId);
+    evaluation.value = loadedEvaluation;
+    questions.value = loadedEvaluation.questions;
+
+    // Actualizar el composable con los datos correctos
+    capacitacionIdRef.value = parseInt(loadedEvaluation.courseId);
+    tiempoLimiteRef.value = loadedEvaluation.durationMinutes;
+
+    // Mostrar diálogo de vista previa
+    showPreviewDialog.value = true;
+  } catch (error: any) {
+    console.error('Error al cargar evaluación:', error);
+    $q.notify({
+      type: 'negative',
+      message: error.response?.data?.message || 'Error al cargar la evaluación',
+      icon: 'error',
+      position: 'top',
+    });
+    void router.push('/evaluations');
+  } finally {
     loading.value = false;
-    startTimer();
-  }, 500);
+  }
 });
 
 onUnmounted(() => {
-  stopTimer();
+  evaluationAttempt.stopTimer();
 });
 </script>
 

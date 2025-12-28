@@ -336,6 +336,25 @@ export class CertificatesService implements ICertificateRepository {
     }
   }
 
+  /**
+   * Obtiene el PDF del certificado para visualización (sin descargar)
+   * @param id ID del certificado
+   * @returns Blob del PDF
+   */
+  async getPDFForView(id: string): Promise<Blob> {
+    try {
+      const response = await api.get(`${this.baseUrl}/${id}/view`, {
+        responseType: 'blob',
+      });
+      return response.data;
+    } catch (error) {
+      const axiosError = error as AxiosError<{ message?: string }>;
+      throw new Error(
+        axiosError.response?.data?.message ?? `Error al obtener el certificado con ID ${id} para visualización`,
+      );
+    }
+  }
+
   async verifyPublic(token: string): Promise<CertificateVerification> {
     try {
       const response = await api.get<{

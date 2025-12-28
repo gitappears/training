@@ -443,32 +443,71 @@ import type {
 } from '../../../domain/certificate/models';
 import EmptyState from '../../../shared/components/EmptyState.vue';
 import FiltersPanel from '../../../shared/components/FiltersPanel.vue';
+import { useCertificates } from '../../../shared/composables/useCertificates';
+import { useAuthStore } from '../../../stores/auth.store';
 
 const router = useRouter();
 const $q = useQuasar();
+const authStore = useAuthStore();
 
-// Estado
-const loading = ref(false);
+// Composable para gestión de certificados
+const {
+  loading,
+  certificates,
+  pagination,
+  filters,
+  loadCertificates,
+  downloadCertificatePDF,
+  updateFilters,
+  clearFilters,
+  changePage,
+} = useCertificates();
+
+// Estado local
 const viewMode = ref<'grid' | 'table'>('grid');
-const certificates = ref<Certificate[]>([]);
 const selectedCertificates = ref<Certificate[]>([]);
 const hoveredCertificate = ref<string | null>(null);
-const filters = ref<CertificateFilters>({
-  search: '',
-  courseId: null,
-  status: null,
-  dateFrom: null,
-  dateTo: null,
-  qrCode: null,
-});
 
-const statistics = ref<CertificateStatistics>({
-  total: 0,
-  valid: 0,
-  expired: 0,
-  revoked: 0,
-  byCourse: {},
-  expiringSoon: 0,
+// Calcular estadísticas desde los certificados reales
+const statistics = computed<CertificateStatistics>(() => {
+  const certs = certificates.value;
+  const stats: CertificateStatistics = {
+    total: certs.length,
+    valid: 0,
+    expired: 0,
+    revoked: 0,
+    byCourse: {},
+    expiringSoon: 0,
+  };
+
+  certs.forEach((cert) => {
+    // Contar por estado
+    if (cert.status === 'valid') stats.valid++;
+    else if (cert.status === 'expired') stats.expired++;
+    else if (cert.status === 'revoked') stats.revoked++;
+
+    // Contar por curso
+    if (cert.courseId) {
+      if (!stats.byCourse[cert.courseId]) {
+        stats.byCourse[cert.courseId] = 0;
+      }
+      stats.byCourse[cert.courseId] = (stats.byCourse[cert.courseId] || 0) + 1;
+    }
+
+    // Contar próximos a vencer (30 días)
+    if (cert.expiryDate && cert.status === 'valid') {
+      const expiry = new Date(cert.expiryDate);
+      const now = new Date();
+      const daysUntilExpiry = Math.ceil(
+        (expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
+      );
+      if (daysUntilExpiry > 0 && daysUntilExpiry <= 30) {
+        stats.expiringSoon++;
+      }
+    }
+  });
+
+  return stats;
 });
 
 // Opciones de filtros
@@ -586,100 +625,49 @@ const activeFiltersCount = computed(() => {
 const hasActiveFilters = computed(() => activeFiltersCount.value > 0);
 
 // Funciones
-function loadCertificates() {
-  loading.value = true;
-  // Simular carga de datos (mock)
-  setTimeout(() => {
-    certificates.value = [
-      {
-        id: '1',
-        courseId: '1',
-        courseName: 'Primeros Auxilios',
-        studentId: '1',
-        studentName: 'Juan Pérez',
-        documentNumber: '12345678',
-        instructor: '1',
-        instructorName: 'Dr. María González',
-        issuedDate: '2025-01-15',
-        expiryDate: '2026-01-15',
-        isRetroactive: false,
-        score: 85,
-        minimumScore: 70,
-        status: 'valid',
-        verificationCode: 'ABC123XYZ789',
-        qrCodeUrl: 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=ABC123XYZ789',
-        publicVerificationUrl: '/verify/ABC123XYZ789',
-        pdfUrl: '/certificates/1.pdf',
-        createdAt: '2025-01-15',
-      },
-      {
-        id: '2',
-        courseId: '2',
-        courseName: 'Manejo Defensivo',
-        studentId: '1',
-        studentName: 'Juan Pérez',
-        documentNumber: '12345678',
-        instructor: '2',
-        instructorName: 'Ing. Carlos Rodríguez',
-        issuedDate: '2024-12-10',
-        expiryDate: '2025-12-10',
-        isRetroactive: false,
-        score: 90,
-        minimumScore: 70,
-        status: 'valid',
-        verificationCode: 'DEF456UVW012',
-        qrCodeUrl: 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=DEF456UVW012',
-        publicVerificationUrl: '/verify/DEF456UVW012',
-        pdfUrl: '/certificates/2.pdf',
-        createdAt: '2024-12-10',
-      },
-      {
-        id: '3',
-        courseId: '3',
-        courseName: 'Transporte de Mercancías Peligrosas',
-        studentId: '1',
-        studentName: 'Juan Pérez',
-        documentNumber: '12345678',
-        instructor: '3',
-        instructorName: 'Lic. Ana Martínez',
-        issuedDate: '2023-06-20',
-        expiryDate: '2024-06-20',
-        isRetroactive: true,
-        justification: 'Reposición por error administrativo',
-        score: 88,
-        minimumScore: 75,
-        status: 'expired',
-        verificationCode: 'GHI789RST345',
-        qrCodeUrl: 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=GHI789RST345',
-        publicVerificationUrl: '/verify/GHI789RST345',
-        pdfUrl: '/certificates/3.pdf',
-        createdAt: '2023-06-20',
-      },
-    ];
+// La función loadCertificates ahora viene del composable useCertificates
+// Esta función wrapper maneja la lógica específica de esta página
+async function handleLoadCertificates() {
+  // Obtener userId del store de autenticación
+  const profile = authStore.profile as { personaId?: number; persona?: { id?: number } } | null;
+  const userId = profile?.personaId || profile?.persona?.id;
 
-    calculateStatistics();
-    loading.value = false;
-  }, 500);
-}
+  console.log('🔍 Cargando certificados...');
+  console.log('Profile completo:', JSON.stringify(profile, null, 2));
+  console.log('personaId:', profile?.personaId);
+  console.log('persona?.id:', profile?.persona?.id);
+  console.log('User ID final:', userId);
 
-function calculateStatistics() {
-  const now = new Date();
-  const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+  if (userId) {
+    // Cargar certificados del usuario actual
+    console.log('📋 Filtrando por estudiante ID:', userId.toString());
+    await loadCertificates({
+      page: pagination.value.page,
+      limit: pagination.value.limit,
+      filters: {
+        ...filters.value,
+        studentId: userId.toString(),
+      },
+    });
+  } else {
+    console.log('⚠️ No se encontró userId, cargando todos los certificados (admin mode)');
+    // Si no hay userId, cargar todos (para admin)
+    await loadCertificates({
+      page: pagination.value.page,
+      limit: pagination.value.limit,
+      filters: filters.value,
+    });
+  }
 
-  statistics.value = {
-    total: certificates.value.length,
-    valid: certificates.value.filter((c) => c.status === 'valid').length,
-    expired: certificates.value.filter((c) => c.status === 'expired').length,
-    revoked: certificates.value.filter((c) => c.status === 'revoked').length,
-    byCourse: certificates.value.reduce((acc, cert) => {
-      acc[cert.courseId] = (acc[cert.courseId] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>),
-    expiringSoon: certificates.value.filter((cert) => {
-      const expiryDate = new Date(cert.expiryDate);
-      return expiryDate > now && expiryDate <= thirtyDaysFromNow && cert.status === 'valid';
-    }).length,
-  };
+  console.log('✅ Certificados cargados:', certificates.value.length);
+  if (certificates.value.length > 0) {
+    console.log('Certificados encontrados:', certificates.value);
+  } else {
+    console.warn('⚠️ No se encontraron certificados. Verifica:');
+    console.warn('  1. Que la capacitación sea de tipo CERTIFIED');
+    console.warn('  2. Que el estudiante haya aprobado la evaluación');
+    console.warn('  3. Que el personaId coincida con el estudiante_id en las inscripciones');
+  }
 }
 
 const debouncedSearch = debounce(() => {
@@ -690,15 +678,8 @@ function toggleViewMode() {
   viewMode.value = viewMode.value === 'grid' ? 'table' : 'grid';
 }
 
-function clearAllFilters() {
-  filters.value = {
-    search: '',
-    courseId: null,
-    status: null,
-    dateFrom: null,
-    dateTo: null,
-    qrCode: null,
-  };
+async function clearAllFilters() {
+  await clearFilters();
 }
 
 function openQRScanner() {
@@ -822,7 +803,7 @@ function formatDate(dateString: string): string {
 
 // Lifecycle
 onMounted(() => {
-  loadCertificates();
+  void handleLoadCertificates();
 });
 </script>
 

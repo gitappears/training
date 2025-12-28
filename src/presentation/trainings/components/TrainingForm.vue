@@ -96,7 +96,7 @@
             </template>
           </q-select>
         </div>
-        <div class="col-12 col-md-4">
+        <div v-if="false" class="col-12 col-md-4">
           <q-input
             v-model="form.location"
             filled
@@ -115,11 +115,17 @@
             v-model.number="form.durationHours"
             type="number"
             min="0"
+            step="1"
             filled
             label="Duración (horas)"
             placeholder="0"
-            hint="Horas totales del curso"
+            hint="Horas totales del curso (número entero)"
+            :rules="[
+              (val) => val === null || val === undefined || val === '' || (!isNaN(val) && val >= 0) || 'La duración debe ser un número mayor o igual a 0',
+              (val) => val === null || val === undefined || val === '' || Number.isInteger(Number(val)) || 'La duración debe ser un número entero',
+            ]"
             :dense="false"
+            @update:model-value="handleDurationChange"
           >
             <template #prepend>
               <q-icon name="schedule" />
@@ -142,9 +148,6 @@
             </template>
           </q-input>
         </div>
-      </div>
-
-      <div class="row q-col-gutter-md q-mt-sm">
         <div class="col-12 col-md-4">
           <q-input
             v-model="form.instructor"
@@ -159,7 +162,11 @@
             </template>
           </q-input>
         </div>
-        <div class="col-12 col-md-4">
+      </div>
+
+      <div class="row q-col-gutter-md q-mt-sm">
+      
+        <div v-if="false" class="col-12 col-md-4">
           <q-input
             v-model="form.area"
             filled
@@ -187,10 +194,8 @@
             </template>
           </q-select>
         </div>
-      </div>
-
-      <div class="row q-col-gutter-md q-mt-sm">
-        <div class="col-12 col-md-6">
+     
+        <div class="col-12 col-md-4">
           <q-input
             v-model="form.startDate"
             filled
@@ -212,7 +217,7 @@
             </template>
           </q-input>
         </div>
-        <div class="col-12 col-md-6">
+        <div class="col-12 col-md-4">
           <q-input
             v-model="form.endDate"
             filled
@@ -537,7 +542,7 @@
           </q-banner>
 
           <!-- Formulario de evaluación -->
-          <div class="q-gutter-md">
+          <div class="q-gutter-md" v-if="form.evaluationInline">
             <q-input
               v-model="form.evaluationInline.titulo"
               filled
@@ -558,10 +563,10 @@
               label="Descripción"
               hint="Descripción opcional de la evaluación"
               :dense="false"
-              rows="2"
+              rows="3"
             />
 
-            <div class="row q-col-gutter-md">
+            <div class="row q-col-gutter-md q-mt-sm">
               <div class="col-12 col-md-6">
                 <q-input
                   v-model.number="form.evaluationInline.tiempoLimiteMinutos"
@@ -597,17 +602,17 @@
             <div class="row q-col-gutter-md">
               <div class="col-12 col-md-6">
                 <q-input
-                  v-model.number="form.evaluationInline.puntajeTotal"
+                  :model-value="calculatedPuntajeTotal"
                   filled
                   type="number"
                   label="Puntaje total *"
-                  hint="Puntaje máximo de la evaluación"
+                  hint="Calculado automáticamente: suma de los puntajes de todas las preguntas"
                   :dense="false"
-                  min="0"
-                  step="0.01"
+                  readonly
+                  class="readonly-field"
                 >
                   <template #prepend>
-                    <q-icon name="star" />
+                    <q-icon name="calculate" />
                   </template>
                 </q-input>
               </div>
@@ -630,15 +635,22 @@
               </div>
             </div>
 
-            <q-toggle
-              v-model="form.evaluationInline.mostrarResultados"
-              label="Mostrar resultados al finalizar"
-            />
-
-            <q-toggle
-              v-model="form.evaluationInline.mostrarRespuestasCorrectas"
-              label="Mostrar respuestas correctas"
-            />
+            <div class="row q-col-gutter-md q-mt-sm">
+              <div class="col-12 col-md-6">
+                <q-toggle
+                  v-model="form.evaluationInline.mostrarResultados"
+                  label="Mostrar resultados al finalizar"
+                  color="primary"
+                />
+              </div>
+              <div class="col-12 col-md-6">
+                <q-toggle
+                  v-model="form.evaluationInline.mostrarRespuestasCorrectas"
+                  label="Mostrar respuestas correctas"
+                  color="primary"
+                />
+              </div>
+            </div>
 
             <!-- Sección de preguntas -->
             <q-separator class="q-my-md" />
@@ -1035,7 +1047,7 @@
           type="submit"
           color="primary"
           unelevated
-          label="Crear capacitación"
+          :label="isEditMode ? 'Actualizar capacitación' : 'Crear capacitación'"
           icon="check"
           :loading="false"
           class="q-px-xl"
@@ -1148,6 +1160,11 @@ const showImagePreview = ref(false);
 // Composables
 const { buildFullUrl } = useMaterialUrl();
 
+// Detectar modo edición
+const isEditMode = computed(() => {
+  return !!props.initialData?.id;
+});
+
 // Estados para videos
 const showAddVideoDialog = ref(false);
 const editingVideoIndex = ref<number | null>(null);
@@ -1205,12 +1222,12 @@ const modalities = [
 ];
 
 const targetAudiences = [
-  'Todos los colaboradores',
-  'Jefaturas',
-  'Operaciones',
-  'Backoffice',
-  'Desarrolladores',
-  'Diseñadores',
+  'Conductores',
+  'Administrativos',
+  'Operadores',
+  'Clientes',
+  'Proveedores',
+  'Otros',
 ];
 
 // Tipos de pregunta (RF-16)
@@ -1225,6 +1242,20 @@ const questionTypes = [
 // Computed para verificar si hay evaluación (siempre inline ahora)
 const hasEvaluation = computed(() => {
   return !!form.evaluationInline && form.evaluationInline.preguntas.length > 0;
+});
+
+/**
+ * Calcula automáticamente el puntaje total de la evaluación
+ * como la suma de los puntajes de todas las preguntas
+ */
+const calculatedPuntajeTotal = computed(() => {
+  if (!form.evaluationInline?.preguntas || form.evaluationInline.preguntas.length === 0) {
+    return 0;
+  }
+  return form.evaluationInline.preguntas.reduce(
+    (sum, pregunta) => sum + (pregunta.puntaje || 0),
+    0
+  );
 });
 
 // Inicializar evaluación inline si no existe (para modo edición)
@@ -1616,7 +1647,7 @@ const form = reactive<TrainingFormModel>({
   capacity: null,
   instructor: '',
   area: '',
-  targetAudience: null,
+  targetAudience: 'Conductores',
   startDate: '',
   endDate: '',
   coverImageUrl: '',
@@ -1659,7 +1690,7 @@ function reset() {
   form.capacity = null;
   form.instructor = '';
   form.area = '';
-  form.targetAudience = null;
+  form.targetAudience = 'Conductores';
   form.startDate = '';
   form.endDate = '';
   form.coverImageUrl = '';
@@ -1712,7 +1743,7 @@ function initializeFormWithData() {
   form.capacity = data.capacity ?? null;
   form.instructor = data.instructor || '';
   form.area = data.area || '';
-  form.targetAudience = data.targetAudience ?? null;
+  form.targetAudience = data.targetAudience ?? 'Conductores';
   form.startDate = data.startDate || '';
   form.endDate = data.endDate || '';
   form.coverImageUrl = data.coverImageUrl || '';
@@ -1889,6 +1920,15 @@ function validateImageUrl() {
   }
 }
 
+function handleDurationChange(value: string | number | null) {
+  // Convertir a entero si tiene valor
+  if (value !== null && value !== undefined && value !== '') {
+    form.durationHours = Math.round(Number(value));
+  } else {
+    form.durationHours = null;
+  }
+}
+
 // Funciones para gestión de materiales
 function getMaterialTypeColor(type: string): string {
   switch (type) {
@@ -2017,6 +2057,30 @@ body.body--dark {
     &.evaluation-selected {
       border-color: rgba(var(--q-primary-rgb), 0.4);
       background-color: rgba(var(--q-primary-rgb), 0.05);
+    }
+  }
+}
+
+// Estilos para campos readonly compatibles con modo oscuro
+.readonly-field {
+  .q-field__control {
+    opacity: 0.7;
+    cursor: not-allowed;
+  }
+}
+
+body.body--light {
+  .readonly-field {
+    .q-field__control {
+      background-color: rgba(0, 0, 0, 0.04);
+    }
+  }
+}
+
+body.body--dark {
+  .readonly-field {
+    .q-field__control {
+      background-color: rgba(255, 255, 255, 0.05);
     }
   }
 }
