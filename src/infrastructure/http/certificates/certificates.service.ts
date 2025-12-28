@@ -195,21 +195,69 @@ export class CertificatesService implements ICertificateRepository {
 
   async findByUser(userId: string, filters?: CertificateFilters): Promise<Certificate[]> {
     try {
-      const params: CertificateListParams = {
+      // Validar que userId sea un número válido
+      const estudianteId = Number.parseInt(userId, 10);
+      if (Number.isNaN(estudianteId)) {
+        throw new Error(`ID de usuario inválido: ${userId}`);
+      }
+
+      // Usar el nuevo endpoint específico para obtener certificados por estudiante
+      const pagination = {
         page: 1,
-        limit: 100,
-        filters: {
-          ...filters,
-          studentId: userId,
-        },
+        limit: 100, // Máximo permitido
+        search: filters?.search,
+        sortField: 'fechaEmision',
+        sortOrder: 'DESC',
       };
-      const result = await this.findAll(params);
-      return result.data;
-    } catch (error) {
-      const axiosError = error as AxiosError<{ message?: string }>;
-      throw new Error(
-        axiosError.response?.data?.message ?? `Error al obtener los certificados del usuario ${userId}`,
+
+      const response = await api.post<BackendPaginatedResponse>(
+        `${this.baseUrl}/estudiante/${estudianteId}`,
+        pagination,
       );
+
+      // Verificar que la respuesta tenga la estructura esperada
+      if (!response.data || !Array.isArray(response.data.data)) {
+        console.warn('Respuesta inesperada del backend:', response.data);
+        return [];
+      }
+
+      // Mapear las certificados con manejo de errores individual
+      const certificates: Certificate[] = [];
+      for (const item of response.data.data) {
+        try {
+          const certificate = mapBackendToDomain(item);
+          certificates.push(certificate);
+        } catch (error) {
+          console.error('Error al mapear certificado:', error, item);
+          // Continuar con los siguientes certificados
+        }
+      }
+
+      return certificates;
+    } catch (error) {
+      const axiosError = error as AxiosError<{ message?: string; error?: string }>;
+      
+      // Log detallado del error para debugging
+      console.error('Error en findByUser:', {
+        userId,
+        status: axiosError.response?.status,
+        statusText: axiosError.response?.statusText,
+        data: axiosError.response?.data,
+        message: axiosError.message,
+      });
+      
+      // Si es un error 404, retornar array vacío en lugar de lanzar error
+      if (axiosError.response?.status === 404) {
+        console.warn(`No se encontraron certificados para el usuario ${userId}`);
+        return [];
+      }
+      
+      const errorMessage =
+        axiosError.response?.data?.message ??
+        axiosError.response?.data?.error ??
+        `Error al obtener los certificados del usuario ${userId}`;
+      
+      throw new Error(errorMessage);
     }
   }
 
