@@ -290,9 +290,9 @@ export class InscriptionsService implements IInscriptionRepository {
         );
 
         // Enviar PaginationDto con tipos correctos (números, no strings)
-        const response = await api.post<BackendPaginatedResponse>(
-          `${this.baseUrl}/capacitacion/${courseId}`,
-          {
+      const response = await api.post<BackendPaginatedResponse>(
+        `${this.baseUrl}/capacitacion/${courseId}`,
+        {
             page: currentPage,
             limit: pageSize,
           },
