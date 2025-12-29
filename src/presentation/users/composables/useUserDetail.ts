@@ -26,6 +26,7 @@ export function useUserDetail(userId: string) {
   const {
     editUser: editUserAction,
     assignCourse,
+    assignCourseDialogOpen,
     viewCertificate,
     downloadCertificate,
     goBack,
@@ -46,7 +47,13 @@ export function useUserDetail(userId: string) {
   }
 
   async function loadUserData() {
-    if (!user.value.personaId) return;
+    if (!user.value.personaId) {
+      console.warn('No se puede cargar datos del usuario: personaId no está definido', {
+        userId: user.value.id,
+        personaId: user.value.personaId,
+      });
+      return;
+    }
 
     try {
       // Cargar cursos y certificados en paralelo
@@ -56,15 +63,42 @@ export function useUserDetail(userId: string) {
       ]);
 
       // Cargar datos completos para generar actividades
-      const [inscriptions, backendCertificates] = await Promise.all([
+      // Usar Promise.allSettled para que un error no detenga el otro
+      const [inscriptionsResult, backendCertificatesResult] = await Promise.allSettled([
         inscriptionsService.findByUser(user.value.personaId),
         certificatesService.findByUser(user.value.personaId),
       ]);
 
-      // Generar actividades
-      loadActivities(inscriptions, backendCertificates, user.value);
+      // Procesar resultados
+      const inscriptions =
+        inscriptionsResult.status === 'fulfilled' ? inscriptionsResult.value : [];
+      const backendCertificates =
+        backendCertificatesResult.status === 'fulfilled'
+          ? backendCertificatesResult.value
+          : [];
+
+      // Log de errores si los hay
+      if (inscriptionsResult.status === 'rejected') {
+        console.error('Error al cargar inscripciones:', inscriptionsResult.reason);
+      }
+      if (backendCertificatesResult.status === 'rejected') {
+        console.error('Error al cargar certificados:', backendCertificatesResult.reason);
+      }
+
+      // Generar actividades solo si tenemos datos
+      if (inscriptions.length > 0 || backendCertificates.length > 0) {
+        loadActivities(inscriptions, backendCertificates, user.value);
+      }
     } catch (error) {
       console.error('Error loading user data:', error);
+      // No lanzar el error para que la página pueda seguir funcionando
+    }
+  }
+
+  async function handleCourseAssigned() {
+    // Recargar los cursos después de asignar uno nuevo
+    if (user.value.personaId) {
+      await loadCourses(user.value.personaId);
     }
   }
 
@@ -103,6 +137,7 @@ export function useUserDetail(userId: string) {
     certificates,
     activities,
     averageProgress,
+    assignCourseDialogOpen,
 
     // Formatters
     formatDate,
@@ -115,6 +150,7 @@ export function useUserDetail(userId: string) {
     handleToggleUserStatus,
     editUser,
     assignCourse,
+    handleCourseAssigned,
     viewCertificate,
     downloadCertificate,
     goBack,

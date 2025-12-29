@@ -282,7 +282,7 @@
           <div v-else class="column q-gutter-md">
             <q-card
               v-for="course in assignedCourses"
-              :key="course.id"
+              :key="course.inscriptionId"
               flat
               bordered
               class="course-card"
@@ -322,7 +322,7 @@
               <div class="progress-chart">
                 <div
                   v-for="course in assignedCourses"
-                  :key="course.id"
+                  :key="course.inscriptionId"
                   class="progress-item q-mb-md"
                 >
                   <div class="row items-center justify-between q-mb-xs">
@@ -432,6 +432,15 @@
         </q-tab-panel>
       </q-tab-panels>
     </q-card>
+
+    <!-- Diálogo para asignar curso -->
+    <AssignCourseDialog
+      v-model:open="assignCourseDialogOpen"
+      :user-id="userId"
+      :persona-id="user.personaId"
+      :assigned-course-ids="assignedCourses.map((c) => c.id)"
+      @assigned="handleCourseAssigned"
+    />
   </q-page>
 </template>
 
@@ -439,6 +448,7 @@
 import { useRoute } from 'vue-router';
 import { useUserDetail } from '../composables';
 import EmptyState from '../../../shared/components/EmptyState.vue';
+import AssignCourseDialog from '../components/AssignCourseDialog.vue';
 
 const route = useRoute();
 const userId = route.params.id as string;
@@ -451,6 +461,7 @@ const {
   certificates,
   activities,
   averageProgress,
+  assignCourseDialogOpen,
   formatDate,
   getDocumentTypeLabel,
   getCourseStatusColor,
@@ -459,6 +470,7 @@ const {
   handleToggleUserStatus,
   editUser,
   assignCourse,
+  handleCourseAssigned,
   viewCertificate,
   downloadCertificate,
   goBack,
