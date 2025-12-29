@@ -45,9 +45,16 @@ export function useAuth() {
         return;
       }
       
+      
       $q.notify({
         type: 'negative',
         message: errorMessage,
+        position: 'top',
+        icon: 'warning',
+        timeout: 6000,
+        actions: [
+          { label: 'Cerrar', color: 'white', handler: () => { /* dismiss */ } }
+        ]
       });
       
       throw error;
