@@ -198,7 +198,8 @@ async function generateQR() {
     // Intentar importar y usar la librería QRCode
     try {
       // Importar dinámicamente la librería qrcode
-      const QRCode = (await import('qrcode')).default;
+      const module = await import('qrcode');
+      const QRCode = module.default || module;
       
       // Limpiar el contenedor
       qrCodeContainer.value.innerHTML = '';

@@ -26,13 +26,7 @@
         </div>
       </div>
       <div class="row q-gutter-sm lt-md">
-        <q-btn
-          flat
-          color="primary"
-          icon="share"
-          label="Compartir"
-          @click="showShareMenu"
-        />
+
         <q-btn
           color="primary"
           unelevated
@@ -97,27 +91,47 @@
                 ref="viewerContainer"
                 class="certificate-viewer"
               >
-                <!-- Loading state -->
-                <div v-if="loadingPDF" class="flex flex-center full-height">
-                  <q-spinner color="primary" size="3em" />
-                </div>
-                
-                <!-- PDF Viewer usando iframe con blob URL -->
-                <iframe
-                  v-else-if="pdfViewerUrl"
-                  :src="pdfViewerUrl"
-                  class="pdf-iframe"
-                  frameborder="0"
-                  type="application/pdf"
-                />
-                
-                <!-- Error state -->
-                <div v-else class="flex flex-center full-height text-center q-pa-xl">
-                  <div>
-                    <q-icon name="error_outline" size="64px" color="negative" class="q-mb-md" />
-                    <div class="text-h6 q-mb-sm">Error al cargar el certificado</div>
-                    <div class="text-body2 text-grey-7">
-                      No se pudo cargar el PDF del certificado. Por favor, intente descargarlo.
+                <!-- HTML Certificate View -->
+               <div class="certificate-html-view" :style="{ backgroundImage: `url(${certificateBg})` }">
+                  <div class="certificate-content">
+                    <!-- Title usually in SVG, but adding if needed based on PDF generator -->
+                    <div class="cert-title">CERTIFICADO DE CAPACITACIÓN</div>
+                    
+                    <div class="cert-body">
+                      <p class="cert-text">Se certifica que:</p>
+                      <h2 class="cert-student-name">{{ certificate.studentName }}</h2>
+                      <p class="cert-text">Documento de Identidad: {{ certificate.documentNumber }}</p>
+                      
+                      <p class="cert-text q-mt-lg">Ha completado exitosamente la capacitación:</p>
+                      <h3 class="cert-course-name">{{ certificate.courseName }}</h3>
+                      
+                      <p class="cert-text q-mt-md">Fecha de emisión: {{ formatDate(certificate.issuedDate) }}</p>
+                      <p class="cert-text">Capacitador: {{ certificate.instructorName }}</p>
+                    </div>
+
+                    <div class="cert-footer">
+                       <div class="cert-signature-section">
+                          <img v-if="certificate.digitalSignature" :src="certificate.digitalSignature" class="cert-signature-img" />
+                          <div v-else class="cert-signature-placeholder">
+                            <div class="line"></div>
+                            <div>Firma Digital</div>
+                          </div>
+                       </div>
+                       
+                       <div class="cert-qr-section">
+                          <QRCodeDisplay
+                            v-if="getQRValue"
+                            :value="getQRValue"
+                            :size="120"
+                            :show-border="false"
+                            :show-background="false"
+                            :show-info="false"
+                            :show-actions="false"
+                          />
+                          <div class="cert-verification-code">
+                            Código: {{ certificate.verificationCode }}
+                          </div>
+                       </div>
                     </div>
                   </div>
                 </div>
@@ -279,8 +293,8 @@
                         color="primary"
                         @click="copyVerificationCode"
                       >
-                        <q-tooltip>Copiar código</q-tooltip>
-                      </q-btn>
+                          <q-tooltip>Copiar código</q-tooltip>
+                        </q-btn>
                     </div>
                     <div v-else class="text-caption text-grey-6 text-center q-pa-sm">
                       Código de verificación no disponible
@@ -310,13 +324,7 @@
                   </div>
 
                   <div class="row q-gutter-sm q-mt-md">
-                    <q-btn
-                      color="primary"
-                      unelevated
-                      icon="share"
-                      label="Compartir Enlace"
-                      @click="shareVerificationLink"
-                    />
+
                     <q-btn
                       flat
                       color="primary"
@@ -375,14 +383,7 @@
                 class="full-width"
                 @click="downloadPDF"
               />
-              <q-btn
-                flat
-                color="primary"
-                icon="share"
-                label="Compartir"
-                class="full-width"
-                @click="showShareMenu"
-              />
+
               <q-btn
                 flat
                 color="primary"
@@ -458,53 +459,14 @@
       </div>
     </div>
 
-    <!-- Share Menu -->
-    <q-menu
-      ref="shareMenu"
-      :model-value="showShareMenuDialog"
-      @update:model-value="showShareMenuDialog = $event"
-    >
-      <q-list>
-        <q-item clickable v-close-popup @click="copyVerificationLink">
-          <q-item-section avatar>
-            <q-icon name="content_copy" />
-          </q-item-section>
-          <q-item-section>
-            <q-item-label>Copiar Enlace</q-item-label>
-          </q-item-section>
-        </q-item>
-        <q-item clickable v-close-popup @click="copyVerificationCode">
-          <q-item-section avatar>
-            <q-icon name="qr_code" />
-          </q-item-section>
-          <q-item-section>
-            <q-item-label>Copiar Código</q-item-label>
-          </q-item-section>
-        </q-item>
-        <q-item clickable v-close-popup @click="shareViaEmail">
-          <q-item-section avatar>
-            <q-icon name="email" />
-          </q-item-section>
-          <q-item-section>
-            <q-item-label>Compartir por Email</q-item-label>
-          </q-item-section>
-        </q-item>
-        <q-item clickable v-close-popup @click="shareViaWhatsApp">
-          <q-item-section avatar>
-            <q-icon name="chat" />
-          </q-item-section>
-          <q-item-section>
-            <q-item-label>Compartir por WhatsApp</q-item-label>
-          </q-item-section>
-        </q-item>
-      </q-list>
-    </q-menu>
+
 
   </q-page>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue';
+import certificateBg from '../../../../assets/certificado_svg.svg';
 import { useRoute, useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 import type { Certificate, CertificateVerificationHistory } from '../../../domain/certificate/models';
@@ -512,7 +474,7 @@ import EmptyState from '../../../shared/components/EmptyState.vue';
 import QRCodeDisplay from '../../../shared/components/QRCodeDisplay.vue';
 import { useCertificates } from '../../../shared/composables/useCertificates';
 import { certificatesService } from '../../../infrastructure/http/certificates/certificates.service';
-import { api } from '../../../boot/axios';
+
 
 const route = useRoute();
 const router = useRouter();
@@ -531,9 +493,7 @@ const tab = ref<'info' | 'verification' | 'history'>('info');
 const certificateId = route.params.id as string;
 const zoomLevel = ref(1);
 const isFullscreen = ref(false);
-const showShareMenuDialog = ref(false);
 const viewerContainer = ref<HTMLElement | null>(null);
-const shareMenu = ref();
 
 // URL del blob para mostrar el PDF en el iframe
 const pdfViewerUrl = ref<string>('');
@@ -676,21 +636,9 @@ async function downloadPDF() {
   }
 }
 
-function showShareMenu() {
-  showShareMenuDialog.value = true;
-}
 
-function copyVerificationLink() {
-  if (!certificate.value) return;
-  const link = `${window.location.origin}${certificate.value.publicVerificationUrl}`;
-  void navigator.clipboard.writeText(link);
-  $q.notify({
-    type: 'positive',
-    message: 'Enlace de verificación copiado al portapapeles',
-    position: 'top',
-  });
-  showShareMenuDialog.value = false;
-}
+
+
 
 function copyVerificationCode() {
   if (!certificate.value) return;
@@ -700,31 +648,9 @@ function copyVerificationCode() {
     message: 'Código de verificación copiado al portapapeles',
     position: 'top',
   });
-  showShareMenuDialog.value = false;
 }
 
-function shareVerificationLink() {
-  copyVerificationLink();
-}
 
-function shareViaEmail() {
-  if (!certificate.value) return;
-  const subject = encodeURIComponent(`Verificación de Certificado - ${certificate.value.courseName}`);
-  const body = encodeURIComponent(
-    `Te comparto mi certificado de ${certificate.value.courseName}.\n\nPuedes verificarlo en: ${window.location.origin}${certificate.value.publicVerificationUrl}`,
-  );
-  window.location.href = `mailto:?subject=${subject}&body=${body}`;
-  showShareMenuDialog.value = false;
-}
-
-function shareViaWhatsApp() {
-  if (!certificate.value) return;
-  const text = encodeURIComponent(
-    `Te comparto mi certificado de ${certificate.value.courseName}. Verifícalo aquí: ${window.location.origin}${certificate.value.publicVerificationUrl}`,
-  );
-  window.open(`https://wa.me/?text=${text}`, '_blank');
-  showShareMenuDialog.value = false;
-}
 
 function openPublicVerification() {
   if (!certificate.value) return;
@@ -910,5 +836,113 @@ code {
 body.body--dark code {
   background: rgba(79, 70, 229, 0.2);
   color: #a78bfa;
+}
+</style>
+
+<style lang="scss" scoped>
+.certificate-html-view {
+  width: 1056px; /* Reduced from 1122px (A4 landscape at 96dpi) to fit better or match aspect ratio */
+  height: 816px; /* LETTER Landscape aspect ratio approx */
+  background-size: cover; /* Or contain depending on SVG exact size */
+  background-position: center;
+  background-repeat: no-repeat;
+  position: relative;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+  color: #000;
+  font-family: 'Helvetica', 'Arial', sans-serif;
+  overflow: hidden;
+  margin: 20px auto;
+}
+
+.certificate-content {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 180px; /* Adjust based on SVG header height */
+  text-align: center;
+}
+
+.cert-title {
+  font-size: 32px;
+  font-weight: bold;
+  margin-bottom: 30px;
+  color: #333;
+}
+
+.cert-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.cert-text {
+  font-size: 16px;
+  margin: 5px 0;
+}
+
+.cert-student-name {
+  font-size: 28px;
+  font-weight: bold;
+  margin: 15px 0;
+  border-bottom: 2px solid #333;
+  padding-bottom: 5px;
+  min-width: 400px;
+}
+
+.cert-course-name {
+  font-size: 24px;
+  font-weight: bold;
+  margin: 15px 0;
+  color: #1976d2; /* Primary color */
+}
+
+.cert-footer {
+  width: 100%;
+  height: 200px; /* Adjust height for footer area */
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  padding: 0 80px 60px 80px; /* Margins to position elements inside boxes */
+}
+
+.cert-signature-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 20px;
+  width: 250px;
+}
+
+.cert-signature-img {
+  max-width: 200px;
+  max-height: 80px;
+}
+
+.cert-signature-placeholder .line {
+  width: 200px;
+  height: 1px;
+  background-color: #000;
+  margin-bottom: 5px;
+}
+
+.cert-qr-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  /* Position absolute if needed to match exact box in SVG */
+  position: absolute;
+  bottom: 80px; 
+  right: 80px;
+}
+
+.cert-verification-code {
+  font-size: 10px;
+  margin-top: 4px;
 }
 </style>
