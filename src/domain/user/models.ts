@@ -26,6 +26,12 @@ export interface User {
   birthDate?: string; // Fecha de nacimiento
   gender?: 'M' | 'F' | 'O'; // Género
   address?: string; // Dirección
+  empresaId?: number; // ID de la empresa a la que pertenece
+  empresa?: {
+    id: number;
+    razonSocial: string;
+    numeroDocumento: string;
+  };
   createdAt: string;
   updatedAt?: string;
   lastLoginAt?: string;

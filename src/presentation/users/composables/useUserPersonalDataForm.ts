@@ -1,7 +1,9 @@
-import { ref, watch, type Ref } from 'vue';
+import { ref, watch, computed, onMounted, type Ref } from 'vue';
 import { useQuasar } from 'quasar';
 import type { User } from '../../../domain/user/models';
 import { useUsers } from './useUsers';
+import { empresasService, type Empresa } from '../../../infrastructure/http/empresas/empresas.service';
+import { useAuthStore } from '../../../stores/auth.store';
 
 /**
  * Composable para manejar el formulario de datos personales
@@ -21,6 +23,7 @@ export function useUserPersonalDataForm(user: Ref<User | null> | User | null) {
     fechaNacimiento: string;
     genero: 'M' | 'F' | 'O' | null;
     direccion: string;
+    empresaId: number | null;
   }>({
     nombres: '',
     apellidos: '',
@@ -29,6 +32,39 @@ export function useUserPersonalDataForm(user: Ref<User | null> | User | null) {
     fechaNacimiento: '',
     genero: null,
     direccion: '',
+    empresaId: null,
+  });
+
+  // Estado para empresas
+  const empresas = ref<Empresa[]>([]);
+  const loadingEmpresas = ref(false);
+  const authStore = useAuthStore();
+
+  // Computed para determinar si el usuario actual es ADMIN
+  const isAdmin = computed(() => authStore.profile?.rol === 'ADMIN');
+
+  // Cargar empresas solo si es ADMIN
+  async function loadEmpresas() {
+    if (!isAdmin.value) {
+      return;
+    }
+    loadingEmpresas.value = true;
+    try {
+      empresas.value = await empresasService.findAll();
+    } catch (error) {
+      $q.notify({
+        type: 'negative',
+        message: error instanceof Error ? error.message : 'Error al cargar empresas',
+        position: 'top',
+      });
+    } finally {
+      loadingEmpresas.value = false;
+    }
+  }
+
+  // Cargar empresas al montar
+  onMounted(() => {
+    void loadEmpresas();
   });
 
   const genderOptions = [
@@ -70,6 +106,7 @@ export function useUserPersonalDataForm(user: Ref<User | null> | User | null) {
         fechaNacimiento: currentUser.birthDate || '',
         genero: (currentUser.gender as 'M' | 'F' | 'O') || null,
         direccion: currentUser.address || '',
+        empresaId: currentUser.empresaId || null,
       };
     }
   }
@@ -86,6 +123,7 @@ export function useUserPersonalDataForm(user: Ref<User | null> | User | null) {
       fechaNacimiento?: string;
       genero?: 'M' | 'F' | 'O';
       direccion?: string;
+      empresaId?: number;
     } = {};
 
     // Verificar cambios
@@ -114,6 +152,9 @@ export function useUserPersonalDataForm(user: Ref<User | null> | User | null) {
     if (personalData.value.direccion !== currentUser.address) {
       personaData.direccion = personalData.value.direccion;
     }
+    if (personalData.value.empresaId !== currentUser.empresaId) {
+      personaData.empresaId = personalData.value.empresaId || undefined;
+    }
 
     // Solo actualizar si hay cambios
     if (Object.keys(personaData).length > 0) {
@@ -136,6 +177,9 @@ export function useUserPersonalDataForm(user: Ref<User | null> | User | null) {
   return {
     personalData,
     genderOptions,
+    empresas,
+    loadingEmpresas,
+    isAdmin,
     loading,
     resetForm,
     submit,

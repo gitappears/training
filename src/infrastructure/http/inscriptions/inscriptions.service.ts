@@ -355,15 +355,10 @@ export class InscriptionsService implements IInscriptionRepository {
       const response = await api.post<BackendInscripcion>(this.baseUrl, requestBody);
       return mapBackendToDomain(response.data);
     } catch (error) {
-      // El interceptor de axios ya extrae el mensaje del backend
-      // Si el error es una instancia de Error, usar su mensaje directamente
-      if (error instanceof Error) {
-        throw error;
-      }
-
-      // Si no es un Error, intentar extraer el mensaje del axiosError
-      const axiosError = error as AxiosError<{ message?: string }>;
-      const errorMessage = axiosError.response?.data?.message ?? 'Error al crear la inscripción';
+      const axiosError = error as AxiosError<{ message?: string | string[] }>;
+      const errorMessage = Array.isArray(axiosError.response?.data?.message)
+        ? axiosError.response.data.message.join(', ')
+        : axiosError.response?.data?.message ?? 'Error al crear la inscripción';
       throw new Error(errorMessage);
     }
   }

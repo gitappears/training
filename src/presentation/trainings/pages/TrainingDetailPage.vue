@@ -535,6 +535,9 @@
         </div>
       </div>
     </div>
+
+    <!-- Diálogo de Inscribir Estudiante -->
+    <EnrollStudentDialog v-model="enrollDialogOpen" @enroll="handleEnrollStudentConfirm" />
   </q-page>
 </template>
 
@@ -553,6 +556,7 @@ import { useTrainingEvaluation, type TrainingWithEvaluations } from '../../../sh
 import { useEnrollmentCheck } from '../../../shared/composables/useEnrollmentCheck';
 import { useAuthStore } from '../../../stores/auth.store';
 import { inscriptionsService, type InscriptionWithDocument } from '../../../infrastructure/http/inscriptions/inscriptions.service';
+import EnrollStudentDialog from '../../../shared/components/EnrollStudentDialog.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -590,6 +594,9 @@ const loadingEvaluation = ref(false);
 const { isEnrolled, loading: loadingEnrollment, checkEnrollment } = useEnrollmentCheck({
   courseId: computed(() => training.value?.id ?? ''),
 });
+
+// Control del diálogo de inscripción
+const enrollDialogOpen = ref(false);
 
 /**
  * Carga los materiales de la capacitación desde el backend
@@ -871,38 +878,7 @@ function handleEnrollStudent() {
     return;
   }
 
-  // Verificar si $q.dialog está disponible, si no usar prompt nativo
-  if (typeof $q.dialog !== 'function') {
-    // Fallback si dialog no está disponible
-    const estudianteId = prompt('Ingresa el ID del estudiante que deseas inscribir en esta capacitación:');
-    if (estudianteId && !isNaN(Number(estudianteId)) && Number(estudianteId) > 0) {
-      void handleEnrollStudentConfirm(estudianteId);
-    }
-    return;
-  }
-
-  $q.dialog({
-    title: 'Inscribir Estudiante',
-    message: 'Ingresa el ID del estudiante que deseas inscribir en esta capacitación',
-    prompt: {
-      model: '',
-      type: 'number',
-      label: 'ID del Estudiante',
-      hint: 'Ingresa el ID numérico del estudiante',
-      isValid: (val) => val !== '' && !isNaN(Number(val)) && Number(val) > 0,
-    },
-    persistent: true,
-    ok: {
-      label: 'Inscribir',
-      color: 'primary',
-    },
-    cancel: {
-      label: 'Cancelar',
-      flat: true,
-    },
-  }).onOk((estudianteId: string) => {
-    void handleEnrollStudentConfirm(estudianteId);
-  });
+  enrollDialogOpen.value = true;
 }
 
 async function handleEnrollStudentConfirm(estudianteId: string): Promise<void> {
