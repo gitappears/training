@@ -99,7 +99,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, onMounted, watch, nextTick } from 'vue';
 import { useQuasar } from 'quasar';
 
 interface Props {
@@ -176,12 +176,21 @@ async function generateQR() {
       throw new Error('El valor para el código QR no puede estar vacío.');
     }
 
-    if (!qrCodeContainer.value) {
-      throw new Error('Contenedor de QR no disponible');
-    }
+    // Comprobación inicial: aunque loading es true, aseguramos que props.value existe
+    // La comprobación del contenedor se hará DESPUÉS de setear loading=false
+    // if (!qrCodeContainer.value) ... REMOVED checks here because container is logically hidden
+
 
     // Si el valor es una imagen base64 (data:image), mostrarla directamente
     if (props.value.startsWith('data:image')) {
+       // Primero mostramos el contenedor
+       loading.value = false;
+       await nextTick();
+
+       if (!qrCodeContainer.value) {
+          throw new Error('Contenedor de QR no disponible tras renderizado');
+       }
+
       qrCodeContainer.value.innerHTML = '';
       const img = document.createElement('img');
       img.src = props.value;
@@ -190,7 +199,6 @@ async function generateQR() {
       img.style.height = `${props.size}px`;
       img.style.display = 'block';
       qrCodeContainer.value.appendChild(img);
-      loading.value = false;
       emit('generated');
       return;
     }
@@ -201,6 +209,14 @@ async function generateQR() {
       const module = await import('qrcode');
       const QRCode = module.default || module;
       
+      // AHORA mostramos el contenedor para que Vue lo renderice
+      loading.value = false;
+      await nextTick(); // Esperar a que el DOM se actualice
+
+      if (!qrCodeContainer.value) {
+        throw new Error('Contenedor de QR no disponible (DOM no listo)');
+      }
+
       // Limpiar el contenedor
       qrCodeContainer.value.innerHTML = '';
       
@@ -219,11 +235,10 @@ async function generateQR() {
         },
       });
       
-      loading.value = false;
       emit('generated');
     } catch (importError) {
-      // Si falla la importación, usar API externa como fallback
       console.warn('No se pudo cargar la librería qrcode, usando API externa:', importError);
+      // Fallback
       generateQRWithAPI();
     }
   } catch (err) {

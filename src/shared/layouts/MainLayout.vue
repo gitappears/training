@@ -52,7 +52,7 @@
                   </q-item-section>
                   <q-item-section>
                     <q-item-label class="text-weight-medium">{{ userFullName }}</q-item-label>
-                    <q-item-label caption class="text-grey-7">{{ userEmail }}</q-item-label>
+                    <q-item-label caption class="text-grey-7 text-uppercase" style="font-size: 0.75rem;">{{ userRole }}</q-item-label>
                   </q-item-section>
                 </q-item>
                 <q-separator />
@@ -116,15 +116,46 @@ const userImageUrl = computed(() => {
 });
 
 const userFullName = computed(() => {
-  const persona = user.value?.persona;
-  if (!persona) return 'Usuario';
-  const nombres = persona.nombres || '';
-  const apellidos = persona.apellidos || '';
-  return `${nombres} ${apellidos}`.trim() || 'Usuario';
+  const u = user.value;
+  if (!u) return 'Usuario';
+  
+  // Try persona object first
+  if (u.persona) {
+    const nombres = u.persona.nombres || '';
+    const apellidos = u.persona.apellidos || '';
+    if (nombres || apellidos) {
+        return `${nombres} ${apellidos}`.trim();
+    }
+  }
+  
+  // Fallback to top level properties if they exist
+  const nombres = (u as any).nombres || '';
+  const apellidos = (u as any).apellidos || '';
+  if (nombres || apellidos) {
+    return `${nombres} ${apellidos}`.trim();
+  }
+
+  // Fallback to username
+  if (u.username) return u.username;
+
+  return 'Usuario';
+});
+
+const userRole = computed(() => {
+  const roles = user.value?.roles;
+  if (roles && roles.length > 0) {
+    // Assuming roles is array of strings or objects with name
+    // Adjust based on your Auth Store interface. 
+    // Usually it's ['ADMIN'] or [{name: 'ADMIN'}]
+    // Let's assume strings for now based on typical JWT
+    const role = roles[0];
+    return typeof role === 'string' ? role : (role as any).name || 'Usuario';
+  }
+  return 'Usuario';
 });
 
 const userEmail = computed(() => {
-  return user.value?.persona?.email || '';
+  return user.value?.persona?.email || user.value?.email || '';
 });
 
 // Sincronizar el tema con el body
