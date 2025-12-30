@@ -45,21 +45,18 @@
                 </template>
               </q-input>
 
-              <!-- Role - Mostrar rol actual (no editable por ahora) -->
+              <!-- Role -->
               <q-select
                 v-model="formData.role"
                 outlined
                 label="Rol"
-                :options="[
-                  { label: 'ADMIN', value: 'ADMIN' },
-                  { label: 'CLIENTE', value: 'CLIENTE' },
-                  { label: 'INSTRUCTOR', value: 'INSTRUCTOR' },
-                  { label: 'ALUMNO', value: 'ALUMNO' },
-                  { label: 'OPERADOR', value: 'OPERADOR' },
-                  { label: 'CONDUCTOR', value: 'DRIVER' },
-                ]"
+                :options="roleOptionsForEdit"
+                option-label="label"
+                option-value="value"
                 emit-value
                 map-options
+                :loading="loading"
+                @update:model-value="onRoleChange"
               >
                 <template #prepend>
                   <q-icon name="badge" />
@@ -139,8 +136,9 @@
                   v-model="personalData.telefono"
                   outlined
                   label="Teléfono"
-                  mask="+## ### ### ####"
+                  mask="+### ### ### ####"
                   fill-mask
+                  hint="Formato: +57 300 123 4567 (código de país + 10 dígitos)"
                 >
                   <template #prepend>
                     <q-icon name="phone" />
@@ -212,6 +210,7 @@
 import { computed, toRef } from 'vue';
 import type { User } from '../../../domain/user/models';
 import { useUserEditDialog } from '../composables/useUserEditDialog';
+import { useRoles } from '../composables/useRoles';
 
 interface Props {
   modelValue: boolean;
@@ -232,6 +231,17 @@ const localOpen = computed({
 
 const { activeTab, formData, personalData, genderOptions, loading, handleClose, handleSubmit } =
   useUserEditDialog(toRef(props, 'user'));
+
+// Cargar roles desde el backend
+const { roleOptionsForEdit, roles } = useRoles();
+
+// Función para actualizar el roleId cuando cambia el rol seleccionado
+function onRoleChange(roleCode: string) {
+  const selectedRole = roles.value.find((r) => r.codigo === roleCode);
+  if (selectedRole && formData.value) {
+    formData.value.roleId = selectedRole.id;
+  }
+}
 
 async function onSubmit() {
   try {

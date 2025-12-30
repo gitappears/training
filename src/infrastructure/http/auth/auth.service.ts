@@ -7,6 +7,8 @@ import type {
   IAuthRepository,
   LoginDto,
   RegisterDto,
+  CreateAdminDto,
+  CreateAdminResponse,
   TokenResponse,
   UserProfile,
   RegisterResponse,
@@ -91,6 +93,18 @@ export class AuthService implements IAuthRepository {
       const axiosError = error as AxiosError<{ message?: string }>;
       throw new Error(
         axiosError.response?.data?.message ?? 'Error al actualizar el perfil',
+      );
+    }
+  }
+
+  async createAdmin(dto: CreateAdminDto): Promise<CreateAdminResponse> {
+    try {
+      const response = await api.post<CreateAdminResponse>(`${this.baseUrl}/admin`, dto);
+      return response.data;
+    } catch (error) {
+      const axiosError = error as AxiosError<{ message?: string }>;
+      throw new Error(
+        axiosError.response?.data?.message ?? 'Error al crear el administrador',
       );
     }
   }
