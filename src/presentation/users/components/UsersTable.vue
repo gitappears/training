@@ -125,28 +125,30 @@
       </template>
 
       <template #no-data>
-        <EmptyState
-          icon="people"
-          title="No hay usuarios disponibles"
-          :description="noDataDescription"
-        >
-          <template #actions>
-            <q-btn
-              v-if="hasActiveFilters"
-              flat
-              color="primary"
-              label="Limpiar filtros"
-              @click="$emit('clear-filters')"
-            />
-            <q-btn
-              color="primary"
-              unelevated
-              icon="add"
-              label="Crear Usuario"
-              @click="$emit('create-user')"
-            />
-          </template>
-        </EmptyState>
+        <div class="row items-center justify-center full-width">
+          <EmptyState
+            icon="people"
+            title="No hay usuarios disponibles"
+            :description="noDataDescription"
+          >
+            <template #actions>
+              <q-btn
+                v-if="hasActiveFilters"
+                flat
+                color="primary"
+                label="Limpiar filtros"
+                @click="$emit('clear-filters')"
+              />
+              <q-btn
+                color="primary"
+                unelevated
+                icon="add"
+                label="Crear Usuario"
+                @click="$emit('create-user')"
+              />
+            </template>
+          </EmptyState>
+        </div>
       </template>
 
       <template #loading>

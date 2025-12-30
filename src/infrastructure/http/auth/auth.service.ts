@@ -104,8 +104,101 @@ export class AuthService implements IAuthRepository {
 
   async getProfile(): Promise<UserProfile> {
     try {
-      const response = await api.get<UserProfile>(`${this.baseUrl}/profile`);
-      return response.data;
+      const response = await api.get<{
+        id: number;
+        username: string;
+        rol?: string;
+        nombres: string;
+        apellidos?: string;
+        email?: string;
+        telefono?: string;
+        direccion?: string;
+        fechaNacimiento?: string;
+        genero?: string;
+        biografia?: string;
+        fotoUrl?: string;
+        numeroDocumento?: string;
+        personaId?: number;
+        empresaId?: number;
+        empresa?: {
+          id: number;
+          razonSocial: string;
+          numeroDocumento: string;
+        };
+      }>(`${this.baseUrl}/profile`);
+      
+      // Mapear la respuesta plana del backend a la estructura esperada por el frontend
+      const backendData = response.data;
+      console.log('📦 Backend profile response (RAW):', JSON.stringify(backendData, null, 2));
+      console.log('🔍 backendData.empresaId:', backendData.empresaId, 'type:', typeof backendData.empresaId);
+      console.log('🔍 backendData.empresa:', JSON.stringify(backendData.empresa, null, 2));
+      console.log('🔍 backendData.empresa existe?', !!backendData.empresa);
+      
+      // Construir el objeto empresa si existe
+      let empresaMapeada: { id: number; razonSocial: string; numeroDocumento: string } | undefined = undefined;
+      if (backendData.empresa) {
+        empresaMapeada = {
+          id: backendData.empresa.id,
+          razonSocial: backendData.empresa.razonSocial,
+          numeroDocumento: backendData.empresa.numeroDocumento,
+        };
+        console.log('✅ Empresa mapeada:', JSON.stringify(empresaMapeada, null, 2));
+      } else {
+        console.warn('⚠️ backendData.empresa es null/undefined');
+      }
+      
+      // Mapear empresaId
+      const empresaIdMapeado = backendData.empresaId !== undefined && backendData.empresaId !== null 
+        ? Number(backendData.empresaId) 
+        : undefined;
+      console.log('✅ empresaId mapeado:', empresaIdMapeado, 'type:', typeof empresaIdMapeado);
+      
+      // Asegurar que empresaId y empresa se mapeen correctamente dentro de persona
+      const userProfile: UserProfile = {
+        id: backendData.id,
+        username: backendData.username,
+        rol: backendData.rol || '',
+        personaId: backendData.personaId,
+        persona: {
+          id: backendData.personaId,
+          numeroDocumento: backendData.numeroDocumento || '',
+          nombres: backendData.nombres,
+          apellidos: backendData.apellidos,
+          email: backendData.email,
+          fotoUrl: backendData.fotoUrl,
+          telefono: backendData.telefono,
+          direccion: backendData.direccion,
+          fechaNacimiento: backendData.fechaNacimiento,
+          genero: backendData.genero,
+          biografia: backendData.biografia,
+          // Mapear empresaId desde el nivel raíz a persona.empresaId
+          empresaId: empresaIdMapeado,
+          // Mapear empresa desde el nivel raíz a persona.empresa
+          empresa: empresaMapeada,
+        },
+      };
+      
+      console.log('✅ Mapped user profile:', JSON.stringify(userProfile, null, 2));
+      console.log('🏢 Empresa en perfil mapeado:', JSON.stringify(userProfile.persona.empresa, null, 2));
+      console.log('🏢 empresaId en perfil mapeado:', userProfile.persona.empresaId);
+      
+      // Verificación adicional
+      if (!userProfile.persona.empresa && backendData.empresa) {
+        console.error('❌ ERROR: empresa no se mapeó correctamente!');
+        console.error('backendData.empresa:', backendData.empresa);
+        console.error('empresaMapeada:', empresaMapeada);
+      }
+      if (!userProfile.persona.empresaId && backendData.empresaId) {
+        console.error('❌ ERROR: empresaId no se mapeó correctamente!');
+        console.error('backendData.empresaId:', backendData.empresaId);
+        console.error('empresaIdMapeado:', empresaIdMapeado);
+      }
+      
+      // Verificación final antes de retornar
+      console.log('🔍 Verificación final - userProfile.persona tiene empresaId?', !!userProfile.persona.empresaId);
+      console.log('🔍 Verificación final - userProfile.persona tiene empresa?', !!userProfile.persona.empresa);
+      
+      return userProfile;
     } catch (error) {
       const axiosError = error as AxiosError<{ message?: string }>;
       throw new Error(axiosError.response?.data?.message ?? 'Error al obtener el perfil');
