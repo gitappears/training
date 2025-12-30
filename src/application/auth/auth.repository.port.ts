@@ -17,11 +17,13 @@ export interface RegisterDto {
   fotoUrl?: string | undefined;
   username: string;
   password: string;
-  tipoRegistro: 'ALUMNO' | 'INSTRUCTOR' | 'OPERADOR';
+  tipoRegistro: 'ALUMNO' | 'INSTRUCTOR' | 'CLIENTE';
   codigoEstudiante?: string | undefined;
   especialidad?: string | undefined;
   biografia?: string | undefined;
   habilitado?: boolean | undefined;
+  aceptaTerminos?: boolean | undefined;
+  aceptaPoliticaDatos?: boolean | undefined;
 }
 
 export interface RegisterResponse {
