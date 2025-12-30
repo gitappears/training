@@ -25,7 +25,7 @@
           </div>
         </div>
       </div>
-      <div class="row q-gutter-sm">
+      <div class="row q-gutter-sm lt-md">
         <q-btn
           flat
           color="primary"
@@ -175,7 +175,7 @@
                         </q-item-section>
                         <q-item-section>
                           <q-item-label caption>Duración</q-item-label>
-                          <q-item-label>{{ certificate.durationHours || 'N/A' }} horas</q-item-label>
+                          <q-item-label>{{ certificate.durationHours ? certificate.durationHours + ' horas' : 'No especificada' }}</q-item-label>
                         </q-item-section>
                       </q-item>
                     </q-list>
