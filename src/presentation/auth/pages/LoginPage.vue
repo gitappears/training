@@ -117,7 +117,7 @@ async function handleSubmit() {
   // Degradado moderno + imagen de fondo
   background: 
     linear-gradient(135deg, rgba(30, 40, 80, 0.65), rgba(10, 15, 35, 0.75)),
-    url('/fondoLogin.jpeg');
+    url('../../../assets/fondoLogin.jpeg');
   background-size: cover;
   background-position: center;
   background-attachment: fixed;
