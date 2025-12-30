@@ -50,19 +50,28 @@ export default defineRouter(function (/* { store, ssrContext } */) {
       // Importar dinámicamente para evitar dependencias circulares
       const { termsService } = await import('../infrastructure/http/terms/terms.service');
       const { TermsUseCasesFactory } = await import('../application/terms/terms.use-cases.factory');
-      
+
       const verifyUseCase = TermsUseCasesFactory.getVerifyAcceptanceUseCase(termsService);
       const result = await verifyUseCase.execute();
-      return result.aceptado;
-    } catch (error: any) {
-      // Si hay error 401, significa que no ha aceptado los términos
-      // Otros errores también se consideran como no aceptados por seguridad
-      if (error?.response?.status === 401 || error?.message?.includes('términos')) {
-        return false;
-      }
-      // Para otros errores (red, servidor, etc.), permitir acceso para no bloquear al usuario
-      // pero registrar el error
+      // Retornar el valor de aceptado directamente
+      return result.aceptado === true;
+    } catch (error: unknown) {
+      // El servicio ya maneja el 401 y retorna { aceptado: false } sin lanzar error
+      // Si llegamos aquí, es un error de red/servidor u otro error inesperado
       console.error('Error verifying terms acceptance:', error);
+      // En caso de error de red/servidor, permitir acceso para no bloquear al usuario
+      // pero solo si no es un error de autenticación
+      if (
+        error &&
+        typeof error === 'object' &&
+        'response' in error &&
+        error.response &&
+        typeof error.response === 'object' &&
+        'status' in error.response &&
+        error.response.status === 401
+      ) {
+        return false; // No aceptado si es 401
+      }
       return true; // Permitir acceso en caso de error de red/servidor
     }
   }
@@ -80,12 +89,6 @@ export default defineRouter(function (/* { store, ssrContext } */) {
       return;
     }
 
-    // Si ya está autenticado, redirigir al home desde login/register
-    if (token && (to.name === 'login' || to.name === 'register')) {
-      next('/');
-      return;
-    }
-
     // Verificar aceptación de términos para rutas protegidas (excepto la página de aceptación)
     if (requiresAuth && token && to.name !== 'terms-acceptance') {
       const termsAccepted = await checkTermsAcceptance();
@@ -99,12 +102,39 @@ export default defineRouter(function (/* { store, ssrContext } */) {
       }
     }
 
+    // Si está en la página de términos y ya los aceptó, redirigir al home o a la ruta de redirección
+    if (token && to.name === 'terms-acceptance') {
+      const termsAccepted = await checkTermsAcceptance();
+      if (termsAccepted) {
+        const redirect = (to.query.redirect as string) || '/';
+        next(redirect);
+        return;
+      }
+    }
+
+    // Si ya está autenticado y los términos están aceptados, redirigir al home desde login/register
+    if (token && (to.name === 'login' || to.name === 'register')) {
+      // Verificar términos antes de redirigir
+      const termsAccepted = await checkTermsAcceptance();
+      if (termsAccepted) {
+        next('/');
+        return;
+      } else {
+        // Si no ha aceptado términos, redirigir a la página de aceptación
+        next({
+          name: 'terms-acceptance',
+          query: { redirect: '/' },
+        });
+        return;
+      }
+    }
+
     // Verificar roles si la ruta los requiere
     if (requiresAuth && requiredRoles && requiredRoles.length > 0 && token) {
       // Obtener el perfil del localStorage (el store puede no estar inicializado aún)
       const profileStr = localStorage.getItem('auth_profile');
       let userRole: string | null = null;
-      
+
       if (profileStr) {
         try {
           const profile = JSON.parse(profileStr);
