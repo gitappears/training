@@ -3,8 +3,10 @@
     <div class="login-container">
       <q-card class="login-card q-pa-xl">
         <div class="text-center q-mb-lg">
-          <div class="text-h4 q-mb-xs text-weight-bold">Iniciar Sesión</div>
-          <div class="text-body2 text-grey-7">Ingresa tus credenciales para acceder al sistema</div>
+          <div class="text-h4 q-mb-xs text-weight-bold login-title">Iniciar Sesión</div>
+          <div class="text-body2 login-subtitle">
+            Ingresa tus credenciales para acceder al sistema
+          </div>
         </div>
 
         <q-form @submit="handleSubmit" class="q-gutter-md">
@@ -59,7 +61,7 @@
           />
 
           <div class="text-center q-mt-md">
-            <span class="text-body2 text-grey-7">¿No tienes una cuenta? </span>
+            <span class="text-body2 login-link-text">¿No tienes una cuenta? </span>
             <q-btn
               flat
               label="Regístrate"
@@ -101,28 +103,28 @@ async function handleSubmit() {
 
 .login-page {
   // Fondo a pantalla completa (FIXED)
-  position: fixed;
+  // position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  width: 100vw;
-  height: 100vh;
+  // width: 100vw;
+  // height: 100vh;
   overflow: auto;
-  
+
   // Eliminamos padding para ocupar toda la pantalla
   padding: 0 !important;
   margin: 0 !important;
-  
-  // Degradado moderno + imagen de fondo
-  background: 
+
+  // Degradado moderno + imagen de fondo (modo oscuro por defecto)
+  background:
     linear-gradient(135deg, rgba(30, 40, 80, 0.65), rgba(10, 15, 35, 0.75)),
     url('../../../assets/fondoLogin.jpeg');
   background-size: cover;
   background-position: center;
   background-attachment: fixed;
   background-repeat: no-repeat;
-  
+
   // Centrado del contenido
   display: flex;
   align-items: center;
@@ -139,29 +141,46 @@ async function handleSubmit() {
 }
 
 .login-card {
-  // Glassmorphism Premium
+  // Glassmorphism Premium (modo oscuro)
   background: rgba(255, 255, 255, 0.12);
   backdrop-filter: blur(16px) saturate(180%);
   -webkit-backdrop-filter: blur(16px) saturate(180%);
-  
+
   // Bordes y sombras mejoradas
   border: 1px solid rgba(255, 255, 255, 0.25);
   border-radius: 20px;
-  box-shadow: 
+  box-shadow:
     0 8px 32px 0 rgba(0, 0, 0, 0.25),
     inset 0 1px 0 0 rgba(255, 255, 255, 0.15);
-  
+
+  // En modo claro, ajustar el card
+  .body--light & {
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    box-shadow:
+      0 8px 32px 0 rgba(0, 0, 0, 0.1),
+      inset 0 1px 0 0 rgba(0, 0, 0, 0.05);
+  }
+
   // Animación de entrada
   animation: fadeInUp 0.6s ease-out;
-  
+
   // Hover sutil (opcional)
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-  
+  transition:
+    transform 0.3s ease,
+    box-shadow 0.3s ease;
+
   &:hover {
     transform: translateY(-2px);
-    box-shadow: 
+    box-shadow:
       0 12px 40px 0 rgba(0, 0, 0, 0.3),
       inset 0 1px 0 0 rgba(255, 255, 255, 0.15);
+
+    .body--light & {
+      box-shadow:
+        0 12px 40px 0 rgba(0, 0, 0, 0.15),
+        inset 0 1px 0 0 rgba(0, 0, 0, 0.05);
+    }
   }
 }
 
@@ -169,7 +188,7 @@ async function handleSubmit() {
 // TIPOGRAFÍA MEJORADA
 // ============================================
 
-.text-h4 {
+.login-title {
   font-size: 2rem !important;
   font-weight: 700 !important;
   letter-spacing: -0.5px !important;
@@ -177,9 +196,28 @@ async function handleSubmit() {
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
-.text-body2 {
+// En modo claro, ajustar colores de texto
+.body--light .login-title {
+  color: #1a1a1a !important;
+  text-shadow: 0 2px 8px rgba(255, 255, 255, 0.5);
+}
+
+.login-subtitle {
   color: rgba(255, 255, 255, 0.9) !important;
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+}
+
+.body--light .login-subtitle {
+  color: rgba(0, 0, 0, 0.7) !important;
+  text-shadow: 0 1px 4px rgba(255, 255, 255, 0.3);
+}
+
+.login-link-text {
+  color: rgba(255, 255, 255, 0.9) !important;
+}
+
+.body--light .login-link-text {
+  color: rgba(0, 0, 0, 0.7) !important;
 }
 
 // ============================================
@@ -190,11 +228,11 @@ async function handleSubmit() {
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.95);
   transition: all 0.3s ease;
-  
+
   &:before {
     border-color: rgba(0, 0, 0, 0.12);
   }
-  
+
   &:hover:before {
     border-color: rgba(0, 0, 0, 0.24);
   }
@@ -236,12 +274,12 @@ async function handleSubmit() {
   letter-spacing: 0.5px;
   box-shadow: 0 4px 15px rgba(66, 133, 244, 0.35);
   transition: all 0.3s ease;
-  
+
   &:hover {
     transform: translateY(-2px);
     box-shadow: 0 6px 20px rgba(66, 133, 244, 0.45);
   }
-  
+
   &:active {
     transform: translateY(0);
   }
@@ -255,12 +293,33 @@ async function handleSubmit() {
   color: rgba(255, 255, 255, 0.95);
 }
 
+:deep(.q-checkbox__label) {
+  color: rgba(255, 255, 255, 0.95) !important;
+}
+
+.body--light :deep(.q-checkbox) {
+  color: rgba(0, 0, 0, 0.87);
+}
+
+.body--light :deep(.q-checkbox__label) {
+  color: rgba(0, 0, 0, 0.87) !important;
+}
+
 :deep(.q-btn[flat]) {
   color: rgba(255, 255, 255, 0.9);
-  
+
   &:hover {
     color: #ffffff;
     background: rgba(255, 255, 255, 0.1);
+  }
+}
+
+.body--light :deep(.q-btn[flat]) {
+  color: rgba(0, 0, 0, 0.87);
+
+  &:hover {
+    color: #1976d2;
+    background: rgba(0, 0, 0, 0.04);
   }
 }
 
@@ -288,11 +347,11 @@ async function handleSubmit() {
     padding: 1rem;
     max-width: 100%;
   }
-  
+
   .login-card {
     border-radius: 16px;
   }
-  
+
   .text-h4 {
     font-size: 1.75rem !important;
   }

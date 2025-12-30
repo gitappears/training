@@ -107,6 +107,19 @@
                 {{ props.row.enabled ? 'Deshabilitar' : 'Habilitar' }}
               </q-tooltip>
             </q-btn>
+            <q-btn
+              flat
+              dense
+              round
+              icon="gavel"
+              color="info"
+              size="sm"
+              :loading="acceptingTerms[props.row.id] === true"
+              :disable="acceptingTerms[props.row.id] === true"
+              @click="$emit('accept-terms', props.row)"
+            >
+              <q-tooltip>Aceptar términos y condiciones</q-tooltip>
+            </q-btn>
           </div>
         </q-td>
       </template>
@@ -162,11 +175,13 @@ interface Props {
   pagination: QTableProps['pagination'];
   selectedUsers: User[];
   hasActiveFilters?: boolean;
+  acceptingTerms?: Record<string, boolean>;
   noDataDescription?: string;
 }
 
 const props = withDefaults(defineProps<Props>(), {
   hasActiveFilters: false,
+  acceptingTerms: () => ({}),
   noDataDescription: 'No se encontraron usuarios que coincidan con los filtros aplicados.',
 });
 
@@ -182,6 +197,7 @@ const emit = defineEmits<{
   (e: 'view-user', id: string): void;
   (e: 'edit-user', user: User): void;
   (e: 'toggle-status', user: User): void;
+  (e: 'accept-terms', user: User): void;
   (e: 'export-csv'): void;
   (e: 'export-excel'): void;
   (e: 'clear-filters'): void;
@@ -195,8 +211,9 @@ const selectedUsers = computed({
   set: (value) => emit('update:selected', value),
 });
 
+const acceptingTerms = computed(() => props.acceptingTerms || {});
+
 function onRequest(requestProps: TableRequestProps) {
   emit('request', requestProps);
 }
 </script>
-

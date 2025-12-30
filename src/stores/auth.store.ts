@@ -9,6 +9,7 @@ import { AuthUseCasesFactory } from '../application/auth/auth.use-cases.factory'
 import type {
   LoginDto,
   RegisterDto,
+  RegisterResponse,
   TokenResponse,
   UserProfile,
 } from '../application/auth/auth.repository.port';
@@ -28,8 +29,8 @@ export const useAuthStore = defineStore('auth', () => {
   // Getters
   const isAuthenticated = computed(() => !!token.value);
   const userFullName = computed(() => {
-    if (!profile.value?.nombres) return '';
-    return `${profile.value.nombres} ${profile.value.apellidos ?? ''}`.trim();
+    if (!profile.value?.persona?.nombres) return '';
+    return `${profile.value.persona.nombres} ${profile.value.persona.apellidos ?? ''}`.trim();
   });
 
   // Actions - Usando casos de uso en lugar de llamar directamente a infrastructure
@@ -43,10 +44,6 @@ export const useAuthStore = defineStore('auth', () => {
 
       // Obtener perfil después del login
       await fetchProfile();
-    } catch (error) {
-      // Re-lanzar el error para que el componente pueda manejarlo
-      // Especialmente importante para TERMS_NOT_ACCEPTED
-      throw error;
     } finally {
       loading.value = false;
     }
@@ -136,4 +133,3 @@ export const useAuthStore = defineStore('auth', () => {
     init,
   };
 });
-

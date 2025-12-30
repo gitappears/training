@@ -194,10 +194,12 @@
       :pagination="pagination"
       :selected-users="selectedUsers"
       :has-active-filters="hasActiveFilters"
+      :accepting-terms="acceptingTerms"
       @request="onRequest"
       @view-user="viewUser"
       @edit-user="handleEditUser"
       @toggle-status="handleToggleUserStatus"
+      @accept-terms="handleAcceptTerms"
       @export-csv="handleExportToCSV"
       @export-excel="handleExportToExcel"
       @clear-filters="clearAllFilters"
@@ -227,6 +229,7 @@ const {
   columns,
   activeFiltersCount,
   hasActiveFilters,
+  acceptingTerms,
   loadUsers,
   onRequest,
   clearAllFilters,
@@ -234,6 +237,7 @@ const {
   handleToggleUserStatus,
   handleBulkEnable,
   handleBulkDisable,
+  handleAcceptTerms,
   viewUser,
   createUser,
   handleExportToCSV,
