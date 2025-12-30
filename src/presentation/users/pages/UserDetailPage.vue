@@ -441,17 +441,24 @@
       :assigned-course-ids="assignedCourses.map((c) => c.id)"
       @assigned="handleCourseAssigned"
     />
+
+    <!-- Diálogo para editar usuario -->
+    <UserEditDialog v-model="editDialogOpen" :user="user" @success="handleEditSuccess" />
   </q-page>
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { useUserDetail } from '../composables';
 import EmptyState from '../../../shared/components/EmptyState.vue';
 import AssignCourseDialog from '../components/AssignCourseDialog.vue';
+import UserEditDialog from '../components/UserEditDialog.vue';
 
 const route = useRoute();
 const userId = route.params.id as string;
+
+const editDialogOpen = ref(false);
 
 const {
   loading,
@@ -468,13 +475,23 @@ const {
   getRoleLabel,
   getRoleColor,
   handleToggleUserStatus,
-  editUser,
   assignCourse,
   handleCourseAssigned,
   viewCertificate,
   downloadCertificate,
   goBack,
+  loadUser,
 } = useUserDetail(userId);
+
+function editUser() {
+  editDialogOpen.value = true;
+}
+
+async function handleEditSuccess() {
+  // Recargar la información del usuario después de editar
+  await loadUser();
+  editDialogOpen.value = false;
+}
 </script>
 
 <style scoped lang="scss">
