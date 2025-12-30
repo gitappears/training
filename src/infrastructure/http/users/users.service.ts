@@ -151,6 +151,7 @@ export class UsersService implements IUserRepository {
           admin: 'ADMIN',
           institutional: 'CLIENTE',
           driver: 'ALUMNO',
+          instructor: 'INSTRUCTOR',
         };
         queryParams.role = roleMap[params.filters.role] || params.filters.role.toUpperCase();
       }

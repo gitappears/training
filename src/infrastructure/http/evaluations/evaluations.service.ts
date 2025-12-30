@@ -94,7 +94,7 @@ function mapBackendToDomain(backendData: BackendEvaluacion): Evaluation {
     id: backendData.id?.toString() ?? '',
     courseId: backendData.capacitacion?.id?.toString() ?? '',
     courseName: '',
-    courseType, // FAL-004: Tipo de capacitación para UI diferenciada
+    title: backendData.titulo ?? '',
     description: backendData.descripcion ?? '',
     questions: backendData.preguntas?.map((q: BackendPregunta) => {
       const question: {
@@ -144,6 +144,9 @@ function mapBackendToDomain(backendData: BackendEvaluacion): Evaluation {
     attemptsAllowed: backendData.intentosPermitidos ?? 2,
     status: 'pending',
     createdAt: backendData.fechaCreacion ?? new Date().toISOString(),
+    mostrarResultados: backendData.mostrarResultados ?? true,
+    mostrarRespuestasCorrectas: backendData.mostrarRespuestasCorrectas ?? false,
+    ...(courseType && { courseType }), // FAL-004: Tipo de capacitación para UI diferenciada
   };
   return evaluation;
 }

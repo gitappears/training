@@ -151,7 +151,7 @@ async function loadTraining() {
 
         // Mapear evaluación del dominio a formato inline para el formulario
         const evaluationInline: InlineEvaluation = {
-          titulo: evaluation.description || 'Evaluación',
+          titulo: evaluation.title || 'Evaluación',
           descripcion: evaluation.description,
           intentosPermitidos: evaluation.attemptsAllowed || 1,
           mostrarResultados: true, // Por defecto
