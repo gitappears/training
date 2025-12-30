@@ -30,12 +30,31 @@ export function useAuth() {
       // Redirigir a la ruta original o al home
       const redirect = (route.query.redirect as string) || '/';
       void router.push(redirect);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Login error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Error al iniciar sesión';
-      
+      let errorMessage = 'Error al iniciar sesión';
+      let errorData = null;
+
+      // Extraer mensaje y datos del error
+      if (error?.response?.data) {
+        errorData = error.response.data;
+        if (errorData.message) {
+          errorMessage = Array.isArray(errorData.message)
+            ? errorData.message.join(', ')
+            : errorData.message;
+        } else if (errorData.error) {
+          errorMessage = errorData.error;
+        }
+      } else if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+
       // Verificar si el error es TERMS_NOT_ACCEPTED
-      if (errorMessage.includes('TERMS_NOT_ACCEPTED') || errorMessage.includes('términos')) {
+      // Buscar en el string del mensaje o en el código de error específico del backend
+      if (
+        errorMessage.includes('TERMS_NOT_ACCEPTED') ||
+        (errorData && errorData.error === 'TERMS_NOT_ACCEPTED')
+      ) {
         // Redirigir a la página de aceptación de términos
         const redirect = (route.query.redirect as string) || '/';
         void router.push({
@@ -45,7 +64,13 @@ export function useAuth() {
         return;
       }
       
-      
+      // Manejar PASSWORD_CHANGE_REQUIRED si es necesario (generalmente lo maneja el backend via header o body, 
+      // pero si el login falla con este error, podemos redirigir aquí o mostrar un mensaje específico)
+      if (errorData && errorData.error === 'PASSWORD_CHANGE_REQUIRED') {
+         // Aquí podrías redirigir a cambio de contraseña, pero por ahora mostramos el mensaje
+         errorMessage = 'Debe cambiar su contraseña. Por favor contacte al administrador o use la opción de recuperación.';
+      }
+
       $q.notify({
         type: 'negative',
         message: errorMessage,

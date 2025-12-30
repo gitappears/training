@@ -83,7 +83,7 @@ function mapBackendToDomain(backendData: BackendCertificate): Certificate {
     : backendData.fechaEmision;
 
   // Asegurar que siempre tengamos un código de verificación y URL
-  const hashVerificacion = backendData.hashVerificacion?.trim() || '';
+  const hashVerificacion = backendData.hashVerificacion?.trim() || backendData.numeroCertificado || '';
   const urlVerificacionPublica = backendData.urlVerificacionPublica?.trim() || '';
   
   // Si no hay URL pero sí hay hash, construir la URL
@@ -139,6 +139,15 @@ function mapBackendToDomain(backendData: BackendCertificate): Certificate {
 
 function mapStatus(backendData: BackendCertificate): CertificateStatus {
   if (!backendData.activo) return 'revoked';
+  
+  // Validar puntuación si existe información de inscripción
+  if (backendData.inscripcion) {
+    const score = backendData.inscripcion.calificacionFinal ?? 0;
+    const minScore = backendData.inscripcion.minimoAprobacion ?? 70;
+    if (score < minScore) {
+      return 'revoked'; // O un estado 'failed' si existiera, pero 'revoked' o 'inválido' funciona
+    }
+  }
   
   if (backendData.fechaVencimiento) {
     const fechaVencimiento = new Date(backendData.fechaVencimiento);

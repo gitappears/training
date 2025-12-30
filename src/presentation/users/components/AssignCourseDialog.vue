@@ -108,7 +108,12 @@ const courseOptions = computed(() => {
   return courses.value
     .filter((course) => {
       // Filtrar cursos ya asignados
-      return !props.assignedCourseIds.includes(course.id);
+      if (props.assignedCourseIds.includes(course.id)) {
+        return false;
+      }
+      // Solo mostrar cursos en estado "publicada" o "en_curso"
+      // En el frontend estos estados se mapean como 'published' y 'active'
+      return course.status === 'published' || course.status === 'active';
     })
     .map((course) => ({
       label: course.title,
@@ -125,8 +130,8 @@ const selectedCourse = computed(() => {
 async function loadCourses() {
   loadingCourses.value = true;
   try {
-    // Cargar todos los cursos disponibles (sin filtro de estado para mostrar más opciones)
-    // El backend validará si el curso está disponible para inscripción
+    // Cargar todos los cursos disponibles
+    // El filtro por estado (publicada o en_curso) se aplica en courseOptions
     const response = await trainingsService.findAll({
       page: 1,
       limit: 100,

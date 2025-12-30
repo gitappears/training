@@ -206,6 +206,10 @@ export class InscriptionsService implements IInscriptionRepository {
       const response = await api.get<BackendInscripcion>(`${this.baseUrl}/${id}`);
       return mapBackendToDomain(response.data);
     } catch (error) {
+      // El interceptor de axios ya extrae el mensaje del backend
+      if (error instanceof Error) {
+        throw error;
+      }
       const axiosError = error as AxiosError<{ message?: string }>;
       throw new Error(
         axiosError.response?.data?.message ?? `Error al obtener la inscripción con ID ${id}`,
@@ -266,6 +270,11 @@ export class InscriptionsService implements IInscriptionRepository {
         return [];
       }
 
+      // El interceptor de axios ya extrae el mensaje del backend
+      if (error instanceof Error) {
+        throw error;
+      }
+
       const errorMessage =
         axiosError.response?.data?.message ??
         axiosError.response?.data?.error ??
@@ -290,9 +299,9 @@ export class InscriptionsService implements IInscriptionRepository {
         );
 
         // Enviar PaginationDto con tipos correctos (números, no strings)
-      const response = await api.post<BackendPaginatedResponse>(
-        `${this.baseUrl}/capacitacion/${courseId}`,
-        {
+        const response = await api.post<BackendPaginatedResponse>(
+          `${this.baseUrl}/capacitacion/${courseId}`,
+          {
             page: currentPage,
             limit: pageSize,
           },
@@ -316,6 +325,10 @@ export class InscriptionsService implements IInscriptionRepository {
       return allInscriptions.map(mapBackendToDomain);
     } catch (error) {
       console.error('❌ Error al obtener inscripciones del curso:', error);
+      // El interceptor de axios ya extrae el mensaje del backend
+      if (error instanceof Error) {
+        throw error;
+      }
       const axiosError = error as AxiosError<{ message?: string }>;
       throw new Error(
         axiosError.response?.data?.message ??
@@ -373,6 +386,10 @@ export class InscriptionsService implements IInscriptionRepository {
       const response = await api.patch<BackendInscripcion>(`${this.baseUrl}/${id}`, requestBody);
       return mapBackendToDomain(response.data);
     } catch (error) {
+      // El interceptor de axios ya extrae el mensaje del backend
+      if (error instanceof Error) {
+        throw error;
+      }
       const axiosError = error as AxiosError<{ message?: string }>;
       throw new Error(
         axiosError.response?.data?.message ?? `Error al actualizar la inscripción con ID ${id}`,
@@ -384,6 +401,10 @@ export class InscriptionsService implements IInscriptionRepository {
     try {
       await api.delete(`${this.baseUrl}/${id}`);
     } catch (error) {
+      // El interceptor de axios ya extrae el mensaje del backend
+      if (error instanceof Error) {
+        throw error;
+      }
       const axiosError = error as AxiosError<{ message?: string }>;
       throw new Error(
         axiosError.response?.data?.message ?? `Error al eliminar la inscripción con ID ${id}`,

@@ -154,6 +154,7 @@ export function useUserDetail(userId: string) {
     viewCertificate,
     downloadCertificate,
     goBack,
+    loadUser,
   };
 }
 
