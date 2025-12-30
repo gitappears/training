@@ -68,12 +68,12 @@
                       v-model="form.name"
                       outlined
                       :label="
-                        form.documentType === 'NIT'
+                        form.documentType === 'NIT' && isAdmin
                           ? 'Nombre de Contacto (Opcional)'
                           : 'Nombre Completo *'
                       "
                       :rules="
-                        form.documentType === 'NIT'
+                        form.documentType === 'NIT' && isAdmin
                           ? [
                               (val) =>
                                 !val || /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(val) || 'Solo letras',
@@ -86,7 +86,11 @@
                             ]
                       "
                       :disable="loading"
-                      :hint="form.documentType === 'NIT' ? 'Persona de contacto de la empresa' : ''"
+                      :hint="
+                        form.documentType === 'NIT' && isAdmin
+                          ? 'Persona de contacto de la empresa'
+                          : ''
+                      "
                     >
                       <template #prepend>
                         <q-icon name="person" />
@@ -162,9 +166,13 @@
                       emit-value
                       map-options
                       :rules="[(val) => !!val || 'El tipo de persona es requerido']"
-                      :disable="loading || isNIT"
+                      :disable="loading || isNIT || isCliente"
                       :hint="
-                        isNIT ? 'Automáticamente establecido como Persona Jurídica para NIT' : ''
+                        isCliente
+                          ? 'Automáticamente establecido como Persona Natural para alumnos'
+                          : isNIT
+                            ? 'Automáticamente establecido como Persona Jurídica para NIT'
+                            : ''
                       "
                       @update:model-value="onPersonTypeChange"
                     >
@@ -184,11 +192,13 @@
                       emit-value
                       map-options
                       :rules="[(val) => !!val || 'El rol es requerido']"
-                      :disable="loading || isNIT"
+                      :disable="loading || isNIT || isCliente"
                       :hint="
-                        isNIT
-                          ? 'Automáticamente establecido como Cliente Institucional para NIT'
-                          : ''
+                        isCliente
+                          ? 'Automáticamente establecido como Alumno'
+                          : isNIT
+                            ? 'Automáticamente establecido como Cliente Institucional para NIT'
+                            : ''
                       "
                     >
                       <template #prepend>
@@ -215,23 +225,86 @@
                       </template>
                     </q-input>
                   </div>
+
+                  <!-- Select de Empresa (solo para ADMIN) -->
+                  <div v-if="isAdmin" class="col-12">
+                    <q-select
+                      v-model="form.empresaId"
+                      outlined
+                      label="Empresa"
+                      :options="empresas"
+                      option-label="razonSocial"
+                      option-value="id"
+                      emit-value
+                      map-options
+                      :loading="loadingEmpresas"
+                      clearable
+                      hint="Seleccione la empresa a la que pertenecerá el usuario"
+                    >
+                      <template #prepend>
+                        <q-icon name="business" />
+                      </template>
+                      <template #option="scope">
+                        <q-item v-bind="scope.itemProps">
+                          <q-item-section>
+                            <q-item-label>{{ scope.opt.razonSocial }}</q-item-label>
+                            <q-item-label caption>
+                              {{ scope.opt.numeroDocumento }} - {{ scope.opt.email || 'Sin email' }}
+                            </q-item-label>
+                          </q-item-section>
+                        </q-item>
+                      </template>
+                    </q-select>
+                  </div>
+
+                  <!-- Información para CLIENTE -->
+                  <div v-if="!isAdmin && currentUserEmpresaId" class="col-12">
+                    <q-card flat bordered class="q-pa-md bg-blue-1">
+                      <div class="row items-center q-gutter-sm">
+                        <q-icon name="info" color="primary" size="24px" />
+                        <div class="col">
+                          <div class="text-subtitle2 text-weight-medium q-mb-xs">
+                            Empresa Asociada
+                          </div>
+                          <div class="text-body2 text-grey-7">
+                            El usuario será asociado automáticamente a su empresa.
+                          </div>
+                        </div>
+                      </div>
+                    </q-card>
+                  </div>
                 </div>
 
                 <q-input
                   v-if="form.role === 'driver'"
-                  v-model="form.company"
+                  :model-value="isCliente ? currentUserEmpresaName || '' : form.company"
                   outlined
-                  label="Empresa (Opcional)"
-                  :disable="loading"
-                  hint="Empresa a la que pertenece el conductor"
+                  :label="isCliente ? 'Empresa' : 'Empresa (Opcional)'"
+                  :disable="loading || isCliente"
+                  :hint="
+                    isCliente
+                      ? 'Empresa asociada automáticamente'
+                      : 'Empresa a la que pertenece el conductor'
+                  "
+                  :readonly="isCliente"
+                  @update:model-value="
+                    (val: string | number | null) => {
+                      if (!isCliente && typeof val === 'string') form.company = val;
+                    }
+                  "
                 >
                   <template #prepend>
                     <q-icon name="business" />
                   </template>
                 </q-input>
 
-                <!-- Conductor Externo (RF-04) -->
-                <q-card v-if="form.role === 'driver'" flat bordered class="q-pa-md bg-blue-1">
+                <!-- Conductor Externo (RF-04) - Solo para ADMIN -->
+                <q-card
+                  v-if="form.role === 'driver' && isAdmin"
+                  flat
+                  bordered
+                  class="q-pa-md bg-blue-1"
+                >
                   <div class="row items-center q-gutter-sm">
                     <q-icon name="info" color="primary" size="24px" />
                     <div class="col">
@@ -276,7 +349,7 @@
 
                 <q-separator />
 
-                <div v-if="form.role === 'driver'" class="column q-gutter-sm">
+                <!-- <div v-if="form.role === 'driver'" class="column q-gutter-sm">
                   <div class="text-subtitle2 text-weight-medium">
                     Información Adicional (Opcional)
                   </div>
@@ -291,7 +364,7 @@
                       <q-icon name="school" />
                     </template>
                   </q-input>
-                </div>
+                </div> -->
 
                 <!-- Solo mostrar información adicional para empresas si es persona natural con rol institutional -->
                 <!-- Si es persona jurídica, la razón social ya se capturó en el paso 2 -->
@@ -452,6 +525,12 @@ const {
   documentTypeOptions,
   personTypeOptions,
   roleOptions,
+  empresas,
+  loadingEmpresas,
+  isAdmin,
+  isCliente,
+  currentUserEmpresaId,
+  currentUserEmpresaName,
   isValidEmail,
   onPersonTypeChange,
   nextStep,

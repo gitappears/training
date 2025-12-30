@@ -1,11 +1,13 @@
-import { ref, watch, computed } from 'vue';
+import { ref, watch, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 import type { QForm } from 'quasar';
 import { PeopleUseCasesFactory } from '../../../application/people/people.use-cases.factory';
 import { peopleService } from '../../../infrastructure/http/people/people.service';
 import { authService } from '../../../infrastructure/http/auth/auth.service';
+import { empresasService, type Empresa } from '../../../infrastructure/http/empresas/empresas.service';
 import { useRoles } from './useRoles';
+import { useAuthStore } from '../../../stores/auth.store';
 import type { UserRole, PersonType } from '../../../domain/user/models';
 
 /**
@@ -35,6 +37,7 @@ export function useUserCreateForm() {
     isExternal: boolean;
     enabled: boolean;
     studentCode?: string;
+    empresaId: number | null;
   }
 
   const form = ref<UserForm>({
@@ -50,10 +53,133 @@ export function useUserCreateForm() {
     isExternal: false,
     enabled: true,
     studentCode: '',
+    empresaId: null,
   });
 
-  // Opciones
-  const documentTypeOptions = ['CC', 'CE', 'PA', 'TI', 'NIT'];
+  // Estado para empresas
+  const empresas = ref<Empresa[]>([]);
+  const loadingEmpresas = ref(false);
+  const authStore = useAuthStore();
+
+  // Computed para determinar si el usuario actual es ADMIN
+  const isAdmin = computed(() => authStore.profile?.rol === 'ADMIN');
+
+  // Computed para determinar si el usuario actual es CLIENTE
+  const isCliente = computed(() => authStore.profile?.rol === 'CLIENTE');
+
+  // Computed para obtener la empresa del usuario CLIENTE actual
+  const currentUserEmpresaId = computed(() => {
+    if (authStore.profile?.persona?.empresaId) {
+      return authStore.profile.persona.empresaId;
+    }
+    return null;
+  });
+
+  // Computed para obtener el nombre de la empresa del usuario CLIENTE actual
+  const currentUserEmpresaName = computed(() => {
+    const profile = authStore.profile;
+    const persona = profile?.persona;
+    const empresa = persona?.empresa;
+    
+    console.log('🔍 currentUserEmpresaName - Profile completo:', JSON.stringify(profile, null, 2));
+    console.log('🔍 currentUserEmpresaName - persona:', JSON.stringify(persona, null, 2));
+    console.log('🔍 currentUserEmpresaName - empresa:', JSON.stringify(empresa, null, 2));
+    console.log('🔍 currentUserEmpresaName - empresaId:', persona?.empresaId);
+    
+    if (empresa?.razonSocial) {
+      console.log('✅ Nombre de empresa encontrado:', empresa.razonSocial);
+      return empresa.razonSocial;
+    }
+    
+    // Si no hay empresa pero hay empresaId, intentar recargar el perfil
+    if (persona?.empresaId && !empresa) {
+      console.log('⚠️ Hay empresaId pero no hay datos de empresa, recargando perfil...');
+      void authStore.fetchProfile();
+    }
+    
+    console.log('⚠️ No se encontró nombre de empresa');
+    return '';
+  });
+
+  // Cargar empresas solo si es ADMIN
+  async function loadEmpresas() {
+    if (!isAdmin.value) {
+      return;
+    }
+    loadingEmpresas.value = true;
+    try {
+      empresas.value = await empresasService.findAll();
+    } catch (error) {
+      $q.notify({
+        type: 'negative',
+        message: error instanceof Error ? error.message : 'Error al cargar empresas',
+        position: 'top',
+      });
+    } finally {
+      loadingEmpresas.value = false;
+    }
+  }
+
+  // Cargar empresas al montar el componente
+  onMounted(async () => {
+    void loadEmpresas();
+    // Si el usuario es CLIENTE, configurar valores automáticos
+    if (isCliente.value) {
+      console.log('👤 Usuario CLIENTE detectado');
+      
+      // Verificar si el perfil tiene empresa
+      const tieneEmpresa = !!authStore.profile?.persona?.empresa;
+      const tieneEmpresaId = authStore.profile?.persona?.empresaId !== undefined && authStore.profile?.persona?.empresaId !== null;
+      
+      console.log('🔍 Estado del perfil antes de recargar:');
+      console.log('  - tieneEmpresa:', tieneEmpresa);
+      console.log('  - tieneEmpresaId:', tieneEmpresaId);
+      console.log('  - empresaId valor:', authStore.profile?.persona?.empresaId);
+      
+      // Si no tiene empresa (aunque tenga empresaId o no), forzar recarga desde backend
+      if (!tieneEmpresa) {
+        console.log('🔄 Perfil sin empresa, forzando recarga desde backend...');
+        await authStore.fetchProfile();
+        
+        // Esperar un momento para que el perfil se actualice reactivamente
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      
+      console.log('🏢 currentUserEmpresaId después de recargar:', currentUserEmpresaId.value);
+      console.log('🏢 currentUserEmpresaName después de recargar:', currentUserEmpresaName.value);
+      console.log('📋 Profile completo después de recargar:', JSON.stringify(authStore.profile, null, 2));
+      
+      // Asignar automáticamente su empresa
+      if (currentUserEmpresaId.value) {
+        form.value.empresaId = currentUserEmpresaId.value;
+        console.log('✅ empresaId asignado al formulario:', form.value.empresaId);
+      }
+      // Establecer el nombre de la empresa en el campo company
+      if (currentUserEmpresaName.value) {
+        form.value.company = currentUserEmpresaName.value;
+        console.log('✅ Nombre de empresa asignado al formulario:', form.value.company);
+      } else {
+        console.log('⚠️ No se pudo obtener el nombre de la empresa después de recargar');
+        console.log('🔍 Profile persona:', JSON.stringify(authStore.profile?.persona, null, 2));
+        console.log('🔍 Profile persona.empresa:', JSON.stringify(authStore.profile?.persona?.empresa, null, 2));
+        console.log('🔍 Profile persona.empresaId:', authStore.profile?.persona?.empresaId);
+      }
+      // Establecer tipo de persona como natural
+      form.value.personType = 'natural';
+      // Establecer rol como driver (que mapea a ALUMNO en el backend)
+      form.value.role = 'driver';
+    }
+  });
+
+  // Opciones de tipo de documento (excluir NIT si es CLIENTE)
+  const documentTypeOptions = computed(() => {
+    const allOptions = ['CC', 'CE', 'PA', 'TI', 'NIT'];
+    if (isCliente.value) {
+      // Los CLIENTE no pueden crear usuarios con NIT
+      return allOptions.filter((opt) => opt !== 'NIT');
+    }
+    return allOptions;
+  });
 
   const personTypeOptions = [
     { label: 'Persona Natural', value: 'natural' },
@@ -73,10 +199,11 @@ export function useUserCreateForm() {
   const isNIT = computed(() => form.value.documentType === 'NIT');
 
   // Watcher para aplicar validación automática cuando el tipo de documento es NIT
+  // Solo aplica si el usuario es ADMIN (los CLIENTE no pueden usar NIT)
   watch(
     () => form.value.documentType,
     (newValue) => {
-      if (newValue === 'NIT') {
+      if (newValue === 'NIT' && isAdmin.value) {
         // Establecer automáticamente tipo de persona como jurídica
         form.value.personType = 'juridica';
         // Establecer automáticamente rol como cliente institucional
@@ -225,6 +352,8 @@ export function useUserCreateForm() {
             password: string;
             telefono?: string;
             habilitado?: boolean;
+            aceptaTerminos?: boolean;
+            aceptaPoliticaDatos?: boolean;
           } = {
             numeroDocumento: form.value.document,
             tipoDocumento: form.value.documentType || 'CC',
@@ -234,6 +363,9 @@ export function useUserCreateForm() {
             username,
             password,
             habilitado: form.value.enabled,
+            // Aceptar términos automáticamente cuando se crea desde el panel de administración
+            aceptaTerminos: true,
+            aceptaPoliticaDatos: true,
           };
           if (form.value.phone) {
             adminData.telefono = form.value.phone;
@@ -271,6 +403,9 @@ export function useUserCreateForm() {
             razonSocial?: string;
             codigoEstudiante?: string;
             habilitado?: boolean;
+            aceptaTerminos?: boolean;
+            aceptaPoliticaDatos?: boolean;
+            empresaId?: number;
           } = {
             numeroDocumento: form.value.document,
             tipoDocumento: form.value.documentType || 'CC',
@@ -281,7 +416,23 @@ export function useUserCreateForm() {
             password,
             tipoRegistro,
             habilitado: form.value.enabled,
+            // Aceptar términos automáticamente cuando se crea desde el panel de administración
+            aceptaTerminos: true,
+            aceptaPoliticaDatos: true,
           };
+
+          // Asignar empresaId: si es ADMIN puede elegir, si es CLIENTE se asigna automáticamente
+          if (isAdmin.value && form.value.empresaId) {
+            registerData.empresaId = form.value.empresaId;
+            console.log('👨‍💼 ADMIN - empresaId asignado:', registerData.empresaId);
+          } else if (isCliente.value && currentUserEmpresaId.value) {
+            // Para CLIENTE, se asigna automáticamente en el backend, pero lo enviamos por claridad
+            registerData.empresaId = currentUserEmpresaId.value;
+            console.log('👤 CLIENTE - empresaId asignado:', registerData.empresaId);
+            console.log('📦 Datos de registro completos:', JSON.stringify(registerData, null, 2));
+          } else {
+            console.log('⚠️ No se pudo asignar empresaId - isCliente:', isCliente.value, 'currentUserEmpresaId:', currentUserEmpresaId.value);
+          }
 
           if (form.value.phone) {
             registerData.telefono = form.value.phone;
@@ -289,7 +440,8 @@ export function useUserCreateForm() {
           if (form.value.companyName) {
             registerData.razonSocial = form.value.companyName;
           }
-          if (form.value.studentCode) {
+          // Solo enviar código de estudiante si es ADMIN (para CLIENTE se autogenera)
+          if (form.value.studentCode && isAdmin.value) {
             registerData.codigoEstudiante = form.value.studentCode;
           }
 
@@ -365,6 +517,14 @@ export function useUserCreateForm() {
     documentTypeOptions,
     personTypeOptions,
     roleOptions,
+
+    // Empresas
+    empresas,
+    loadingEmpresas,
+    isAdmin,
+    isCliente,
+    currentUserEmpresaId,
+    currentUserEmpresaName,
 
     // Funciones
     isValidEmail,

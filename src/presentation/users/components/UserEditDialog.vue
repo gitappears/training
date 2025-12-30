@@ -184,6 +184,37 @@
                   </template>
                 </q-input>
               </div>
+
+              <!-- Select de Empresa (solo para ADMIN) -->
+              <div v-if="isAdmin" class="col-12 q-pt-md q-px-xs">
+                <q-select
+                  v-model="personalData.empresaId"
+                  outlined
+                  label="Empresa"
+                  :options="empresas"
+                  option-label="razonSocial"
+                  option-value="id"
+                  emit-value
+                  map-options
+                  :loading="loadingEmpresas"
+                  clearable
+                  hint="Seleccione la empresa a la que pertenece el usuario"
+                >
+                  <template #prepend>
+                    <q-icon name="business" />
+                  </template>
+                  <template #option="scope">
+                    <q-item v-bind="scope.itemProps">
+                      <q-item-section>
+                        <q-item-label>{{ scope.opt.razonSocial }}</q-item-label>
+                        <q-item-label caption>
+                          {{ scope.opt.numeroDocumento }} - {{ scope.opt.email || 'Sin email' }}
+                        </q-item-label>
+                      </q-item-section>
+                    </q-item>
+                  </template>
+                </q-select>
+              </div>
             </q-form>
           </q-tab-panel>
         </q-tab-panels>
@@ -229,7 +260,7 @@ const localOpen = computed({
   set: (value) => emit('update:modelValue', value),
 });
 
-const { activeTab, formData, personalData, genderOptions, loading, handleClose, handleSubmit } =
+const { activeTab, formData, personalData, genderOptions, empresas, loadingEmpresas, isAdmin, loading, handleClose, handleSubmit } =
   useUserEditDialog(toRef(props, 'user'));
 
 // Cargar roles desde el backend

@@ -24,6 +24,7 @@ export interface RegisterDto {
   habilitado?: boolean | undefined;
   aceptaTerminos?: boolean | undefined;
   aceptaPoliticaDatos?: boolean | undefined;
+  empresaId?: number | undefined;
 }
 
 export interface RegisterResponse {
@@ -53,6 +54,12 @@ export interface UserProfile {
     fechaNacimiento?: string;
     genero?: string;
     biografia?: string;
+    empresaId?: number; // ID de la empresa a la que pertenece
+    empresa?: {
+      id: number;
+      razonSocial: string;
+      numeroDocumento: string;
+    };
   };
 }
 
@@ -69,6 +76,8 @@ export interface CreateAdminDto {
   username: string;
   password: string;
   habilitado?: boolean;
+  aceptaTerminos?: boolean;
+  aceptaPoliticaDatos?: boolean;
 }
 
 export interface CreateAdminResponse {
