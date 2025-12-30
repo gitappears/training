@@ -16,9 +16,9 @@ declare module 'vue' {
 // for each client)
 // Configuración de la API
 // En desarrollo: http://localhost:3000
-// En producción: usar variable de entorno VITE_API_URL
-const apiBaseURL =
-  import.meta.env.VITE_API_URL || 'http://localhost:3000';
+// En producción/Docker: /api (proxy por nginx)
+const apiBaseURL = import.meta.env.VITE_API_URL || 
+  (import.meta.env.PROD ? '/api' : 'http://localhost:3000');
 
 const api = axios.create({
   baseURL: apiBaseURL,
@@ -134,20 +134,23 @@ api.interceptors.response.use(
   async (error) => {
     const config = error?.config;
 
-    // Logging de errores
-    if (config?.url && config?.method) {
+    // Logging de errores (excepto 401 que es esperado)
+    if (config?.url && config?.method && error?.response?.status !== 401) {
       logError(config.method, config.url, error);
     }
 
     // Si el error es 401 (No autorizado), redirigir a login
     if (error?.response?.status === 401) {
-      // Si el error 401 ocurre en la página de login, no redirigir, solo mostrar el error
-      if (window.location.pathname !== '/auth/login') {
-        localStorage.removeItem('auth_token');
-        localStorage.removeItem('auth_profile');
-        window.location.href = '/auth/login';
-        return Promise.reject(new Error('Sesión expirada. Por favor, inicia sesión de nuevo.'));
+      // Si el error 401 ocurre en la página de login, no redirigir
+      // Y devolver el error original para que lo maneje el componente
+      if (window.location.pathname.includes('/login')) {
+        return Promise.reject(error);
       }
+      
+      localStorage.removeItem('auth_token');
+      localStorage.removeItem('auth_profile');
+      window.location.href = '/auth/login';
+      return Promise.reject(new Error('Sesión expirada. Por favor, inicia sesión de nuevo.'));
     }
 
     // Retry automático para errores retryables
@@ -161,19 +164,21 @@ api.interceptors.response.use(
       }
     }
 
-    // Determinar el mensaje de error final
+    // Determinar el mensaje de error final pero mantener el objeto error original si es AxiosError
     let finalErrorMessage: string;
     if (axios.isAxiosError(error) && error.response) {
       // Si hay un mensaje específico del backend, usarlo
       if (typeof error.response.data.message === 'string') {
         finalErrorMessage = error.response.data.message;
       } else if (Array.isArray(error.response.data.message) && error.response.data.message.length > 0) {
-        // Si el backend envía un array de mensajes (ej. por ValidationPipe), usar el primero o unirlos
         finalErrorMessage = error.response.data.message[0];
       } else {
-        // Mensaje genérico para errores de respuesta HTTP
         finalErrorMessage = `Error ${error.response.status}: ${error.response.statusText}`;
       }
+      
+      // Actualizar el mensaje del error original pero devolver el objeto completo
+      error.message = finalErrorMessage;
+      return Promise.reject(error);
     } else if (error instanceof Error) {
       finalErrorMessage = error.message;
     } else {

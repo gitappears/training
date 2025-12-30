@@ -266,7 +266,7 @@ export class UsersService implements IUserRepository {
         backendDto.email = dto.email;
       }
       if (dto.phone !== undefined) {
-        backendDto.telefono = dto.phone;
+        backendDto.telefono = dto.phone.replace(/\s+/g, '');
       }
       if (dto.birthDate !== undefined) {
         backendDto.fechaNacimiento = dto.birthDate;
