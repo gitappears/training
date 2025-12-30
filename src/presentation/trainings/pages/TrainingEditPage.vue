@@ -77,6 +77,7 @@ import type { UpdateTrainingDto } from '../../../application/training/training.r
 import type { CreateMaterialDto, UpdateMaterialDto } from '../../../application/material/material.repository.port';
 import { useMaterialTypeMapper } from '../../../shared/composables/useMaterialTypeMapper';
 import { useMaterialUrl } from '../../../shared/composables/useMaterialUrl';
+import { mapTrainingTypeToId, isValidTrainingType } from '../../../shared/constants/training-types';
 
 const router = useRouter();
 const route = useRoute();
@@ -178,7 +179,7 @@ async function loadTraining() {
             } = {
               tipoPreguntaId: mapQuestionTypeToTipoPreguntaId(q.type),
               enunciado: q.text,
-              puntaje: 1,
+              puntaje: q.score !== undefined && q.score !== null ? q.score : 1, // Usar el puntaje del backend o 1 por defecto
               orden: q.order ?? qIdx,
               requerida: true,
               opciones: q.options.map((opt, optIdx) => {
@@ -332,28 +333,52 @@ async function handleSubmit(payload: TrainingFormModel, formMaterials: Material[
             }>;
             imageUrl?: string;
             order: number;
+            score?: number;
           } = {
             text: p.enunciado,
             type: mapTipoPreguntaIdToQuestionType(p.tipoPreguntaId),
             options: p.opciones.map((o) => {
               const optionId = o.id ? (typeof o.id === 'string' ? parseInt(o.id) : o.id) : undefined;
+              // Asegurar que esCorrecta sea un booleano
+              let esCorrectaBool = false;
+              if (typeof o.esCorrecta === 'boolean') {
+                esCorrectaBool = o.esCorrecta;
+              } else if (typeof o.esCorrecta === 'string') {
+                esCorrectaBool = o.esCorrecta === 'true' || o.esCorrecta === '1';
+              } else if (o.esCorrecta !== undefined && o.esCorrecta !== null) {
+                esCorrectaBool = Boolean(o.esCorrecta);
+              }
+
               const option: {
                 id?: number;
                 text: string;
                 isCorrect: boolean;
                 imageUrl?: string;
               } = {
-                text: o.texto,
-                isCorrect: o.esCorrecta,
+                text: o.texto || '',
+                isCorrect: esCorrectaBool,
               };
-              if (optionId !== undefined) {
+              // Solo incluir ID si es válido y es un número
+              if (optionId !== undefined && !isNaN(optionId) && optionId > 0) {
                 option.id = optionId;
               }
               return option;
             }),
             order: p.orden ?? 0,
           };
-          if (questionId !== undefined) {
+          // Incluir el puntaje de la pregunta si está definido y es válido
+          if (p.puntaje !== undefined && p.puntaje !== null) {
+            const puntajeNum = typeof p.puntaje === 'string' ? parseFloat(p.puntaje) : p.puntaje;
+            if (!isNaN(puntajeNum) && puntajeNum >= 0) {
+              question.score = puntajeNum;
+            } else {
+              question.score = 1; // Valor por defecto si es inválido
+            }
+          } else {
+            question.score = 1; // Valor por defecto
+          }
+          // Solo incluir ID si es válido y es un número
+          if (questionId !== undefined && !isNaN(questionId) && questionId > 0) {
             question.id = questionId;
           }
           if (p.imagenUrl) {
@@ -363,6 +388,16 @@ async function handleSubmit(payload: TrainingFormModel, formMaterials: Material[
         });
 
         // Actualizar evaluación existente
+        // Validar y convertir minimoAprobacion a número válido (0-100)
+        const minimoAprobacion = payload.evaluationInline.minimoAprobacion;
+        let minimoAprobacionNumero = 70; // Valor por defecto
+        if (minimoAprobacion !== undefined && minimoAprobacion !== null) {
+          const parsed = typeof minimoAprobacion === 'string' ? parseFloat(minimoAprobacion) : minimoAprobacion;
+          if (!isNaN(parsed) && parsed >= 0 && parsed <= 100) {
+            minimoAprobacionNumero = parsed;
+          }
+        }
+
         // Usar Partial para permitir propiedades opcionales con exactOptionalPropertyTypes
         const updateDto: Partial<{
           description: string;
@@ -381,11 +416,12 @@ async function handleSubmit(payload: TrainingFormModel, formMaterials: Material[
             }>;
             imageUrl?: string;
             order: number;
+            score?: number;
           }>;
         }> = {
           description: payload.evaluationInline.descripcion || payload.evaluationInline.titulo,
           attemptsAllowed: payload.evaluationInline.intentosPermitidos || 1,
-          minimumScore: payload.evaluationInline.minimoAprobacion || 70,
+          minimumScore: minimoAprobacionNumero,
           questions: questionsWithIds as Array<{
             id?: number;
             text: string;
@@ -575,14 +611,12 @@ async function syncMaterials(capacitacionId: number, newMaterials: Material[]) {
   }
 }
 
-// Mapeos temporales - TODO: Obtener de catálogos del backend
+// Usar funciones centralizadas de mapeo de tipos
 function mapTipoToId(type: string | null): number {
-  const map: Record<string, number> = {
-    standard: 1,
-    certified: 2,
-    survey: 3,
-  };
-  return map[type ?? 'standard'] ?? 1;
+  if (!type || !isValidTrainingType(type)) {
+    throw new Error(`Tipo de capacitación inválido: ${type}`);
+  }
+  return mapTrainingTypeToId(type);
 }
 
 function mapModalityToId(modality: string | null): number {

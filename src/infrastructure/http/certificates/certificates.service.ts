@@ -82,6 +82,13 @@ function mapBackendToDomain(backendData: BackendCertificate): Certificate {
     ? new Date(backendData.fechaRetroactiva).toISOString()
     : backendData.fechaEmision;
 
+  // Asegurar que siempre tengamos un código de verificación y URL
+  const hashVerificacion = backendData.hashVerificacion?.trim() || '';
+  const urlVerificacionPublica = backendData.urlVerificacionPublica?.trim() || '';
+  
+  // Si no hay URL pero sí hay hash, construir la URL
+  const finalVerificationUrl = urlVerificacionPublica || (hashVerificacion ? `/verify/${hashVerificacion}` : '');
+
   const certificate: Certificate = {
     id: backendData.id?.toString() ?? '',
     courseId: capacitacion?.id?.toString() ?? '',
@@ -103,8 +110,8 @@ function mapBackendToDomain(backendData: BackendCertificate): Certificate {
     score: inscripcion?.calificacionFinal ?? 0,
     minimumScore: inscripcion?.minimoAprobacion ?? 70,
     status: mapStatus(backendData),
-    verificationCode: backendData.hashVerificacion ?? '',
-    publicVerificationUrl: backendData.urlVerificacionPublica ?? '',
+    verificationCode: hashVerificacion,
+    publicVerificationUrl: finalVerificationUrl,
     createdAt: backendData.fechaEmision ?? new Date().toISOString(),
   };
 

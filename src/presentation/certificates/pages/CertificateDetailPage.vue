@@ -269,7 +269,7 @@
                 <div class="column items-center q-gutter-md">
                   <div class="text-subtitle1 text-weight-medium">Código de Verificación</div>
                   <q-card flat bordered class="q-pa-lg">
-                    <div class="row items-center q-gutter-md">
+                    <div v-if="certificate.verificationCode" class="row items-center q-gutter-md">
                       <code class="text-h6 text-primary">{{ certificate.verificationCode }}</code>
                       <q-btn
                         flat
@@ -282,15 +282,23 @@
                         <q-tooltip>Copiar código</q-tooltip>
                       </q-btn>
                     </div>
+                    <div v-else class="text-caption text-grey-6 text-center q-pa-sm">
+                      Código de verificación no disponible
+                    </div>
                   </q-card>
 
                   <div class="text-subtitle1 text-weight-medium q-mt-lg">Código QR</div>
                   <q-card flat bordered class="q-pa-lg">
                     <div class="row justify-center">
                       <QRCodeDisplay
-                        :value="certificate.verificationCode || certificate.publicVerificationUrl"
+                        v-if="getQRValue"
+                        :value="getQRValue"
                         :size="250"
                       />
+                      <div v-else class="text-negative text-center q-pa-md">
+                        <q-icon name="error_outline" size="48px" class="q-mb-sm" />
+                        <div class="text-caption">Error al generar el código QR.</div>
+                      </div>
                     </div>
                     <div class="text-caption text-grey-6 text-center q-mt-md">
                       Escanea este código para verificar el certificado
@@ -720,12 +728,62 @@ function shareViaWhatsApp() {
 
 function openPublicVerification() {
   if (!certificate.value) return;
-  window.open(certificate.value.publicVerificationUrl, '_blank');
+  // Construir la URL completa si es relativa
+  const url = certificate.value.publicVerificationUrl.startsWith('http')
+    ? certificate.value.publicVerificationUrl
+    : `${window.location.origin}${certificate.value.publicVerificationUrl}`;
+  window.open(url, '_blank');
 }
 
 function goBack() {
   void router.push('/certificates');
 }
+
+// Computed para obtener el valor del QR
+const getQRValue = computed(() => {
+  if (!certificate.value) {
+    console.log('🔍 getQRValue: certificate.value es null');
+    return null;
+  }
+  
+  console.log('🔍 getQRValue - Datos del certificado:', {
+    tieneQRCodeUrl: !!certificate.value.qrCodeUrl,
+    qrCodeUrlLength: certificate.value.qrCodeUrl?.length || 0,
+    tieneVerificationCode: !!certificate.value.verificationCode,
+    verificationCode: certificate.value.verificationCode,
+    tienePublicVerificationUrl: !!certificate.value.publicVerificationUrl,
+    publicVerificationUrl: certificate.value.publicVerificationUrl,
+  });
+  
+  // Si tenemos el código QR base64 del backend, usarlo directamente
+  if (certificate.value.qrCodeUrl) {
+    console.log('✅ Usando qrCodeUrl del backend');
+    return certificate.value.qrCodeUrl;
+  }
+  
+  // Si no hay QR base64, generar uno desde la URL de verificación
+  // Prioridad: verificationCode > publicVerificationUrl
+  if (certificate.value.verificationCode) {
+    // Si tenemos el código, construir la URL completa para el QR
+    const baseUrl = window.location.origin;
+    const verificationPath = certificate.value.publicVerificationUrl || `/verify/${certificate.value.verificationCode}`;
+    const qrValue = verificationPath.startsWith('http') 
+      ? verificationPath 
+      : `${baseUrl}${verificationPath}`;
+    console.log('✅ Generando QR desde verificationCode:', qrValue);
+    return qrValue;
+  }
+  
+  if (certificate.value.publicVerificationUrl) {
+    const url = certificate.value.publicVerificationUrl;
+    const qrValue = url.startsWith('http') ? url : `${window.location.origin}${url}`;
+    console.log('✅ Generando QR desde publicVerificationUrl:', qrValue);
+    return qrValue;
+  }
+  
+  console.warn('⚠️ No hay datos para generar el QR');
+  return null;
+});
 
 /**
  * Carga el PDF del certificado como blob URL para visualización
@@ -824,11 +882,12 @@ body.body--dark .viewer-toolbar {
 
 .pdf-iframe {
   width: 100%;
-  min-height: 800px;
+  min-height: 500px; // Ajustado para formato horizontal (landscape)
   height: 100vh;
   max-height: 70vh;
   border: none;
   background: #f5f5f5;
+  aspect-ratio: 792 / 612; // Proporción del certificado horizontal (ancho/alto)
 }
 
 .certificate-image-placeholder {

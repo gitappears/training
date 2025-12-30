@@ -13,6 +13,23 @@
       @cancel="handleCancelPreview"
     />
 
+    <!-- FAL-004: Banner informativo para encuestas -->
+    <q-banner
+      v-if="isSurvey"
+      rounded
+      class="bg-info text-white q-mb-lg"
+      icon="info"
+    >
+      <template #avatar>
+        <q-icon name="poll" color="white" size="32px" />
+      </template>
+      <div class="text-h6 text-weight-bold q-mb-xs">Esta es una Encuesta</div>
+      <div class="text-body2">
+        Las encuestas no se califican. Tus respuestas son valiosas para mejorar nuestros servicios.
+        No hay puntajes ni aprobación requerida.
+      </div>
+    </q-banner>
+
     <!-- Header -->
     <div class="row items-center justify-between q-mb-xl">
       <div class="col">
@@ -451,7 +468,23 @@
     <q-card v-else flat bordered class="result-card">
       <q-card-section class="q-pa-xl text-center">
         <transition name="result-fade">
-          <div :key="passed ? 'passed' : 'failed'">
+          <!-- FAL-004: Mensaje diferenciado para encuestas -->
+          <div v-if="isSurvey" :key="'survey-completed'">
+            <q-icon
+              name="check_circle"
+              color="positive"
+              size="120px"
+              class="q-mb-md"
+            />
+            <div class="text-h3 text-weight-bold q-mb-sm text-positive">
+              ¡Gracias por tu participación!
+            </div>
+            <div class="text-h5 text-grey-7 q-mb-lg">
+              Tu encuesta ha sido completada exitosamente. Agradecemos tu tiempo y tus valiosos comentarios.
+            </div>
+          </div>
+          <!-- Resultado normal para evaluaciones -->
+          <div v-else :key="passed ? 'passed' : 'failed'">
             <q-icon
               :name="passed ? 'check_circle' : 'cancel'"
               :color="passed ? 'positive' : 'negative'"
@@ -466,8 +499,9 @@
               requerido: {{ evaluation.minimumScore }}%)
             </div>
 
+            <!-- FAL-004: Ocultar resultados de calificación en encuestas -->
             <!-- Score Breakdown Mejorado -->
-            <q-card flat bordered class="q-mb-lg q-mt-lg result-breakdown-card">
+            <q-card v-if="!isSurvey" flat bordered class="q-mb-lg q-mt-lg result-breakdown-card">
               <q-card-section>
                 <div class="text-subtitle1 q-mb-md text-weight-medium">Desglose Detallado de Resultados</div>
 
@@ -582,7 +616,11 @@
               </q-card-section>
             </q-card>
 
-            <div class="text-body1 q-mb-xl">
+            <!-- FAL-004: Mensaje diferenciado para encuestas -->
+            <div v-if="isSurvey" class="text-body1 q-mb-xl text-grey-7">
+              Tus respuestas han sido registradas. Gracias por ayudarnos a mejorar.
+            </div>
+            <div v-else class="text-body1 q-mb-xl">
               {{
                 passed
                   ? 'Has aprobado la evaluación. Puedes descargar tu certificado.'
@@ -683,6 +721,9 @@ const evaluationAttempt = useEvaluationAttempt({
 });
 
 const timeRemaining = evaluationAttempt.timeRemaining;
+
+// FAL-004: Detectar si es encuesta
+const isSurvey = computed(() => evaluation.value.courseType === 'survey');
 
 // Computed
 const currentQuestion = computed(() => questions.value[currentQuestionIndex.value]);

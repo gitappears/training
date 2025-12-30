@@ -11,6 +11,7 @@ import type {
   UpdateTrainingDto,
 } from '../../../application/training/training.repository.port';
 import type { Training, TrainingSection, TrainingStudent, TrainingStatus } from '../../../domain/training/models';
+import { mapBackendCodeToFrontend, mapBackendTypeIdToFrontend } from '../../../shared/constants/training-types';
 
 /**
  * Tipos para las respuestas del backend
@@ -317,28 +318,27 @@ function mapTipoCapacitacion(tipo: BackendTipoCapacitacion | undefined): 'standa
     return 'standard';
   }
   
-  // Usar el código si está disponible (viene en mayúsculas del backend)
-  const codigo = tipo.codigo?.toUpperCase() ?? '';
+  // Intentar mapear por código primero (más confiable)
+  if (tipo.codigo) {
+    return mapBackendCodeToFrontend(tipo.codigo);
+  }
+  
+  // Si hay ID, intentar mapear por ID
+  if (tipo.id) {
+      try {
+        return mapBackendTypeIdToFrontend(tipo.id);
+      } catch {
+        console.warn('[mapTipoCapacitacion] ID no reconocido, usando código o nombre:', { id: tipo.id, tipo });
+      }
+  }
+  
+  // Fallback: inferir del nombre
   const nombre = tipo.nombre?.toLowerCase() ?? '';
-  
-  // Debug: Log para ver qué datos estamos recibiendo
-  if (!codigo) {
-    console.warn('[mapTipoCapacitacion] Tipo sin código, usando nombre:', { nombre, tipo });
-  }
-  
-  // Mapear códigos del backend a valores del frontend
-  if (codigo) {
-    if (codigo === 'STANDARD' || codigo === 'ESTANDAR') return 'standard';
-    if (codigo === 'CERTIFIED' || codigo === 'CERTIFICADA') return 'certified';
-    if (codigo === 'SURVEY' || codigo === 'ENCUESTA') return 'survey';
-  }
-  
-  // Fallback: inferir del nombre si no hay código o no coincide
   if (nombre.includes('certificad')) return 'certified';
   if (nombre.includes('encuesta') || nombre.includes('survey')) return 'survey';
   if (nombre.includes('estandar') || nombre.includes('standard')) return 'standard';
   
-  console.warn('[mapTipoCapacitacion] No se pudo mapear tipo, usando default:', { codigo, nombre, tipo });
+  console.warn('[mapTipoCapacitacion] No se pudo mapear tipo, usando default:', { codigo: tipo.codigo, nombre, tipo });
   return 'standard';
 }
 

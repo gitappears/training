@@ -30,6 +30,16 @@
         </q-breadcrumbs>
         <h1 class="hero-title text-white">{{ training.title }}</h1>
         <div class="hero-meta text-white">
+          <!-- FAL-004: Badge de tipo de capacitación -->
+          <q-chip
+            :color="getTypeColor(training.type)"
+            text-color="white"
+            size="sm"
+            :icon="getTypeIcon(training.type)"
+            class="q-mr-sm"
+          >
+            {{ getTypeLabel(training.type) }}
+          </q-chip>
           <q-chip
             :color="modalityColor"
             text-color="white"
@@ -790,6 +800,37 @@ const modalityIcons: Record<string, string> = {
   hybrid: 'blur_on',
 };
 
+// FAL-004: Funciones para tipo de capacitación
+const typeLabels: Record<string, string> = {
+  standard: 'ESTÁNDAR',
+  certified: 'CERTIFICADA',
+  survey: 'ENCUESTA',
+};
+
+const typeColors: Record<string, string> = {
+  standard: 'primary',
+  certified: 'positive',
+  survey: 'info',
+};
+
+const typeIcons: Record<string, string> = {
+  standard: 'school',
+  certified: 'verified',
+  survey: 'poll',
+};
+
+function getTypeLabel(type: string): string {
+  return typeLabels[type] ?? 'ESTÁNDAR';
+}
+
+function getTypeColor(type: string): string {
+  return typeColors[type] ?? 'primary';
+}
+
+function getTypeIcon(type: string): string {
+  return typeIcons[type] ?? 'school';
+}
+
 function getModalityLabel(modality: string): string {
   return modalityLabels[modality] ?? modality;
 }
@@ -897,16 +938,33 @@ async function handleEnrollStudentConfirm(estudianteId: string): Promise<void> {
     if (currentPersonaId && estudianteId === currentPersonaId.toString()) {
       await checkEnrollment();
     }
-  } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : 'Error al inscribir el estudiante';
+  } catch (error: unknown) {
+    // Extraer el mensaje de error de forma más robusta
+    let errorMessage = 'Error al inscribir el estudiante';
+    
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    } else if (error && typeof error === 'object' && 'message' in error) {
+      errorMessage = String(error.message);
+    }
+    
+    // Mostrar notificación con el mensaje del error
     $q.notify({
       type: 'negative',
       message: errorMessage,
       icon: 'error',
       position: 'top',
-      timeout: 5000,
+      timeout: 7000, // Aumentar tiempo para mensajes más largos
+      actions: [
+        {
+          label: 'Cerrar',
+          color: 'white',
+        },
+      ],
     });
+    
+    // Log para depuración
+    console.error('Error al inscribir estudiante:', error);
   }
 }
 

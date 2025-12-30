@@ -215,11 +215,19 @@
                   </div>
                   <div class="row justify-center q-mb-md">
                     <QRCodeDisplay
-                      :value="certificate.verificationCode || certificate.publicVerificationUrl"
+                      v-if="getQRValue"
+                      :value="getQRValue"
                       :size="200"
                     />
+                    <div v-else class="text-negative text-center q-pa-md">
+                      <q-icon name="error_outline" size="48px" class="q-mb-sm" />
+                      <div class="text-caption">No se pudo generar el código QR</div>
+                    </div>
                   </div>
-                  <code class="verification-code">{{ certificate.verificationCode }}</code>
+                  <code v-if="certificate.verificationCode" class="verification-code">{{ certificate.verificationCode }}</code>
+                  <div v-else class="text-caption text-grey-6 text-center q-pa-sm">
+                    Código de verificación no disponible
+                  </div>
                   <div class="text-caption text-grey-6 text-center q-mt-md">
                     Escanea el código QR o usa el código de verificación para validar este certificado
                   </div>
@@ -356,11 +364,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 import type { Certificate } from '../../../domain/certificate/models';
 import QRCodeDisplay from '../../../shared/components/QRCodeDisplay.vue';
+import { certificatesService } from '../../../infrastructure/http/certificates/certificates.service';
 
 const route = useRoute();
 const router = useRouter();
@@ -406,6 +415,28 @@ function getValidityColor(expiryDate: string): string {
   return 'positive';
 }
 
+// Computed para obtener el valor del QR
+const getQRValue = computed(() => {
+  if (!certificate.value) return null;
+  
+  // Prioridad: verificationCode > publicVerificationUrl (URL completa)
+  if (certificate.value.verificationCode) {
+    // Si tenemos el código, construir la URL completa para el QR
+    const baseUrl = window.location.origin;
+    const verificationPath = certificate.value.publicVerificationUrl || `/verify/${certificate.value.verificationCode}`;
+    return verificationPath.startsWith('http') 
+      ? verificationPath 
+      : `${baseUrl}${verificationPath}`;
+  }
+  
+  if (certificate.value.publicVerificationUrl) {
+    const url = certificate.value.publicVerificationUrl;
+    return url.startsWith('http') ? url : `${window.location.origin}${url}`;
+  }
+  
+  return null;
+});
+
 function goHome() {
   void router.push('/');
 }
@@ -431,47 +462,44 @@ async function verifyCertificate() {
   verifying.value = true;
   loading.value = true;
 
-  // Simular verificación
-  await new Promise((resolve) => setTimeout(resolve, 1000));
-
-  if (searchCode.value === 'ABC123XYZ789' || searchCode.value === 'ABC123XYZ') {
-    certificate.value = {
-      id: '1',
-      courseId: '1',
-      courseName: 'Primeros Auxilios',
-      studentId: '1',
-      studentName: 'Juan Pérez',
-      documentNumber: '12345678',
-      instructor: '1',
-      instructorName: 'Dr. María González',
-      issuedDate: '2025-01-15',
-      expiryDate: '2026-01-15',
-      isRetroactive: false,
-      score: 85,
-      minimumScore: 70,
-      status: 'valid',
-      verificationCode: searchCode.value,
-      qrCodeUrl: `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${searchCode.value}`,
-      publicVerificationUrl: `/verify/${searchCode.value}`,
-      pdfUrl: '/certificates/1.pdf',
-      createdAt: '2025-01-15',
-    };
-    $q.notify({
-      type: 'positive',
-      message: 'Certificado verificado correctamente',
-      position: 'top',
-    });
-  } else {
+  try {
+    const verification = await certificatesService.verifyPublic(searchCode.value.trim());
+    
+    if (verification.isValid && verification.certificate) {
+      certificate.value = verification.certificate;
+      // Asegurar que el código de verificación y la URL estén presentes
+      if (!certificate.value.verificationCode) {
+        certificate.value.verificationCode = searchCode.value.trim();
+      }
+      if (!certificate.value.publicVerificationUrl) {
+        certificate.value.publicVerificationUrl = `/verify/${searchCode.value.trim()}`;
+      }
+      
+      $q.notify({
+        type: 'positive',
+        message: verification.message || 'Certificado verificado correctamente',
+        position: 'top',
+      });
+    } else {
+      certificate.value = null;
+      $q.notify({
+        type: 'negative',
+        message: verification.message || 'Código de verificación no válido',
+        position: 'top',
+      });
+    }
+  } catch (error) {
+    console.error('Error al verificar certificado:', error);
     certificate.value = null;
     $q.notify({
       type: 'negative',
-      message: 'Código de verificación no válido',
+      message: error instanceof Error ? error.message : 'Error al verificar el certificado',
       position: 'top',
     });
+  } finally {
+    verifying.value = false;
+    loading.value = false;
   }
-
-  verifying.value = false;
-  loading.value = false;
 }
 
 async function startScanning() {

@@ -20,6 +20,7 @@ import type {
   QuestionType,
 } from '../../../domain/evaluation/models';
 import type { PaginatedResponse } from '../../../application/training/training.repository.port';
+import { mapBackendCodeToFrontend } from '../../../shared/constants/training-types';
 
 /**
  * Tipos para las respuestas del backend
@@ -52,6 +53,11 @@ interface BackendEvaluacion {
   id: number;
   capacitacion?: {
     id: number;
+    tipoCapacitacion?: {
+      id: number;
+      codigo?: string;
+      nombre?: string;
+    };
   };
   titulo: string;
   descripcion?: string;
@@ -79,10 +85,16 @@ interface BackendEvaluacion {
  * Mapea la respuesta del backend al modelo de dominio
  */
 function mapBackendToDomain(backendData: BackendEvaluacion): Evaluation {
+  // Mapear tipo de capacitación si está disponible
+  const courseType = backendData.capacitacion?.tipoCapacitacion?.codigo
+    ? mapBackendCodeToFrontend(backendData.capacitacion.tipoCapacitacion.codigo)
+    : undefined;
+
   const evaluation: Evaluation = {
     id: backendData.id?.toString() ?? '',
     courseId: backendData.capacitacion?.id?.toString() ?? '',
     courseName: '',
+    courseType, // FAL-004: Tipo de capacitación para UI diferenciada
     description: backendData.descripcion ?? '',
     questions: backendData.preguntas?.map((q: BackendPregunta) => {
       const question: {
@@ -97,6 +109,7 @@ function mapBackendToDomain(backendData: BackendEvaluacion): Evaluation {
         }>;
         order: number;
         imageUrl?: string;
+        score?: number;
       } = {
         id: q.id?.toString() ?? '',
         text: q.enunciado ?? '',
@@ -118,6 +131,10 @@ function mapBackendToDomain(backendData: BackendEvaluacion): Evaluation {
       };
       if (q.imagenUrl) {
         question.imageUrl = q.imagenUrl;
+      }
+      // Mapear el puntaje de la pregunta desde el backend
+      if (q.puntaje !== undefined && q.puntaje !== null) {
+        question.score = q.puntaje;
       }
       return question;
     }) ?? [],
@@ -506,6 +523,15 @@ export class EvaluationsService implements IEvaluationRepository {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const questionWithId = q as any as QuestionWithId;
 
+          // Validar y convertir puntaje
+          let puntajeNum = 1; // Valor por defecto
+          if (q.score !== undefined && q.score !== null) {
+            const parsed = typeof q.score === 'string' ? parseFloat(q.score) : q.score;
+            if (!isNaN(parsed) && parsed >= 0) {
+              puntajeNum = parsed;
+            }
+          }
+
           const pregunta: {
             id?: number;
             tipoPreguntaId: number;
@@ -523,15 +549,25 @@ export class EvaluationsService implements IEvaluationRepository {
             }>;
           } = {
             tipoPreguntaId: mapQuestionTypeToTipoPreguntaId(q.type),
-            enunciado: q.text,
-            puntaje: 1,
-            orden: q.order,
+            enunciado: q.text || '',
+            puntaje: puntajeNum,
+            orden: q.order ?? 0,
             requerida: true,
             opciones: q.options.map((opt, idx) => {
               // Tipo extendido para permitir id opcional en actualización
               type OptionWithId = CreateQuestionOptionDto & { id?: string | number };
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               const optionWithId = opt as any as OptionWithId;
+
+              // Asegurar que esCorrecta sea un booleano
+              let esCorrectaBool = false;
+              if (typeof opt.isCorrect === 'boolean') {
+                esCorrectaBool = opt.isCorrect;
+              } else if (typeof opt.isCorrect === 'string') {
+                esCorrectaBool = opt.isCorrect === 'true' || opt.isCorrect === '1';
+              } else if (opt.isCorrect !== undefined && opt.isCorrect !== null) {
+                esCorrectaBool = Boolean(opt.isCorrect);
+              }
 
               const opcion: {
                 id?: number;
@@ -540,24 +576,30 @@ export class EvaluationsService implements IEvaluationRepository {
                 puntajeParcial?: number;
                 orden?: number;
               } = {
-                texto: opt.text,
-                esCorrecta: opt.isCorrect,
+                texto: opt.text || '',
+                esCorrecta: esCorrectaBool,
                 puntajeParcial: 0,
                 orden: idx,
               };
 
-              // Si la opción tiene id, incluirlo para actualización
+              // Si la opción tiene id válido, incluirlo para actualización
               if (optionWithId.id !== undefined) {
-                opcion.id = typeof optionWithId.id === 'string' ? parseInt(optionWithId.id) : optionWithId.id;
+                const optionIdNum = typeof optionWithId.id === 'string' ? parseInt(optionWithId.id) : optionWithId.id;
+                if (!isNaN(optionIdNum) && optionIdNum > 0) {
+                  opcion.id = optionIdNum;
+                }
               }
 
               return opcion;
             }),
           };
 
-          // Si la pregunta tiene id, incluirla para actualización
+          // Si la pregunta tiene id válido, incluirla para actualización
           if (questionWithId.id !== undefined) {
-            pregunta.id = typeof questionWithId.id === 'string' ? parseInt(questionWithId.id) : questionWithId.id;
+            const questionIdNum = typeof questionWithId.id === 'string' ? parseInt(questionWithId.id) : questionWithId.id;
+            if (!isNaN(questionIdNum) && questionIdNum > 0) {
+              pregunta.id = questionIdNum;
+            }
           }
 
           if (q.imageUrl) {

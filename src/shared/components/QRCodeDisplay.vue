@@ -176,32 +176,55 @@ async function generateQR() {
       throw new Error('El valor para el código QR no puede estar vacío.');
     }
 
-    // Intentar usar librería QRCode si está disponible
-    // En producción: npm install qrcode
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    if (typeof window !== 'undefined' && (window as any).QRCode) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const QRCode = (window as any).QRCode;
-      if (qrCodeContainer.value) {
-        qrCodeContainer.value.innerHTML = '';
-        await QRCode.toCanvas(qrCodeContainer.value, props.value, {
-          width: props.size,
-          margin: props.margin,
-          errorCorrectionLevel: props.errorCorrectionLevel,
-          color: {
-            dark: '#000000',
-            light: '#FFFFFF',
-          },
-        });
-      }
-    } else {
-      // Fallback: usar API de generación de QR online
-      // En producción, instalar: npm install qrcode
-      generateQRWithAPI();
+    if (!qrCodeContainer.value) {
+      throw new Error('Contenedor de QR no disponible');
     }
 
-    loading.value = false;
-    emit('generated');
+    // Si el valor es una imagen base64 (data:image), mostrarla directamente
+    if (props.value.startsWith('data:image')) {
+      qrCodeContainer.value.innerHTML = '';
+      const img = document.createElement('img');
+      img.src = props.value;
+      img.alt = 'QR Code';
+      img.style.width = `${props.size}px`;
+      img.style.height = `${props.size}px`;
+      img.style.display = 'block';
+      qrCodeContainer.value.appendChild(img);
+      loading.value = false;
+      emit('generated');
+      return;
+    }
+
+    // Intentar importar y usar la librería QRCode
+    try {
+      // Importar dinámicamente la librería qrcode
+      const QRCode = (await import('qrcode')).default;
+      
+      // Limpiar el contenedor
+      qrCodeContainer.value.innerHTML = '';
+      
+      // Crear un canvas para el QR
+      const canvas = document.createElement('canvas');
+      qrCodeContainer.value.appendChild(canvas);
+      
+      // Generar el QR code
+      await QRCode.toCanvas(canvas, props.value, {
+        width: props.size,
+        margin: props.margin,
+        errorCorrectionLevel: props.errorCorrectionLevel,
+        color: {
+          dark: '#000000',
+          light: '#FFFFFF',
+        },
+      });
+      
+      loading.value = false;
+      emit('generated');
+    } catch (importError) {
+      // Si falla la importación, usar API externa como fallback
+      console.warn('No se pudo cargar la librería qrcode, usando API externa:', importError);
+      generateQRWithAPI();
+    }
   } catch (err) {
     loading.value = false;
     error.value = true;

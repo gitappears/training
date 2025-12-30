@@ -48,6 +48,7 @@ import type { CreateTrainingDto } from '../../../application/training/training.r
 import type { CreateMaterialDto } from '../../../application/material/material.repository.port';
 import { useMaterialTypeMapper } from '../../../shared/composables/useMaterialTypeMapper';
 import { useMaterialUrl } from '../../../shared/composables/useMaterialUrl';
+import { mapTrainingTypeToId, isValidTrainingType } from '../../../shared/constants/training-types';
 
 const router = useRouter();
 const $q = useQuasar();
@@ -59,6 +60,18 @@ const { extractRelativeUrl, isExternalLink } = useMaterialUrl();
 
 async function handleSubmit(payload: TrainingFormModel, formMaterials: Material[]) {
   try {
+    // FAL-002: Validar tipo de capacitación antes de enviar
+    if (!payload.type || !isValidTrainingType(payload.type)) {
+      $q.notify({
+        type: 'negative',
+        message: 'Error: Debe seleccionar un tipo de capacitación válido',
+        icon: 'error',
+        position: 'top',
+        timeout: 5000,
+      });
+      return;
+    }
+
     // Obtener el usuario actual para usuario_creacion
     const usuarioCreacion = authStore.profile?.persona?.email || authStore.profile?.username || 'system';
 
@@ -300,14 +313,12 @@ async function handleSubmit(payload: TrainingFormModel, formMaterials: Material[
   }
 }
 
-// Mapeos temporales - TODO: Obtener de catálogos del backend
+// Usar funciones centralizadas de mapeo de tipos
 function mapTipoToId(type: string | null): number {
-  const map: Record<string, number> = {
-    standard: 1,
-    certified: 2,
-    survey: 3,
-  };
-  return map[type ?? 'standard'] ?? 1;
+  if (!type || !isValidTrainingType(type)) {
+    throw new Error(`Tipo de capacitación inválido: ${type}`);
+  }
+  return mapTrainingTypeToId(type);
 }
 
 function mapModalityToId(modality: string | null): number {

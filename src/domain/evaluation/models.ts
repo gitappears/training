@@ -18,12 +18,14 @@ export interface Question {
   options: QuestionOption[];
   imageUrl?: string; // RF-16: Para preguntas con imagen
   order: number;
+  score?: number; // Puntaje que otorga esta pregunta
 }
 
 export interface Evaluation {
   id: string;
   courseId: string;
   courseName: string;
+  courseType?: 'standard' | 'certified' | 'survey'; // FAL-004: Tipo de capacitación para UI diferenciada
   description: string;
   questions: Question[];
   questionsCount: number;

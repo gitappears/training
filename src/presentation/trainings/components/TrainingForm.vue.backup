@@ -1064,60 +1064,14 @@ import MaterialViewer from '../../../shared/components/MaterialViewer.vue';
 import type { Material } from '../../../shared/components/MaterialViewer.vue';
 import { materialsService } from '../../../infrastructure/http/materials/materials.service';
 import { useMaterialUrl } from '../../../shared/composables/useMaterialUrl';
-import { TRAINING_TYPE_OPTIONS } from '../../../shared/constants/training-types';
 
-export interface EvaluationOption {
-  id?: number; // ID de la opción (para edición)
-  texto: string;
-  esCorrecta: boolean;
-  puntajeParcial?: number;
-  orden?: number;
-}
-
-export interface QuestionOption {
-  id?: number; // ID de la pregunta (para edición)
-  tipoPreguntaId: number;
-  enunciado: string;
-  imagenUrl?: string;
-  puntaje?: number;
-  orden?: number;
-  requerida?: boolean;
-  opciones: EvaluationOption[];
-}
-
-export interface InlineEvaluation {
-  titulo: string;
-  descripcion?: string;
-  tiempoLimiteMinutos?: number;
-  intentosPermitidos?: number;
-  mostrarResultados?: boolean;
-  mostrarRespuestasCorrectas?: boolean;
-  puntajeTotal?: number;
-  minimoAprobacion?: number;
-  orden?: number;
-  preguntas: QuestionOption[];
-}
-
-export interface TrainingFormModel {
-  title: string;
-  description: string;
-  type: string | null;
-  modality: string | null;
-  location: string;
-  durationHours: number | null;
-  capacity: number | null;
-  instructor: string;
-  area: string;
-  targetAudience: string | null;
-  startDate: string;
-  endDate: string;
-  coverImageUrl: string;
-  promoVideoUrl: string;
-  evaluationId: number | null; // RF-09: Evaluación obligatoria (para vincular existente)
-  evaluationInline: InlineEvaluation | null; // RF-09: Evaluación a crear inline
-  attachments: { id: string; label: string; url: string }[];
-  links: { id: string; label: string; url: string }[];
-}
+// Re-exportar tipos desde el módulo de tipos para mantener compatibilidad
+export type {
+  EvaluationOption,
+  QuestionOption,
+  InlineEvaluation,
+  TrainingFormModel,
+} from './TrainingForm.types';
 
 const props = withDefaults(
   defineProps<{
@@ -1210,8 +1164,11 @@ const fileTypes = [
   { label: 'Imagen', value: 'IMAGE' },
 ];
 
-// Usar constantes centralizadas de tipos
-const trainingTypes = TRAINING_TYPE_OPTIONS;
+const trainingTypes = [
+  { label: 'Capacitación estándar', value: 'standard' },
+  { label: 'Capacitación certificada', value: 'certified' },
+  { label: 'Encuesta', value: 'survey' },
+];
 
 const modalities = [
   { label: 'Online', value: 'online' },
@@ -1754,35 +1711,8 @@ function initializeFormWithData() {
   }
 
   // Cargar evaluación inline si se proporciona (modo edición)
-  // Hacer copia profunda para evitar problemas de reactividad
   if (props.initialEvaluationInline) {
-    form.evaluationInline = {
-      titulo: props.initialEvaluationInline.titulo || '',
-      descripcion: props.initialEvaluationInline.descripcion || '',
-      tiempoLimiteMinutos: props.initialEvaluationInline.tiempoLimiteMinutos,
-      intentosPermitidos: props.initialEvaluationInline.intentosPermitidos || 1,
-      mostrarResultados: props.initialEvaluationInline.mostrarResultados ?? true,
-      mostrarRespuestasCorrectas: props.initialEvaluationInline.mostrarRespuestasCorrectas ?? false,
-      puntajeTotal: props.initialEvaluationInline.puntajeTotal || 100,
-      minimoAprobacion: props.initialEvaluationInline.minimoAprobacion || 70,
-      orden: props.initialEvaluationInline.orden || 0,
-      preguntas: props.initialEvaluationInline.preguntas.map((p) => ({
-        id: p.id,
-        tipoPreguntaId: p.tipoPreguntaId,
-        enunciado: p.enunciado || '',
-        imagenUrl: p.imagenUrl,
-        puntaje: p.puntaje || 1,
-        orden: p.orden ?? 0,
-        requerida: p.requerida ?? true,
-        opciones: p.opciones.map((o) => ({
-          id: o.id,
-          texto: o.texto || '',
-          esCorrecta: Boolean(o.esCorrecta), // Asegurar que sea booleano
-          puntajeParcial: o.puntajeParcial || 0,
-          orden: o.orden ?? 0,
-        })),
-      })),
-    };
+    form.evaluationInline = { ...props.initialEvaluationInline };
   }
 }
 
