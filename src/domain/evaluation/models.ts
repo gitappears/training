@@ -26,6 +26,7 @@ export interface Evaluation {
   courseId: string;
   courseName: string;
   courseType?: 'standard' | 'certified' | 'survey'; // FAL-004: Tipo de capacitación para UI diferenciada
+  title: string;
   description: string;
   questions: Question[];
   questionsCount: number;
@@ -41,6 +42,8 @@ export interface Evaluation {
   };
   createdAt: string;
   updatedAt?: string;
+  mostrarResultados?: boolean; // Controla si se muestran resultados al finalizar
+  mostrarRespuestasCorrectas?: boolean; // Controla si se muestran respuestas correctas en modo revisión
 }
 
 export interface EvaluationAttempt {

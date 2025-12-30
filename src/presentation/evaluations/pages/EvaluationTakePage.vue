@@ -85,15 +85,14 @@
     </q-card>
 
     <!-- Review Mode Header -->
-    <q-card v-if="reviewMode && !evaluationCompleted" flat bordered class="q-mb-lg bg-info-1">
+    <q-card v-if="reviewMode && !evaluationCompleted && shouldShowCorrectAnswers" flat bordered class="q-mb-lg bg-info-1">
       <q-card-section class="q-pa-md">
         <div class="row items-center q-gutter-sm">
           <q-icon name="preview" size="24px" color="info" />
           <div class="col">
             <div class="text-subtitle2 text-weight-medium">Modo de Revisión</div>
             <div class="text-body2 text-grey-7">
-              Revisa tus respuestas antes de enviar la evaluación. Puedes modificar cualquier
-              respuesta.
+              Revisa tus respuestas antes de enviar la evaluación. Puedes ver las respuestas correctas y modificar cualquier respuesta.
             </div>
           </div>
           <q-btn
@@ -143,8 +142,8 @@
                 class="option-card cursor-pointer transition-all"
                 :class="{
                   'option-selected': currentAnswer === option.id,
-                  'option-correct': reviewMode && option.isCorrect,
-                  'option-incorrect': reviewMode && !option.isCorrect && currentAnswer === option.id,
+                  'option-correct': canShowCorrectAnswers && option.isCorrect,
+                  'option-incorrect': canShowCorrectAnswers && !option.isCorrect && currentAnswer === option.id,
                 }"
                 @click="currentAnswer = option.id"
               >
@@ -157,14 +156,14 @@
                   />
                   <div class="col text-body1">{{ option.text }}</div>
                   <q-icon
-                    v-if="reviewMode && option.isCorrect"
+                    v-if="canShowCorrectAnswers && option.isCorrect"
                     name="check_circle"
                     color="positive"
                     size="24px"
                     class="q-ml-sm"
                   />
                   <q-icon
-                    v-if="reviewMode && !option.isCorrect && currentAnswer === option.id"
+                    v-if="canShowCorrectAnswers && !option.isCorrect && currentAnswer === option.id"
                     name="cancel"
                     color="negative"
                     size="24px"
@@ -184,8 +183,8 @@
                 class="option-card cursor-pointer transition-all"
                 :class="{
                   'option-selected': Array.isArray(currentAnswer) && currentAnswer.includes(option.id),
-                  'option-correct': reviewMode && option.isCorrect,
-                  'option-incorrect': reviewMode && !option.isCorrect && Array.isArray(currentAnswer) && currentAnswer.includes(option.id),
+                  'option-correct': canShowCorrectAnswers && option.isCorrect,
+                  'option-incorrect': canShowCorrectAnswers && !option.isCorrect && Array.isArray(currentAnswer) && currentAnswer.includes(option.id),
                 }"
                 @click="toggleMultipleAnswer(option.id)"
               >
@@ -198,14 +197,14 @@
                   />
                   <div class="col text-body1">{{ option.text }}</div>
                   <q-icon
-                    v-if="reviewMode && option.isCorrect"
+                    v-if="canShowCorrectAnswers && option.isCorrect"
                     name="check_circle"
                     color="positive"
                     size="24px"
                     class="q-ml-sm"
                   />
                   <q-icon
-                    v-if="reviewMode && !option.isCorrect && Array.isArray(currentAnswer) && currentAnswer.includes(option.id)"
+                    v-if="canShowCorrectAnswers && !option.isCorrect && Array.isArray(currentAnswer) && currentAnswer.includes(option.id)"
                     name="cancel"
                     color="negative"
                     size="24px"
@@ -226,8 +225,8 @@
                   class="image-option-card cursor-pointer transition-all"
                   :class="{
                     'option-selected': currentAnswer === option.id,
-                    'option-correct': reviewMode && option.isCorrect,
-                    'option-incorrect': reviewMode && !option.isCorrect && currentAnswer === option.id,
+                    'option-correct': canShowCorrectAnswers && option.isCorrect,
+                    'option-incorrect': canShowCorrectAnswers && !option.isCorrect && currentAnswer === option.id,
                   }"
                   @click="currentAnswer = option.id"
                 >
@@ -247,14 +246,14 @@
                           class="selection-indicator"
                         />
                         <q-icon
-                          v-if="reviewMode && option.isCorrect"
+                          v-if="canShowCorrectAnswers && option.isCorrect"
                           name="check_circle"
                           color="positive"
                           size="48px"
                           class="correct-indicator"
                         />
                         <q-icon
-                          v-if="reviewMode && !option.isCorrect && currentAnswer === option.id"
+                          v-if="canShowCorrectAnswers && !option.isCorrect && currentAnswer === option.id"
                           name="cancel"
                           color="negative"
                           size="48px"
@@ -281,8 +280,8 @@
                 class="col true-false-card cursor-pointer transition-all"
                 :class="{
                   'option-selected': currentAnswer === 'true',
-                  'option-correct': reviewMode && currentQuestion.options[0]?.isCorrect,
-                  'option-incorrect': reviewMode && !currentQuestion.options[0]?.isCorrect && currentAnswer === 'true',
+                  'option-correct': canShowCorrectAnswers && currentQuestion.options[0]?.isCorrect,
+                  'option-incorrect': canShowCorrectAnswers && !currentQuestion.options[0]?.isCorrect && currentAnswer === 'true',
                 }"
                 @click="currentAnswer = 'true'"
               >
@@ -295,14 +294,14 @@
                   />
                   <div class="text-h6 text-weight-bold">Verdadero</div>
                   <q-icon
-                    v-if="reviewMode && currentQuestion.options[0]?.isCorrect"
+                    v-if="canShowCorrectAnswers && currentQuestion.options[0]?.isCorrect"
                     name="check_circle"
                     color="positive"
                     size="32px"
                     class="q-mt-sm"
                   />
                   <q-icon
-                    v-if="reviewMode && !currentQuestion.options[0]?.isCorrect && currentAnswer === 'true'"
+                    v-if="canShowCorrectAnswers && !currentQuestion.options[0]?.isCorrect && currentAnswer === 'true'"
                     name="cancel"
                     color="negative"
                     size="32px"
@@ -316,8 +315,8 @@
                 class="col true-false-card cursor-pointer transition-all"
                 :class="{
                   'option-selected': currentAnswer === 'false',
-                  'option-correct': reviewMode && currentQuestion.options[1]?.isCorrect,
-                  'option-incorrect': reviewMode && !currentQuestion.options[1]?.isCorrect && currentAnswer === 'false',
+                  'option-correct': canShowCorrectAnswers && currentQuestion.options[1]?.isCorrect,
+                  'option-incorrect': canShowCorrectAnswers && !currentQuestion.options[1]?.isCorrect && currentAnswer === 'false',
                 }"
                 @click="currentAnswer = 'false'"
               >
@@ -330,14 +329,14 @@
                   />
                   <div class="text-h6 text-weight-bold">Falso</div>
                   <q-icon
-                    v-if="reviewMode && currentQuestion.options[1]?.isCorrect"
+                    v-if="canShowCorrectAnswers && currentQuestion.options[1]?.isCorrect"
                     name="check_circle"
                     color="positive"
                     size="32px"
                     class="q-mt-sm"
                   />
                   <q-icon
-                    v-if="reviewMode && !currentQuestion.options[1]?.isCorrect && currentAnswer === 'false'"
+                    v-if="canShowCorrectAnswers && !currentQuestion.options[1]?.isCorrect && currentAnswer === 'false'"
                     name="cancel"
                     color="negative"
                     size="32px"
@@ -355,8 +354,8 @@
                 class="col yes-no-card cursor-pointer transition-all"
                 :class="{
                   'option-selected': currentAnswer === 'yes',
-                  'option-correct': reviewMode && currentQuestion.options[0]?.isCorrect,
-                  'option-incorrect': reviewMode && !currentQuestion.options[0]?.isCorrect && currentAnswer === 'yes',
+                  'option-correct': canShowCorrectAnswers && currentQuestion.options[0]?.isCorrect,
+                  'option-incorrect': canShowCorrectAnswers && !currentQuestion.options[0]?.isCorrect && currentAnswer === 'yes',
                 }"
                 @click="currentAnswer = 'yes'"
               >
@@ -369,14 +368,14 @@
                   />
                   <div class="text-h6 text-weight-bold">Sí</div>
                   <q-icon
-                    v-if="reviewMode && currentQuestion.options[0]?.isCorrect"
+                    v-if="canShowCorrectAnswers && currentQuestion.options[0]?.isCorrect"
                     name="check_circle"
                     color="positive"
                     size="32px"
                     class="q-mt-sm"
                   />
                   <q-icon
-                    v-if="reviewMode && !currentQuestion.options[0]?.isCorrect && currentAnswer === 'yes'"
+                    v-if="canShowCorrectAnswers && !currentQuestion.options[0]?.isCorrect && currentAnswer === 'yes'"
                     name="cancel"
                     color="negative"
                     size="32px"
@@ -390,8 +389,8 @@
                 class="col yes-no-card cursor-pointer transition-all"
                 :class="{
                   'option-selected': currentAnswer === 'no',
-                  'option-correct': reviewMode && currentQuestion.options[1]?.isCorrect,
-                  'option-incorrect': reviewMode && !currentQuestion.options[1]?.isCorrect && currentAnswer === 'no',
+                  'option-correct': canShowCorrectAnswers && currentQuestion.options[1]?.isCorrect,
+                  'option-incorrect': canShowCorrectAnswers && !currentQuestion.options[1]?.isCorrect && currentAnswer === 'no',
                 }"
                 @click="currentAnswer = 'no'"
               >
@@ -404,14 +403,14 @@
                   />
                   <div class="text-h6 text-weight-bold">No</div>
                   <q-icon
-                    v-if="reviewMode && currentQuestion.options[1]?.isCorrect"
+                    v-if="canShowCorrectAnswers && currentQuestion.options[1]?.isCorrect"
                     name="check_circle"
                     color="positive"
                     size="32px"
                     class="q-mt-sm"
                   />
                   <q-icon
-                    v-if="reviewMode && !currentQuestion.options[1]?.isCorrect && currentAnswer === 'no'"
+                    v-if="canShowCorrectAnswers && !currentQuestion.options[1]?.isCorrect && currentAnswer === 'no'"
                     name="cancel"
                     color="negative"
                     size="32px"
@@ -444,9 +443,9 @@
                   v-else-if="!reviewMode"
                   color="info"
                   unelevated
-                  label="Revisar"
-                  icon="preview"
-                  @click="enterReviewMode"
+                  :label="shouldShowCorrectAnswers ? 'Revisar' : 'Finalizar'"
+                  :icon="shouldShowCorrectAnswers ? 'preview' : 'check'"
+                  @click="shouldShowCorrectAnswers ? enterReviewMode() : submitEvaluation()"
                 />
                 <q-btn
                   v-else
@@ -465,7 +464,7 @@
     </q-card>
 
     <!-- Result Card -->
-    <q-card v-else flat bordered class="result-card">
+    <q-card v-else-if="shouldShowResults" flat bordered class="result-card">
       <q-card-section class="q-pa-xl text-center">
         <transition name="result-fade">
           <!-- FAL-004: Mensaje diferenciado para encuestas -->
@@ -659,6 +658,35 @@
         </transition>
       </q-card-section>
     </q-card>
+
+    <!-- Mensaje cuando no se muestran resultados -->
+    <q-card v-else flat bordered class="result-card">
+      <q-card-section class="q-pa-xl text-center">
+        <q-icon
+          name="check_circle"
+          color="positive"
+          size="120px"
+          class="q-mb-md"
+        />
+        <div class="text-h3 text-weight-bold q-mb-sm text-positive">
+          ¡Evaluación completada!
+        </div>
+        <div class="text-h5 text-grey-7 q-mb-lg">
+          Tu evaluación ha sido enviada exitosamente.
+        </div>
+        <div class="text-body1 q-mb-xl text-grey-7">
+          Los resultados estarán disponibles próximamente.
+        </div>
+        <div class="row justify-center q-gutter-sm">
+          <q-btn
+            flat
+            size="lg"
+            label="Volver a Evaluaciones"
+            @click="goBack"
+          />
+        </div>
+      </q-card-section>
+    </q-card>
   </q-page>
 </template>
 
@@ -733,12 +761,30 @@ const currentAnswer = computed({
     const question = currentQuestion.value;
     if (!question) return '';
     const questionId = question.id;
-    return answers.value[questionId] ?? (question.type === 'multiple' ? [] : '');
+    const existingAnswer = answers.value[questionId];
+    
+    // Si no hay respuesta, retornar el valor por defecto según el tipo
+    if (existingAnswer === undefined || existingAnswer === null) {
+      return question.type === 'multiple' ? [] : '';
+    }
+    return existingAnswer;
   },
   set: (val) => {
     const question = currentQuestion.value;
     if (question) {
-      answers.value[question.id] = val;
+      // Validar que el tipo de respuesta coincida con el tipo de pregunta
+      if (question.type === 'multiple') {
+        // Asegurar que sea un array
+        answers.value[question.id] = Array.isArray(val) ? val : [];
+      } else {
+        // Asegurar que sea un string o número válido
+        if (Array.isArray(val)) {
+          // Si es array pero la pregunta no es múltiple, tomar el primer elemento
+          answers.value[question.id] = val.length > 0 ? String(val[0]) : '';
+        } else {
+          answers.value[question.id] = val;
+        }
+      }
     }
   },
 });
@@ -797,17 +843,80 @@ const timeWarningClass = computed(() => {
   return 'text-primary';
 });
 
+// Computed para controlar visualización según configuración
+const shouldShowResults = computed(() => {
+  return evaluation.value.mostrarResultados ?? true; // Por defecto true si no está definido
+});
+
+const shouldShowCorrectAnswers = computed(() => {
+  return evaluation.value.mostrarRespuestasCorrectas ?? false; // Por defecto false si no está definido
+});
+
+// Modificar reviewMode para que respete la configuración
+const canShowCorrectAnswers = computed(() => {
+  return reviewMode.value && shouldShowCorrectAnswers.value;
+});
+
 // Funciones
 function isQuestionAnswered(questionId: string): boolean {
+  if (!questionId) return false;
+  
   const answer = answers.value[questionId];
-  if (!answer) return false;
+  
+  // Si no existe la respuesta, retornar false
+  if (answer === undefined || answer === null) return false;
+  
+  // Para respuestas múltiples, verificar que tenga al menos una opción válida
   if (Array.isArray(answer)) {
-    return answer.length > 0;
+    return answer.length > 0 && answer.every(id => id !== '' && id !== null && id !== undefined);
   }
-  return answer !== '';
+  
+  // Para respuestas simples, verificar que no sea string vacío
+  if (typeof answer === 'string') {
+    return answer.trim() !== '';
+  }
+  
+  // Para números (si se usa)
+  if (typeof answer === 'number') {
+    return !isNaN(answer);
+  }
+  
+  return false;
 }
 
 function nextQuestion() {
+  const currentQ = currentQuestion.value;
+  
+  // Validar que la pregunta actual esté respondida
+  if (currentQ && !isQuestionAnswered(currentQ.id)) {
+    console.warn('⚠️ Intentando avanzar sin responder la pregunta:', currentQ.id);
+    $q.notify({
+      type: 'warning',
+      message: 'Por favor, responde la pregunta antes de continuar',
+      icon: 'warning',
+      position: 'top',
+      timeout: 2000,
+    });
+    return;
+  }
+  
+  // Asegurar que la respuesta actual esté guardada en answers.value antes de avanzar
+  if (currentQ && currentAnswer.value !== undefined && currentAnswer.value !== null) {
+    // Validar que la respuesta no esté vacía
+    const isValidAnswer = currentQ.type === 'multiple' 
+      ? Array.isArray(currentAnswer.value) && currentAnswer.value.length > 0
+      : String(currentAnswer.value).trim() !== '';
+    
+    if (isValidAnswer && !answers.value[currentQ.id]) {
+      // Guardar la respuesta si no está guardada
+      answers.value[currentQ.id] = currentAnswer.value;
+      console.log('💾 Respuesta guardada antes de avanzar:', {
+        questionId: currentQ.id,
+        answer: currentAnswer.value,
+      });
+    }
+  }
+  
   if (currentQuestionIndex.value < questions.value.length - 1) {
     currentQuestionIndex.value++;
   }
@@ -911,15 +1020,29 @@ function confirmCancel() {
 }
 
 function toggleMultipleAnswer(optionId: string) {
+  const question = currentQuestion.value;
+  if (!question) return;
+  
+  // Asegurar que currentAnswer sea un array
   if (!Array.isArray(currentAnswer.value)) {
     currentAnswer.value = [];
   }
-  const index = currentAnswer.value.indexOf(optionId);
+  
+  // Crear una copia del array para evitar problemas de reactividad
+  const newAnswer = [...currentAnswer.value];
+  const index = newAnswer.indexOf(optionId);
+  
   if (index > -1) {
-    currentAnswer.value.splice(index, 1);
+    newAnswer.splice(index, 1);
   } else {
-    currentAnswer.value.push(optionId);
+    newAnswer.push(optionId);
   }
+  
+  // Actualizar la respuesta
+  currentAnswer.value = newAnswer;
+  
+  // Asegurar que se guarde en answers.value
+  answers.value[question.id] = newAnswer;
 }
 
 function isQuestionCorrect(questionId: string): boolean {
@@ -985,19 +1108,55 @@ watch(
   },
 );
 
+// Watcher temporal para debugging del estado del botón Siguiente
+// TODO: Remover después de confirmar que el problema está resuelto
+watch(
+  () => [currentQuestionIndex.value, isCurrentQuestionAnswered.value, answers.value],
+  ([index, isAnswered, answersObj]) => {
+    const currentQ = questions.value[index as number];
+    if (currentQ) {
+      console.log('🔍 Estado del botón Siguiente:', {
+        questionIndex: index,
+        questionId: currentQ.id,
+        questionText: currentQ.text.substring(0, 50) + (currentQ.text.length > 50 ? '...' : ''),
+        currentAnswer: answersObj[currentQ.id],
+        isAnswered,
+        allAnswers: Object.keys(answersObj).map(key => ({
+          questionId: key,
+          answer: answersObj[key],
+        })),
+      });
+    }
+  },
+  { deep: true },
+);
+
 // Auto-guardar respuestas cuando cambian
 watch(
   () => answers.value,
   async (newAnswers, oldAnswers) => {
     if (!evaluationAttempt.hasActiveAttempt.value || !attemptStarted.value) return;
     
+    // Solo procesar cambios reales
+    if (!oldAnswers) return;
+    
     // Encontrar qué respuesta cambió
     for (const [questionId, answer] of Object.entries(newAnswers)) {
-      const oldAnswer = oldAnswers?.[questionId];
+      const oldAnswer = oldAnswers[questionId];
+      
+      // Solo procesar si realmente cambió
       if (oldAnswer === answer) continue;
+      
+      // Validar que la respuesta no esté vacía antes de guardar
+      if (answer === undefined || answer === null) continue;
+      if (Array.isArray(answer) && answer.length === 0) continue;
+      if (typeof answer === 'string' && answer.trim() === '') continue;
 
       const question = questions.value.find((q) => q.id === questionId);
-      if (!question) continue;
+      if (!question) {
+        console.warn(`⚠️ Pregunta no encontrada para ID: ${questionId}`);
+        continue;
+      }
 
       const answerData: any = {
         preguntaId: parseInt(questionId),
@@ -1009,8 +1168,23 @@ watch(
         answerData.opcionRespuestaId = parseInt(answer);
       }
 
-      // Guardar en cola para auto-guardado
-      await evaluationAttempt.saveAnswer(answerData);
+      try {
+        await evaluationAttempt.saveAnswer(answerData);
+        console.log('✅ Respuesta guardada exitosamente:', { questionId, answer });
+      } catch (error: any) {
+        console.error(`❌ Error al guardar respuesta para pregunta ${questionId}:`, error);
+        // No bloquear la UI, solo loguear el error
+        // Solo mostrar notificación para errores críticos del servidor
+        if (error.response?.status >= 500) {
+          $q.notify({
+            type: 'warning',
+            message: 'Hubo un problema al guardar tu respuesta. Por favor, intenta responder nuevamente.',
+            icon: 'warning',
+            position: 'top',
+            timeout: 3000,
+          });
+        }
+      }
     }
   },
   { deep: true },

@@ -8,6 +8,23 @@
       </div>
 
       <div class="row q-col-gutter-md">
+        <div class="col-12 col-md-4">
+          <q-select
+            v-model="form.type"
+            filled
+            :options="trainingTypes"
+            label="Tipo de capacitación"
+            emit-value
+            map-options
+            :rules="[(val) => !!val || 'Seleccione un tipo']"
+            hint="Tipo de certificación que otorgará"
+            :dense="false"
+          >
+            <template #prepend>
+              <q-icon name="category" />
+            </template>
+          </q-select>
+        </div>
         <div class="col-12 col-md-8">
           <q-input
             v-model="form.title"
@@ -28,23 +45,6 @@
               <q-icon name="title" />
             </template>
           </q-input>
-        </div>
-        <div class="col-12 col-md-4">
-          <q-select
-            v-model="form.type"
-            filled
-            :options="trainingTypes"
-            label="Tipo de capacitación"
-            emit-value
-            map-options
-            :rules="[(val) => !!val || 'Seleccione un tipo']"
-            hint="Tipo de certificación que otorgará"
-            :dense="false"
-          >
-            <template #prepend>
-              <q-icon name="category" />
-            </template>
-          </q-select>
         </div>
       </div>
 
@@ -110,29 +110,7 @@
             </template>
           </q-input>
         </div>
-        <div class="col-12 col-md-2">
-          <q-input
-            v-model.number="form.durationHours"
-            type="number"
-            min="0"
-            step="1"
-            filled
-            label="Duración (horas)"
-            placeholder="0"
-            hint="Horas totales del curso (número entero)"
-            :rules="[
-              (val) => val === null || val === undefined || val === '' || (!isNaN(val) && val >= 0) || 'La duración debe ser un número mayor o igual a 0',
-              (val) => val === null || val === undefined || val === '' || Number.isInteger(Number(val)) || 'La duración debe ser un número entero',
-            ]"
-            :dense="false"
-            @update:model-value="handleDurationChange"
-          >
-            <template #prepend>
-              <q-icon name="schedule" />
-            </template>
-          </q-input>
-        </div>
-        <div class="col-12 col-md-2">
+        <div class="col-12 col-md-3">
           <q-input
             v-model.number="form.capacity"
             type="number"
@@ -149,23 +127,39 @@
           </q-input>
         </div>
         <div class="col-12 col-md-4">
-          <q-input
+          <q-select
             v-model="form.instructor"
             filled
+            use-input
+            input-debounce="300"
+            :options="instructorOptions"
+            option-label="label"
+            option-value="value"
+            emit-value
+            map-options
+            @filter="filterInstructors"
             label="Relator / Instructor"
-            placeholder="Nombre del instructor principal"
+            placeholder="Buscar instructor..."
             hint="Persona responsable de impartir la capacitación"
+            :rules="[(val) => !!val || 'Seleccione un instructor']"
+            :loading="loadingInstructors"
             :dense="false"
           >
             <template #prepend>
               <q-icon name="person" />
             </template>
-          </q-input>
+            <template #no-option>
+              <q-item>
+                <q-item-section class="text-grey">
+                  {{ loadingInstructors ? 'Cargando instructores...' : 'No se encontraron instructores' }}
+                </q-item-section>
+              </q-item>
+            </template>
+          </q-select>
         </div>
       </div>
 
       <div class="row q-col-gutter-md q-mt-sm">
-      
         <div v-if="false" class="col-12 col-md-4">
           <q-input
             v-model="form.area"
@@ -290,20 +284,6 @@
             </q-img>
           </div>
         </div>
-        <div class="col-12 col-md-6">
-          <q-input
-            v-model="form.promoVideoUrl"
-            filled
-            label="URL de Video Promocional"
-            placeholder="https://youtube.com/watch?v=..."
-            hint="Video de presentación del curso (opcional)"
-            :dense="false"
-          >
-            <template #prepend>
-              <q-icon name="videocam" />
-            </template>
-          </q-input>
-        </div>
       </div>
     </q-card>
 
@@ -335,7 +315,8 @@
             <q-icon name="info" color="purple" />
           </template>
           <div class="text-body2">
-            Los videos se reproducen directamente en la plataforma. Ingresa URLs de YouTube, Vimeo u otros servicios compatibles.
+            Los videos se reproducen directamente en la plataforma. Ingresa URLs de YouTube, Vimeo u
+            otros servicios compatibles.
           </div>
         </q-banner>
 
@@ -343,7 +324,9 @@
         <div v-if="videos.length === 0" class="empty-materials q-pa-lg text-center">
           <q-icon name="videocam" size="48px" color="grey-5" class="q-mb-md" />
           <div class="text-body2 text-grey-7 q-mb-sm">No hay videos agregados</div>
-          <div class="text-caption text-grey-6">Agrega videos que se reproducirán en la plataforma</div>
+          <div class="text-caption text-grey-6">
+            Agrega videos que se reproducirán en la plataforma
+          </div>
         </div>
 
         <div v-else class="materials-list q-gutter-md">
@@ -363,9 +346,7 @@
                   <div class="text-body1 text-weight-medium q-mb-xs">
                     {{ video.name }}
                   </div>
-                  <q-chip color="purple" text-color="white" size="sm" dense>
-                    Video
-                  </q-chip>
+                  <q-chip color="purple" text-color="white" size="sm" dense> Video </q-chip>
                   <div v-if="video.description" class="text-caption text-grey-6 q-mt-xs">
                     {{ video.description }}
                   </div>
@@ -375,13 +356,7 @@
                 </div>
                 <div class="material-actions">
                   <q-btn-group flat>
-                    <q-btn
-                      icon="edit"
-                      flat
-                      round
-                      dense
-                      @click="editVideo(index)"
-                    >
+                    <q-btn icon="edit" flat round dense @click="editVideo(index)">
                       <q-tooltip>Editar</q-tooltip>
                     </q-btn>
                     <q-btn
@@ -425,7 +400,8 @@
             <q-icon name="info" color="info" />
           </template>
           <div class="text-body2">
-            Sube PDFs e imágenes que se almacenarán en el servidor. Los archivos estarán disponibles en:
+            Sube PDFs e imágenes que se almacenarán en el servidor. Los archivos estarán disponibles
+            en:
             <code>localhost:3000/storage/materials</code>
           </div>
         </q-banner>
@@ -473,13 +449,7 @@
                 </div>
                 <div class="material-actions">
                   <q-btn-group flat>
-                    <q-btn
-                      icon="edit"
-                      flat
-                      round
-                      dense
-                      @click="editFile(index)"
-                    >
+                    <q-btn icon="edit" flat round dense @click="editFile(index)">
                       <q-tooltip>Editar</q-tooltip>
                     </q-btn>
                     <q-btn
@@ -511,22 +481,16 @@
           class="q-mr-sm"
         />
         <div class="text-h6 text-weight-medium">Evaluación</div>
-        <q-badge v-if="!hasEvaluation" color="warning" class="q-ml-md">
-          Requerida
-        </q-badge>
+        <q-badge v-if="!hasEvaluation" color="warning" class="q-ml-md"> Requerida </q-badge>
       </div>
 
-      <q-banner
-        dense
-        class="bg-primary-1 text-primary q-mb-md"
-        rounded
-      >
+      <q-banner dense class="bg-primary-1 text-primary q-mb-md" rounded>
         <template #avatar>
           <q-icon name="info" color="primary" />
         </template>
         <div class="text-body2">
-          <strong>Evaluación obligatoria (RF-09):</strong> Cada capacitación requiere una evaluación.
-          Créela aquí con preguntas y opciones de respuesta.
+          <strong>Evaluación obligatoria:</strong> Cada capacitación requiere una evaluación. Créela
+          aquí con preguntas y opciones de respuesta.
         </div>
       </q-banner>
 
@@ -537,7 +501,8 @@
               <q-icon name="info" color="info" />
             </template>
             <div class="text-body2">
-              Cree una evaluación completa con preguntas y opciones. La evaluación se creará junto con la capacitación.
+            Cree una evaluación completa con preguntas y opciones. La evaluación se creará junto con
+            la capacitación.
             </div>
           </q-banner>
 
@@ -606,7 +571,7 @@
                   filled
                   type="number"
                   label="Puntaje total *"
-                  hint="Calculado automáticamente: suma de los puntajes de todas las preguntas"
+                hint="Siempre será 100 (calculado automáticamente según porcentajes de preguntas)"
                   :dense="false"
                   readonly
                   class="readonly-field"
@@ -656,7 +621,7 @@
             <q-separator class="q-my-md" />
             <div class="text-subtitle1 text-weight-medium q-mb-md">
               <q-icon name="help" class="q-mr-xs" />
-              Preguntas (mínimo 1 según RF-08)
+            Preguntas (mínimo 1)
             </div>
 
             <div
@@ -722,16 +687,42 @@
                     </template>
                   </q-input>
 
+                <div class="row q-col-gutter-md">
+                  <div class="col-12 col-md-6">
                   <q-input
-                    v-model.number="pregunta.puntaje"
+                      v-model.number="pregunta.porcentaje"
                     filled
                     type="number"
-                    label="Puntaje de la pregunta"
-                    hint="Puntaje que vale esta pregunta"
+                      label="Porcentaje de la pregunta (%)"
+                      hint="Porcentaje que vale esta pregunta (opcional, se distribuye automáticamente si no se especifica)"
                     :dense="false"
                     min="0"
+                      max="100"
                     step="0.01"
-                  />
+                      @update:model-value="calculateQuestionScores"
+                    >
+                      <template #prepend>
+                        <q-icon name="percent" />
+                      </template>
+                    </q-input>
+                  </div>
+                  <div class="col-12 col-md-6">
+                    <q-input
+                      :model-value="pregunta.puntaje?.toFixed(2) || '0.00'"
+                      filled
+                      type="text"
+                      label="Puntaje calculado"
+                      hint="Puntaje calculado automáticamente (siempre suma 100)"
+                      readonly
+                      :dense="false"
+                      class="readonly-field"
+                    >
+                      <template #prepend>
+                        <q-icon name="calculate" />
+                      </template>
+                    </q-input>
+                  </div>
+                </div>
 
                   <!-- Opciones de respuesta -->
                   <q-separator class="q-my-sm" />
@@ -756,11 +747,7 @@
                           />
                         </div>
                         <div class="col-auto">
-                          <q-checkbox
-                            v-model="opcion.esCorrecta"
-                            label="Correcta"
-                            color="positive"
-                          />
+                        <q-checkbox v-model="opcion.esCorrecta" label="Correcta" color="positive" />
                         </div>
                         <div class="col-auto">
                           <q-btn
@@ -800,68 +787,6 @@
               @click="addQuestion"
             />
           </div>
-        </div>
-    </q-card>
-
-    <!-- Enlaces externos (mantener compatibilidad) -->
-    <q-card flat bordered class="q-pa-md q-mt-md">
-      <div class="text-subtitle2 q-mb-sm text-weight-medium">
-        <q-icon name="link" size="18px" class="q-mr-xs" />
-        Enlaces Externos (Legacy)
-      </div>
-      <div v-if="form.links.length === 0" class="text-grey-6 q-mb-sm">
-        No hay enlaces agregados
-      </div>
-      <div class="column q-gutter-sm">
-        <q-card
-          v-for="(link, index) in form.links"
-          :key="link.id"
-          flat
-          bordered
-          class="q-pa-sm"
-        >
-          <div class="row q-col-gutter-sm items-center">
-            <div class="col-5">
-              <q-input
-                v-model="link.label"
-                dense
-                filled
-                label="Texto del enlace"
-                placeholder="Ej: Documentación oficial"
-              />
-            </div>
-            <div class="col-6">
-              <q-input
-                v-model="link.url"
-                dense
-                filled
-                label="URL"
-                placeholder="https://..."
-              />
-            </div>
-            <div class="col-auto">
-              <q-btn
-                dense
-                flat
-                round
-                icon="delete"
-                color="negative"
-                size="sm"
-                @click="removeLink(index)"
-              >
-                <q-tooltip>Eliminar enlace</q-tooltip>
-              </q-btn>
-            </div>
-          </div>
-        </q-card>
-        <q-btn
-          outline
-          color="primary"
-          icon="add"
-          label="Agregar enlace"
-          @click="addLink"
-          class="q-mt-sm"
-        />
       </div>
     </q-card>
 
@@ -890,7 +815,7 @@
             placeholder="https://youtube.com/watch?v=... o https://vimeo.com/..."
             :rules="[
               (val) => !!val || 'La URL es requerida',
-              (val) => isValidVideoUrl(val) || 'URL de video no válida (YouTube, Vimeo, etc.)'
+              (val) => isValidVideoUrl(val) || 'URL de video no válida (YouTube, Vimeo, etc.)',
             ]"
             hint="Soporta YouTube, Vimeo y otros servicios de video"
             class="q-mb-md"
@@ -918,17 +843,8 @@
         </q-card-section>
 
         <q-card-actions align="right">
-          <q-btn
-            flat
-            label="Cancelar"
-            color="grey-7"
-            @click="cancelAddVideo"
-          />
-          <q-btn
-            color="primary"
-            label="Agregar"
-            @click="saveVideo"
-          />
+          <q-btn flat label="Cancelar" color="grey-7" @click="cancelAddVideo" />
+          <q-btn color="primary" label="Agregar" @click="saveVideo" />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -1013,12 +929,7 @@
         </q-card-section>
 
         <q-card-actions align="right">
-          <q-btn
-            flat
-            label="Cancelar"
-            color="grey-7"
-            @click="cancelUploadFile"
-          />
+          <q-btn flat label="Cancelar" color="grey-7" @click="cancelUploadFile" />
           <q-btn
             color="primary"
             label="Subir y Agregar"
@@ -1030,26 +941,24 @@
     </q-dialog>
 
     <!-- Botones de Acción -->
-    <div class="row justify-between items-center q-mt-lg q-pt-md" style="border-top: 1px solid rgba(0,0,0,0.12)">
+    <div
+      class="row justify-between items-center q-mt-lg q-pt-md"
+      style="border-top: 1px solid rgba(0, 0, 0, 0.12)"
+    >
       <div class="text-caption text-grey-6">
         <q-icon name="info" size="14px" class="q-mr-xs" />
         Los campos marcados con * son obligatorios
       </div>
       <div class="row q-gutter-sm">
-        <q-btn
-          flat
-          label="Limpiar formulario"
-          color="grey-7"
-          icon="refresh"
-          @click="reset"
-        />
+        <q-btn flat label="Limpiar formulario" color="grey-7" icon="refresh" @click="reset" />
         <q-btn
           type="submit"
           color="primary"
           unelevated
           :label="isEditMode ? 'Actualizar capacitación' : 'Crear capacitación'"
           icon="check"
-          :loading="false"
+          :loading="isSubmitting"
+          :disable="isSubmitting"
           class="q-px-xl"
         />
       </div>
@@ -1065,6 +974,8 @@ import type { Material } from '../../../shared/components/MaterialViewer.vue';
 import { materialsService } from '../../../infrastructure/http/materials/materials.service';
 import { useMaterialUrl } from '../../../shared/composables/useMaterialUrl';
 import { TRAINING_TYPE_OPTIONS } from '../../../shared/constants/training-types';
+import { usersService } from '../../../infrastructure/http/users/users.service';
+import { useAuthStore } from '../../../stores/auth.store';
 
 export interface EvaluationOption {
   id?: number; // ID de la opción (para edición)
@@ -1079,7 +990,8 @@ export interface QuestionOption {
   tipoPreguntaId: number;
   enunciado: string;
   imagenUrl?: string;
-  puntaje?: number;
+  puntaje?: number; // Se calculará automáticamente desde porcentaje
+  porcentaje?: number; // Porcentaje específico (0-100), opcional. Si no se especifica, se distribuye automáticamente
   orden?: number;
   requerida?: boolean;
   opciones: EvaluationOption[];
@@ -1104,15 +1016,13 @@ export interface TrainingFormModel {
   type: string | null;
   modality: string | null;
   location: string;
-  durationHours: number | null;
   capacity: number | null;
-  instructor: string;
+  instructor: string | null;
   area: string;
   targetAudience: string | null;
   startDate: string;
   endDate: string;
   coverImageUrl: string;
-  promoVideoUrl: string;
   evaluationId: number | null; // RF-09: Evaluación obligatoria (para vincular existente)
   evaluationInline: InlineEvaluation | null; // RF-09: Evaluación a crear inline
   attachments: { id: string; label: string; url: string }[];
@@ -1128,15 +1038,13 @@ const props = withDefaults(
       type?: 'standard' | 'certified' | 'survey' | null;
       modality?: 'online' | 'onsite' | 'hybrid' | null;
       location?: string;
-      durationHours?: number | null;
       capacity?: number | null;
-      instructor?: string;
+      instructor?: string | null;
       area?: string;
       targetAudience?: string | null;
       startDate?: string;
       endDate?: string;
       coverImageUrl?: string;
-      promoVideoUrl?: string;
       evaluations?: Array<{ id: number }>;
     } | null;
     initialMaterials?: Material[];
@@ -1148,7 +1056,7 @@ const props = withDefaults(
     initialMaterials: () => [],
     initialEvaluationId: null,
     initialEvaluationInline: null,
-  }
+  },
 );
 
 const emit = defineEmits<{
@@ -1185,6 +1093,13 @@ const materials = computed(() => [...videos.value, ...files.value]);
 const titleError = ref('');
 const descriptionError = ref('');
 
+// Estados para instructores
+const loadingInstructors = ref(false);
+const allInstructors = ref<Array<{ label: string; value: string }>>([]);
+const instructorOptions = ref<Array<{ label: string; value: string }>>([]);
+
+// Estado para prevenir doble submit
+const isSubmitting = ref(false);
 const newVideo = reactive<Material>({
   name: '',
   url: '',
@@ -1219,14 +1134,7 @@ const modalities = [
   { label: 'Mixta', value: 'hybrid' },
 ];
 
-const targetAudiences = [
-  'Conductores',
-  'Administrativos',
-  'Operadores',
-  'Clientes',
-  'Proveedores',
-  'Otros',
-];
+const targetAudiences = ['Administrativos', 'Clientes Corporativos', 'Operadores'];
 
 // Tipos de pregunta (RF-16)
 const questionTypes = [
@@ -1244,17 +1152,88 @@ const hasEvaluation = computed(() => {
 
 /**
  * Calcula automáticamente el puntaje total de la evaluación
- * como la suma de los puntajes de todas las preguntas
+ * Siempre será 100 según el requerimiento
  */
 const calculatedPuntajeTotal = computed(() => {
+  return 100;
+});
+
+/**
+ * Calcula y actualiza los puntajes de las preguntas basándose en porcentajes
+ * - Si una pregunta tiene porcentaje específico, se usa ese valor
+ * - El resto se distribuye equitativamente entre las preguntas sin porcentaje
+ * - El puntaje total siempre suma 100
+ */
+function calculateQuestionScores() {
   if (!form.evaluationInline?.preguntas || form.evaluationInline.preguntas.length === 0) {
-    return 0;
+    return;
   }
-  return form.evaluationInline.preguntas.reduce(
-    (sum, pregunta) => sum + (pregunta.puntaje || 0),
+
+  const preguntas = form.evaluationInline.preguntas;
+  
+  // Separar preguntas con porcentaje específico y sin porcentaje
+  const preguntasConPorcentaje = preguntas.filter(
+    (p) => p.porcentaje !== undefined && p.porcentaje !== null && p.porcentaje > 0
+  );
+  const preguntasSinPorcentaje = preguntas.filter(
+    (p) => !p.porcentaje || p.porcentaje === null || p.porcentaje === 0
+  );
+  
+  // Calcular suma de porcentajes especificados
+  const sumaPorcentajesEspecificados = preguntasConPorcentaje.reduce(
+    (sum, p) => sum + (p.porcentaje || 0),
     0
   );
-});
+  
+  // Validar que no se exceda el 100%
+  if (sumaPorcentajesEspecificados > 100) {
+    $q.notify({
+      type: 'warning',
+      message: `La suma de porcentajes especificados (${sumaPorcentajesEspecificados.toFixed(2)}%) no puede exceder 100%`,
+      position: 'top',
+      timeout: 4000,
+    });
+    // Ajustar el último porcentaje para que no exceda 100%
+    if (preguntasConPorcentaje.length > 0) {
+      const ultimaPregunta = preguntasConPorcentaje[preguntasConPorcentaje.length - 1];
+      if (ultimaPregunta) {
+        const porcentajeAjustado = 100 - (sumaPorcentajesEspecificados - (ultimaPregunta.porcentaje || 0));
+        ultimaPregunta.porcentaje = Math.max(0, porcentajeAjustado);
+      }
+    }
+    // Recalcular después del ajuste
+    calculateQuestionScores();
+    return;
+  }
+  
+  // Calcular porcentaje restante a distribuir
+  const porcentajeRestante = 100 - sumaPorcentajesEspecificados;
+  
+  // Distribuir porcentaje restante entre preguntas sin porcentaje específico
+  const porcentajePorPregunta = preguntasSinPorcentaje.length > 0
+    ? porcentajeRestante / preguntasSinPorcentaje.length
+    : 0;
+  
+  // Actualizar puntajes de todas las preguntas
+  preguntas.forEach((pregunta) => {
+    if (pregunta.porcentaje !== undefined && pregunta.porcentaje !== null && pregunta.porcentaje > 0) {
+      // Usar porcentaje especificado
+      pregunta.puntaje = pregunta.porcentaje;
+    } else {
+      // Usar porcentaje calculado automáticamente
+      pregunta.puntaje = porcentajePorPregunta;
+      // Limpiar el campo porcentaje si es 0 para que se muestre como no especificado
+      if (pregunta.porcentaje === 0) {
+        delete pregunta.porcentaje;
+      }
+    }
+  });
+  
+  // Actualizar puntajeTotal en el formulario
+  if (form.evaluationInline) {
+    form.evaluationInline.puntajeTotal = 100;
+  }
+}
 
 // Inicializar evaluación inline si no existe (para modo edición)
 onMounted(() => {
@@ -1272,7 +1251,8 @@ onMounted(() => {
         {
           tipoPreguntaId: 1,
           enunciado: '',
-          puntaje: 1,
+          // Sin porcentaje específico, se distribuirá automáticamente
+          puntaje: 100, // Se calculará automáticamente (100% / 1 pregunta = 100)
           orden: 0,
           requerida: true,
           opciones: [
@@ -1282,7 +1262,20 @@ onMounted(() => {
         },
       ],
     };
+    // Calcular puntajes iniciales
+    calculateQuestionScores();
   }
+
+  // Sincronizar título inicial si ya existe un título de capacitación
+  if (form.title && form.title.trim() && form.evaluationInline) {
+    const currentEvalTitle = form.evaluationInline.titulo?.trim() || '';
+    if (!currentEvalTitle && !evaluationTitleManuallyModified.value) {
+      form.evaluationInline.titulo = form.title.trim();
+    }
+  }
+
+  // Cargar instructores al montar el componente
+  void loadInstructors();
 });
 
 // Funciones para manejar videos
@@ -1473,12 +1466,9 @@ async function uploadAndSaveFile(): Promise<void> {
   uploadProgress.value = 0;
 
   try {
-    const response = await materialsService.uploadFile(
-      newFile.file,
-      (progress) => {
+    const response = await materialsService.uploadFile(newFile.file, (progress) => {
         uploadProgress.value = progress;
-      },
-    );
+    });
 
     // Guardar URL relativa para el backend, pero construir URL completa para visualización
     // El backend espera URLs relativas o URLs completas válidas
@@ -1512,7 +1502,8 @@ async function uploadAndSaveFile(): Promise<void> {
     cancelUploadFile();
     $q.notify({
       type: 'positive',
-      message: editingFileIndex.value !== null ? 'Archivo actualizado' : 'Archivo subido exitosamente',
+      message:
+        editingFileIndex.value !== null ? 'Archivo actualizado' : 'Archivo subido exitosamente',
       position: 'top',
     });
   } catch (error) {
@@ -1574,7 +1565,8 @@ function addQuestion(): void {
   const newQuestion: QuestionOption = {
     tipoPreguntaId: 1,
     enunciado: '',
-    puntaje: 1,
+    // Sin porcentaje específico, se distribuirá automáticamente
+    puntaje: 0, // Se calculará automáticamente
     orden: form.evaluationInline.preguntas.length,
     requerida: true,
     opciones: [
@@ -1583,6 +1575,8 @@ function addQuestion(): void {
     ],
   };
   form.evaluationInline.preguntas.push(newQuestion);
+  // Recalcular puntajes después de agregar
+  calculateQuestionScores();
 }
 
 function removeQuestion(index: number): void {
@@ -1593,10 +1587,12 @@ function removeQuestion(index: number): void {
     form.evaluationInline.preguntas.forEach((p, i) => {
       p.orden = i;
     });
+    // Recalcular puntajes después de eliminar
+    calculateQuestionScores();
   } else {
     $q.notify({
       type: 'warning',
-      message: 'Debe tener al menos una pregunta (RF-08)',
+      message: 'Debe tener al menos una pregunta',
       position: 'top',
       timeout: 3000,
     });
@@ -1641,15 +1637,13 @@ const form = reactive<TrainingFormModel>({
   type: null,
   modality: null,
   location: '',
-  durationHours: null,
   capacity: null,
-  instructor: '',
+  instructor: null,
   area: '',
-  targetAudience: 'Conductores',
+  targetAudience: 'Operadores',
   startDate: '',
   endDate: '',
   coverImageUrl: '',
-  promoVideoUrl: '',
   evaluationId: null, // RF-09: Evaluación obligatoria (para vincular existente)
   evaluationInline: {
     titulo: '',
@@ -1679,20 +1673,19 @@ const form = reactive<TrainingFormModel>({
 });
 
 function reset() {
+  evaluationTitleManuallyModified.value = false;
   form.title = '';
   form.description = '';
   form.type = null;
   form.modality = null;
   form.location = '';
-  form.durationHours = null;
   form.capacity = null;
-  form.instructor = '';
+  form.instructor = null;
   form.area = '';
   form.targetAudience = 'Conductores';
   form.startDate = '';
   form.endDate = '';
   form.coverImageUrl = '';
-  form.promoVideoUrl = '';
   form.evaluationId = null;
   form.evaluationInline = {
     titulo: '',
@@ -1707,7 +1700,8 @@ function reset() {
       {
         tipoPreguntaId: 1,
         enunciado: '',
-        puntaje: 1,
+        // Sin porcentaje específico, se distribuirá automáticamente
+        puntaje: 100, // Se calculará automáticamente (100% / 1 pregunta = 100)
         orden: 0,
         requerida: true,
         opciones: [
@@ -1717,6 +1711,8 @@ function reset() {
       },
     ],
   };
+  // Calcular puntajes iniciales después de reset
+  calculateQuestionScores();
   form.attachments = [];
   form.links = [];
   videos.value = [];
@@ -1737,20 +1733,18 @@ function initializeFormWithData() {
   form.type = data.type ?? null;
   form.modality = data.modality ?? null;
   form.location = data.location || '';
-  form.durationHours = data.durationHours ?? null;
   form.capacity = data.capacity ?? null;
-  form.instructor = data.instructor || '';
+  form.instructor = data.instructor || null;
   form.area = data.area || '';
   form.targetAudience = data.targetAudience ?? 'Conductores';
   form.startDate = data.startDate || '';
   form.endDate = data.endDate || '';
   form.coverImageUrl = data.coverImageUrl || '';
-  form.promoVideoUrl = data.promoVideoUrl || '';
 
   // Cargar materiales iniciales y separar videos de archivos
   if (props.initialMaterials && props.initialMaterials.length > 0) {
-    videos.value = props.initialMaterials.filter(m => m.type === 'VIDEO');
-    files.value = props.initialMaterials.filter(m => m.type !== 'VIDEO');
+    videos.value = props.initialMaterials.filter((m) => m.type === 'VIDEO');
+    files.value = props.initialMaterials.filter((m) => m.type !== 'VIDEO');
   }
 
   // Cargar evaluación inline si se proporciona (modo edición)
@@ -1758,8 +1752,12 @@ function initializeFormWithData() {
   if (props.initialEvaluationInline) {
     form.evaluationInline = {
       titulo: props.initialEvaluationInline.titulo || '',
-      descripcion: props.initialEvaluationInline.descripcion || '',
+      ...(props.initialEvaluationInline.descripcion && {
+        descripcion: props.initialEvaluationInline.descripcion,
+      }),
+      ...(props.initialEvaluationInline.tiempoLimiteMinutos !== undefined && {
       tiempoLimiteMinutos: props.initialEvaluationInline.tiempoLimiteMinutos,
+      }),
       intentosPermitidos: props.initialEvaluationInline.intentosPermitidos || 1,
       mostrarResultados: props.initialEvaluationInline.mostrarResultados ?? true,
       mostrarRespuestasCorrectas: props.initialEvaluationInline.mostrarRespuestasCorrectas ?? false,
@@ -1767,15 +1765,16 @@ function initializeFormWithData() {
       minimoAprobacion: props.initialEvaluationInline.minimoAprobacion || 70,
       orden: props.initialEvaluationInline.orden || 0,
       preguntas: props.initialEvaluationInline.preguntas.map((p) => ({
-        id: p.id,
+        ...(p.id !== undefined && { id: p.id }),
         tipoPreguntaId: p.tipoPreguntaId,
         enunciado: p.enunciado || '',
-        imagenUrl: p.imagenUrl,
-        puntaje: p.puntaje || 1,
+        ...(p.imagenUrl !== undefined && { imagenUrl: p.imagenUrl }),
+        ...(p.porcentaje !== undefined && { porcentaje: p.porcentaje }),
+        puntaje: p.puntaje || 0, // Se recalculará automáticamente
         orden: p.orden ?? 0,
         requerida: p.requerida ?? true,
         opciones: p.opciones.map((o) => ({
-          id: o.id,
+          ...(o.id !== undefined && { id: o.id }),
           texto: o.texto || '',
           esCorrecta: Boolean(o.esCorrecta), // Asegurar que sea booleano
           puntajeParcial: o.puntajeParcial || 0,
@@ -1783,16 +1782,26 @@ function initializeFormWithData() {
         })),
       })),
     };
+    // Calcular puntajes después de cargar datos iniciales
+    calculateQuestionScores();
   }
 }
+
+// Flag para rastrear si el usuario modificó manualmente el título de evaluación
+// IMPORTANTE: Declarar antes de los watches que lo usan
+const evaluationTitleManuallyModified = ref(false);
+// Flag temporal para evitar que el watch del título de evaluación se active durante la sincronización
+const isSyncingFromTrainingTitle = ref(false);
 
 // Inicializar cuando se monta el componente o cambian los props
 watch(
   () => props.initialData,
   () => {
     initializeFormWithData();
+    // Resetear el flag cuando se inicializa con datos nuevos
+    evaluationTitleManuallyModified.value = false;
   },
-  { immediate: true }
+  { immediate: true },
 );
 
 // También inicializar materiales cuando cambien
@@ -1800,17 +1809,84 @@ watch(
   () => props.initialMaterials,
   (newMaterials) => {
     if (newMaterials && newMaterials.length > 0) {
-      videos.value = newMaterials.filter(m => m.type === 'VIDEO');
-      files.value = newMaterials.filter(m => m.type !== 'VIDEO');
+      videos.value = newMaterials.filter((m) => m.type === 'VIDEO');
+      files.value = newMaterials.filter((m) => m.type !== 'VIDEO');
     }
   },
-  { immediate: true }
+  { immediate: true },
 );
 
+// Sincronizar título de capacitación con título de evaluación
+// Sincroniza automáticamente a menos que el usuario haya modificado manualmente el título de evaluación
+watch(
+  () => form.title,
+  (newTitle) => {
+    if (form.evaluationInline && newTitle && newTitle.trim()) {
+      // Solo sincronizar si el usuario no ha modificado manualmente el título de evaluación
+      if (!evaluationTitleManuallyModified.value) {
+        isSyncingFromTrainingTitle.value = true;
+        form.evaluationInline.titulo = newTitle.trim();
+        // Resetear el flag después de un pequeño delay para que el watch del título de evaluación no se active
+        setTimeout(() => {
+          isSyncingFromTrainingTitle.value = false;
+        }, 0);
+      }
+    }
+  },
+);
 
+// Detectar cuando el usuario modifica manualmente el título de evaluación
+watch(
+  () => form.evaluationInline?.titulo,
+  (newEvalTitle) => {
+    // No hacer nada si estamos sincronizando desde el título de capacitación
+    if (isSyncingFromTrainingTitle.value) {
+      return;
+    }
+
+    if (form.evaluationInline && form.title) {
+      // Si el título de evaluación no coincide con el título de capacitación,
+      // significa que el usuario lo modificó manualmente
+      const trainingTitle = form.title.trim();
+      const evalTitle = newEvalTitle?.trim() || '';
+
+      if (evalTitle && evalTitle !== trainingTitle) {
+        evaluationTitleManuallyModified.value = true;
+      } else if (evalTitle === trainingTitle) {
+        // Si vuelve a coincidir, resetear el flag (por si el usuario borra y vuelve a escribir)
+        evaluationTitleManuallyModified.value = false;
+      }
+    }
+  },
+);
+
+// Watch para recalcular puntajes cuando cambian las preguntas (agregar/eliminar)
+watch(
+  () => form.evaluationInline?.preguntas?.length,
+  () => {
+    calculateQuestionScores();
+  }
+);
+
+// Watch para recalcular cuando cambia un porcentaje específico
+watch(
+  () => form.evaluationInline?.preguntas?.map((p) => p.porcentaje),
+  () => {
+    // Usar nextTick para asegurar que el cambio se haya aplicado
+    setTimeout(() => {
+      calculateQuestionScores();
+    }, 0);
+  },
+  { deep: true }
+);
 
 function onSubmit() {
-  // Validar evaluación obligatoria (RF-09) - siempre inline ahora
+  // Prevenir doble submit
+  if (isSubmitting.value) {
+    return;
+  }
+
+  // Validar evaluación obligatoria - siempre inline ahora
   if (!form.evaluationInline || !form.evaluationInline.titulo) {
     $q.notify({
       type: 'warning',
@@ -1824,7 +1900,7 @@ function onSubmit() {
   if (!form.evaluationInline.preguntas || form.evaluationInline.preguntas.length === 0) {
     $q.notify({
       type: 'warning',
-      message: 'Debe agregar al menos una pregunta (RF-08)',
+      message: 'Debe agregar al menos una pregunta',
       position: 'top',
       timeout: 3000,
     });
@@ -1890,22 +1966,28 @@ function onSubmit() {
       }
     }
 
-  emit('submit', { ...form }, materials.value);
+  // Marcar como submitting antes de emitir
+  isSubmitting.value = true;
+  
+  try {
+    emit('submit', { ...form }, materials.value);
+  } catch (error) {
+    // Si hay error en el emit, resetear el estado
+    isSubmitting.value = false;
+    throw error;
+  }
+  // Nota: No resetear isSubmitting aquí, dejar que handleSubmit lo haga cuando termine
 }
+
+// Exponer estado para que el componente padre pueda resetearlo
+defineExpose({
+  isSubmitting,
+  resetSubmitting: () => {
+    isSubmitting.value = false;
+  },
+});
 
 // Funciones de attachments removidas - ya no se usan en el formulario actual
-
-function addLink() {
-  form.links.push({
-    id: Date.now().toString() + Math.random().toString(16).slice(2),
-    label: '',
-    url: '',
-  });
-}
-
-function removeLink(index: number) {
-  form.links.splice(index, 1);
-}
 
 function validateTitle() {
   const title = form.title?.trim() ?? '';
@@ -1945,13 +2027,56 @@ function validateImageUrl() {
   }
 }
 
-function handleDurationChange(value: string | number | null) {
-  // Convertir a entero si tiene valor
-  if (value !== null && value !== undefined && value !== '') {
-    form.durationHours = Math.round(Number(value));
-  } else {
-    form.durationHours = null;
+// Función para cargar instructores del backend
+async function loadInstructors() {
+  loadingInstructors.value = true;
+  try {
+    // Obtener todos los instructores filtrados únicamente por rol INSTRUCTOR
+    // Sin filtrar por usuario creador - se muestran todos los instructores disponibles
+    const response = await usersService.findAll({
+      page: 1,
+      limit: 1000, // Obtener todos los instructores
+      filters: {
+        // @ts-expect-error - 'instructor' no está en UserRole pero el backend lo soporta
+        role: 'instructor', // El servicio mapeará esto a 'INSTRUCTOR' en el backend
+      },
+    });
+
+    // Mapear usuarios a opciones para el select
+    allInstructors.value = response.data.map((user) => ({
+      label: user.name?.trim() || user.email || `Usuario ${user.id}`,
+      value: user.id.toString(),
+    }));
+
+    instructorOptions.value = [...allInstructors.value];
+  } catch (error) {
+    console.error('Error al cargar instructores:', error);
+    $q.notify({
+      type: 'negative',
+      message: 'Error al cargar la lista de instructores',
+      position: 'top',
+      timeout: 3000,
+    });
+  } finally {
+    loadingInstructors.value = false;
   }
+}
+
+// Función para filtrar instructores en el select
+function filterInstructors(val: string, update: (callback: () => void) => void) {
+  if (val === '') {
+    update(() => {
+      instructorOptions.value = [...allInstructors.value];
+    });
+    return;
+  }
+
+  update(() => {
+    const needle = val.toLowerCase();
+    instructorOptions.value = allInstructors.value.filter(
+      (instructor) => instructor.label.toLowerCase().indexOf(needle) > -1,
+    );
+  });
 }
 
 // Funciones para gestión de materiales
@@ -1988,8 +2113,6 @@ function getMaterialTypeLabel(type: string): string {
   };
   return typeMap[type] || type;
 }
-
-
 
 function generateId(): string {
   return Date.now().toString() + Math.random().toString(16).slice(2);
