@@ -466,7 +466,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue';
-import certificateBg from '../../../../assets/certificado_svg.svg';
+import certificateBg from '../../../assets/certificado_svg.svg';
 import { useRoute, useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 import type { Certificate, CertificateVerificationHistory } from '../../../domain/certificate/models';
