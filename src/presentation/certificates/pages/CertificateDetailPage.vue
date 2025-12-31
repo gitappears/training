@@ -92,45 +92,82 @@
                 class="certificate-viewer"
               >
                 <!-- HTML Certificate View -->
-               <div class="certificate-html-view" :style="{ backgroundImage: `url(${certificateBg})` }">
+                <div class="certificate-html-view" :style="{ backgroundImage: `url(${certificateBg})` }">
                   <div class="certificate-content">
-                    <!-- Title usually in SVG, but adding if needed based on PDF generator -->
-                    <div class="cert-title">CERTIFICADO DE CAPACITACIÓN</div>
                     
-                    <div class="cert-body">
-                      <p class="cert-text">Se certifica que:</p>
-                      <h2 class="cert-student-name">{{ certificate.studentName }}</h2>
-                      <p class="cert-text">Documento de Identidad: {{ certificate.documentNumber }}</p>
-                      
-                      <p class="cert-text q-mt-lg">Ha completado exitosamente la capacitación:</p>
-                      <h3 class="cert-course-name">{{ certificate.courseName }}</h3>
-                      
-                      <p class="cert-text q-mt-md">Fecha de emisión: {{ formatDate(certificate.issuedDate) }}</p>
-                      <p class="cert-text">Capacitador: {{ certificate.instructorName }}</p>
+                    <!-- 1. Header Stack -->
+                    <div class="cert-header-group">
+                      <div class="cert-text-sm">Otorgado por</div>
+                      <div class="cert-text-lg-bold">FORMAR360</div>
+                      <div class="cert-text-sm">con el respaldo de</div>
+                      <div class="cert-text-md-bold">ANDAR DEL LLANO</div>
+                      <div class="cert-text-sm">Centro de Enseñanza Automovilística</div>
                     </div>
 
-                    <div class="cert-footer">
-                       <div class="cert-signature-section">
-                          <img v-if="certificate.digitalSignature" :src="certificate.digitalSignature" class="cert-signature-img" />
-                          <div v-else class="cert-signature-placeholder">
-                            <div class="line"></div>
-                            <div>Firma Digital</div>
-                          </div>
-                       </div>
-                       
-                       <div class="cert-qr-section">
+                    <!-- 2. Main Title -->
+                    <div class="cert-main-title">CERTIFICADO DE APROBACIÓN</div>
+                    
+                    <!-- 3. Certifica Que -->
+                    <div class="cert-certifica-row">
+                      <div class="cert-line"></div>
+                      <div class="cert-text-gray">CERTIFICA QUE:</div>
+                      <div class="cert-line"></div>
+                    </div>
+
+                    <!-- 4. Student Name -->
+                    <h2 class="cert-student-name">{{ certificate.studentName.toUpperCase() }}</h2>
+                    <p class="cert-text">Cédula de ciudadanía N.° {{ certificate.documentNumber }}</p>
+                    
+                    <!-- 5. Description -->
+                    <p class="cert-description">Ha realizado y aprobado satisfactoriamente el curso de:</p>
+
+                    <!-- 6. Course Name (Blue Box) -->
+                    <div class="cert-course-box">
+                      {{ certificate.courseName.toUpperCase() }}
+                    </div>
+                    
+                    <!-- 7. Details -->
+                    <div class="cert-details">
+                      <p>Con una intensidad de {{ certificate.durationHours || 20 }} horas</p>
+                      <p>Modalidad: Virtual</p>
+                    </div>
+
+                    <div class="cert-push-bottom"></div>
+
+                    <!-- 8. Footer -->
+                    <div class="cert-footer-row">
+                      
+                      <!-- Left Sig: Anderson -->
+                      <div class="cert-sig-col">
+                         <svg class="cert-scribble" viewBox="0 0 150 60">
+                           <path d="M10,40 C30,10 60,70 90,30 S140,50 140,40" stroke="#000066" stroke-width="2" fill="none" />
+                         </svg>
+                         <div class="cert-sig-line"></div>
+                         <div class="cert-sig-name">Anderson Herrera Díaz</div>
+                         <div class="cert-sig-role">Instructor / Entrenador<br>TSA REG 37544429<br>Licencia SST</div>
+                      </div>
+
+                      <!-- Right Sig: Edwin -->
+                      <div class="cert-sig-col">
+                         <svg class="cert-scribble" viewBox="0 0 150 60">
+                            <path d="M20,40 C50,20 60,60 100,20 S130,50 130,30" stroke="#000066" stroke-width="2" fill="none" />
+                         </svg>
+                         <div class="cert-sig-line"></div>
+                         <div class="cert-sig-name">Edwin Julian Parra Morales</div>
+                         <div class="cert-sig-role">Representante Legal<br>ANDAR DEL LLANO</div>
+                      </div>
+
+                      <!-- QR Code -->
+                       <div class="cert-qr-container">
                           <QRCodeDisplay
                             v-if="getQRValue"
                             :value="getQRValue"
-                            :size="60"
+                            :size="70"
                             :show-border="false"
                             :show-background="false"
                             :show-info="false"
                             :show-actions="false"
                           />
-                          <div class="cert-verification-code">
-                            Código: {{ certificate.verificationCode }}
-                          </div>
                        </div>
                     </div>
                   </div>
@@ -841,9 +878,9 @@ body.body--dark code {
 
 <style lang="scss" scoped>
 .certificate-html-view {
-  width: 1056px; /* Reduced from 1122px (A4 landscape at 96dpi) to fit better or match aspect ratio */
-  height: 816px; /* LETTER Landscape aspect ratio approx */
-  background-size: cover; /* Or contain depending on SVG exact size */
+  width: 1056px; 
+  height: 816px; 
+  background-size: cover; 
   background-position: center;
   background-repeat: no-repeat;
   position: relative;
@@ -863,86 +900,168 @@ body.body--dark code {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding-top: 180px; /* Adjust based on SVG header height */
+  padding-top: 130px; 
   text-align: center;
 }
 
-.cert-title {
-  font-size: 32px;
-  font-weight: bold;
-  margin-bottom: 30px;
-  color: #333;
-}
-
-.cert-body {
-  flex: 1;
+/* Header Typography */
+.cert-header-group {
   display: flex;
   flex-direction: column;
   align-items: center;
+  margin-bottom: 5px;
+}
+.cert-text-sm {
+  font-size: 13px;
+  color: #000;
+  margin: 1px 0;
+  line-height: 1.2;
+}
+.cert-text-lg-bold {
+  font-size: 16px;
+  font-weight: bold;
+  color: #000;
+  margin-bottom: 2px;
+}
+.cert-text-md-bold {
+  font-size: 16px;
+  font-weight: bold;
+  color: #000;
+  margin-bottom: 2px;
+}
+
+/* Main Title */
+.cert-main-title {
+  font-size: 30px;
+  font-weight: bold;
+  color: #0D47A1;
+  margin-top: 15px;
+  margin-bottom: 20px;
+}
+
+/* Certifica Que */
+.cert-certifica-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  width: 100%;
+  margin-bottom: 15px;
+}
+.cert-line {
+  width: 50px;
+  height: 1px;
+  background-color: #999999;
+}
+.cert-text-gray {
+  font-size: 12px;
+  color: #666666;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* Student */
+.cert-student-name {
+  font-size: 34px;
+  font-weight: bold;
+  color: #0D47A1;
+  margin: 5px 0 10px 0;
+  text-transform: uppercase;
+  max-width: 850px;
+  line-height: 1.1;
 }
 
 .cert-text {
-  font-size: 16px;
+  font-size: 14px;
+  color: #000;
   margin: 5px 0;
 }
 
-.cert-student-name {
-  font-size: 28px;
-  font-weight: bold;
-  margin: 15px 0;
-  border-bottom: 2px solid #333;
-  padding-bottom: 5px;
-  min-width: 400px;
+/* Description */
+.cert-description {
+  font-size: 14px;
+  color: #444;
+  margin-top: 15px;
+  margin-bottom: 15px;
 }
 
-.cert-course-name {
-  font-size: 24px;
+/* Redesigned Course Box */
+.cert-course-box {
+  background-color: #0D47A1;
+  color: white;
+  font-size: 18px;
   font-weight: bold;
-  margin: 15px 0;
-  color: #1976d2; /* Primary color */
+  padding: 8px 30px;
+  border-radius: 8px;
+  margin-bottom: 15px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  display: inline-block;
+  max-width: 80%;
 }
 
-.cert-footer {
-  width: 100%;
-  height: 200px; /* Adjust height for footer area */
+.cert-details p {
+  margin: 2px 0;
+  font-size: 13px;
+}
+
+/* Spacer */
+.cert-push-bottom {
+  flex-grow: 1;
+}
+
+/* Footer Grid */
+.cert-footer-row {
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
-  padding: 0 80px 60px 80px; /* Margins to position elements inside boxes */
+  width: 100%;
+  padding: 0 100px 70px 100px;
+  position: relative;
 }
 
-.cert-signature-section {
+.cert-sig-col {
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin-bottom: 20px;
-  width: 250px;
-}
-
-.cert-signature-img {
-  max-width: 200px;
-  max-height: 80px;
-}
-
-.cert-signature-placeholder .line {
+  position: relative;
   width: 200px;
+}
+
+.cert-scribble {
+  position: absolute;
+  bottom: 35px;
+  width: 120px;
+  height: 60px;
+  z-index: 1;
+  opacity: 0.8;
+  pointer-events: none;
+}
+
+.cert-sig-line {
+  width: 100%;
   height: 1px;
   background-color: #000;
   margin-bottom: 5px;
 }
 
-.cert-qr-section {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  /* Position absolute if needed to match exact box in SVG */
-  position: absolute;
-  bottom: 80px; 
-  right: 80px;
+.cert-sig-name {
+  font-size: 13px;
+  font-weight: bold;
+  text-align: center;
 }
 
-.cert-verification-code {
-  font-size: 10px;
-  margin-top: 4px;
+.cert-sig-role {
+  font-size: 9px;
+  text-align: center;
+  line-height: 1.3;
+  color: #333;
+}
+
+.cert-qr-container {
+  position: absolute;
+  bottom: 80px; 
+  right: 60px;
+  background: white;
+  padding: 2px;
 }
 </style>
