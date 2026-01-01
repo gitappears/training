@@ -95,7 +95,10 @@
                 <div class="certificate-html-view" :style="{ backgroundImage: `url(${certificateBg})` }">
                   <div class="certificate-content">
                     
-                    <!-- 1. Header Stack -->
+                    <!-- 1. Main Title -->
+                    <div class="cert-main-title">CERTIFICADO DE APROBACIÓN</div>
+
+                    <!-- 2. Header Stack -->
                     <div class="cert-header-group">
                       <div class="cert-text-sm">Otorgado por</div>
                       <div class="cert-text-lg-bold">FORMAR360</div>
@@ -103,9 +106,6 @@
                       <div class="cert-text-md-bold">ANDAR DEL LLANO</div>
                       <div class="cert-text-sm">Centro de Enseñanza Automovilística</div>
                     </div>
-
-                    <!-- 2. Main Title -->
-                    <div class="cert-main-title">CERTIFICADO DE APROBACIÓN</div>
                     
                     <!-- 3. Certifica Que -->
                     <div class="cert-certifica-row">
@@ -162,7 +162,7 @@
                           <QRCodeDisplay
                             v-if="getQRValue"
                             :value="getQRValue"
-                            :size="70"
+                            :size="90"
                             :show-border="false"
                             :show-background="false"
                             :show-info="false"
@@ -1060,8 +1060,9 @@ body.body--dark code {
 .cert-qr-container {
   position: absolute;
   bottom: 80px; 
-  right: 60px;
-  background: white;
-  padding: 2px;
+  right: 45px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 </style>
