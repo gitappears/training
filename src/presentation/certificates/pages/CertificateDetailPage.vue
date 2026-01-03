@@ -555,6 +555,7 @@
       </q-card>
     </q-dialog>
 
+    <div class="cert-version-debug">v2026.01.03.1715 - Image Fix</div>
   </q-page>
 </template>
 
@@ -1159,6 +1160,21 @@ body.body--dark code {
 .cert-sig-col {
   display: flex;
   flex-direction: column;
+  /* ... existing styles ... */
+}
+
+/* Version Indicator for Deployment Verification */
+.cert-version-debug {
+  position: fixed;
+  bottom: 0px;
+  right: 0px;
+  background: rgba(0,0,0,0.5);
+  color: white;
+  font-size: 10px;
+  padding: 2px 5px;
+  z-index: 9999;
+  pointer-events: none;
+}
   align-items: center;
   position: relative;
   width: 200px;
@@ -1215,5 +1231,18 @@ body.body--dark code {
     width: 120px;
     height: auto;
     object-fit: contain;
+}
+
+/* Version Indicator */
+.cert-version-debug {
+  position: fixed;
+  bottom: 0px;
+  right: 0px;
+  background: rgba(0,0,0,0.5);
+  color: white;
+  font-size: 10px;
+  padding: 2px 5px;
+  z-index: 9999;
+  pointer-events: none;
 }
 </style>
