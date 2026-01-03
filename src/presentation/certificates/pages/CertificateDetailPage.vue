@@ -843,12 +843,17 @@ const getQRValue = computed(() => {
       const href = routeLocation.href;
       
       try {
-        const finalUrl = new URL(href, baseUrl).href;
+        // Enforce hash mode explicitly for QR codes
+        const hashPath = `/#/verify/${code}`;
+        // Ensure NO double slashes if baseUrl ends with /
+        const cleanBaseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+        const finalUrl = `${cleanBaseUrl}${hashPath}`;
+        
         console.log('✅ QR Generado:', finalUrl);
         return finalUrl;
       } catch (e) {
          console.error('Error QR:', e);
-         return `${baseUrl}${href.startsWith('/') ? '' : '/'}${href}`;
+         return `${baseUrl}/#/verify/${code}`;
       }
   }
   
