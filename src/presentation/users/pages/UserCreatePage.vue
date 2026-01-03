@@ -207,25 +207,6 @@
                     </q-select>
                   </div>
 
-                  <div class="col-12">
-                    <q-input
-                      v-if="form.personType === 'juridica'"
-                      v-model="form.companyName"
-                      outlined
-                      label="Razón Social *"
-                      :rules="
-                        form.personType === 'juridica'
-                          ? [(val) => !!val || 'La razón social es requerida']
-                          : []
-                      "
-                      :disable="loading"
-                    >
-                      <template #prepend>
-                        <q-icon name="business" />
-                      </template>
-                    </q-input>
-                  </div>
-
                   <!-- Select de Empresa (solo para ADMIN) -->
                   <div v-if="isAdmin" class="col-12">
                     <q-select
