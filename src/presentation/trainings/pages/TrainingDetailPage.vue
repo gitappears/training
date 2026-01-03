@@ -14,7 +14,23 @@
         v-if="training.coverImageUrl"
         class="hero-image"
         :style="{ backgroundImage: `url(${coverImageUrl})` }"
-      />
+      >
+        <!-- Botón de eliminar imagen (solo si tiene permisos) -->
+        <div v-if="canManageTrainings" class="absolute-top-right q-pa-md">
+          <q-btn
+            flat
+            round
+            dense
+            icon="close"
+            color="white"
+            size="md"
+            class="bg-negative"
+            @click="handleRemoveCoverImage"
+          >
+            <q-tooltip>Eliminar imagen de portada</q-tooltip>
+          </q-btn>
+        </div>
+      </div>
       <div v-else class="hero-watermark">
         <div class="watermark-content">
           <q-icon name="school" size="120px" color="grey-4" />
@@ -405,9 +421,25 @@
               <q-card-section class="q-pa-none">
                 <div
                   v-if="training.coverImageUrl"
-                  class="sidebar-image"
+                  class="sidebar-image relative-position"
                   :style="{ backgroundImage: `url(${coverImageUrl})` }"
-                />
+                >
+                  <!-- Botón de eliminar imagen (solo si tiene permisos) -->
+                  <div v-if="canManageTrainings" class="absolute-top-right q-pa-xs">
+                    <q-btn
+                      flat
+                      round
+                      dense
+                      icon="close"
+                      color="white"
+                      size="sm"
+                      class="bg-negative"
+                      @click="handleRemoveCoverImage"
+                    >
+                      <q-tooltip>Eliminar imagen de portada</q-tooltip>
+                    </q-btn>
+                  </div>
+                </div>
                 <div v-else class="sidebar-watermark">
                   <q-icon name="image" size="64px" color="grey-4" />
                   <div class="text-caption text-grey-5 q-mt-sm">Imagen del curso</div>
@@ -1179,6 +1211,61 @@ async function handleToggleStatusConfirm(): Promise<void> {
       timeout: 7000,
     });
   }
+}
+
+/**
+ * Elimina la imagen de portada de la capacitación
+ */
+function handleRemoveCoverImage(): void {
+  if (!training.value) return;
+
+  // Confirmar eliminación
+  $q.dialog({
+    title: 'Eliminar imagen de portada',
+    message: '¿Está seguro de que desea eliminar la imagen de portada? Podrá cargar una nueva imagen después.',
+    cancel: {
+      label: 'Cancelar',
+      flat: true,
+      color: 'grey-7',
+    },
+    ok: {
+      label: 'Eliminar',
+      color: 'negative',
+      unelevated: true,
+    },
+    persistent: true,
+  }).onOk(() => {
+    void (async () => {
+    try {
+      // Actualizar capacitación eliminando la imagen de portada
+      const updateTrainingUseCase = TrainingUseCasesFactory.getUpdateTrainingUseCase(trainingsService);
+      
+      await updateTrainingUseCase.execute(parseInt(training.value!.id), {
+        imagenPortadaUrl: '', // String vacío para eliminar la imagen
+      });
+
+      // Recargar la capacitación para reflejar los cambios
+      await loadTraining();
+
+      $q.notify({
+        type: 'positive',
+        message: 'Imagen de portada eliminada exitosamente',
+        icon: 'check_circle',
+        position: 'top',
+        timeout: 3000,
+      });
+    } catch (error) {
+      console.error('Error al eliminar imagen de portada:', error);
+      $q.notify({
+        type: 'negative',
+        message: 'Error al eliminar la imagen de portada',
+        icon: 'error',
+        position: 'top',
+        timeout: 5000,
+      });
+    }
+    })();
+  });
 }
 
 const trainingModalityLabel = computed(() =>
