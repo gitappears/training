@@ -356,6 +356,27 @@
                     <div class="text-caption text-grey-6 text-center q-mt-md">
                       Escanea este código para verificar el certificado
                     </div>
+                    <div class="row q-col-gutter-sm justify-center q-mt-md no-print">
+                    <div class="col-12 col-sm-auto">
+                      <q-btn
+                        color="primary"
+                        icon="download"
+                        label="Descargar PDF"
+                        :href="getDownloadUrl(certificate)"
+                        target="_blank"
+                        unelevated
+                      />
+                    </div>
+                    <div class="col-12 col-sm-auto">
+                      <q-btn
+                        outline
+                        color="primary"
+                        icon="qr_code"
+                        label="Verificar"
+                        @click="showQrDialog = true"
+                      />
+                    </div>
+                  </div>
                   </q-card>
 
                   <div class="text-body2 text-grey-7 q-mt-md text-center">
@@ -559,18 +580,24 @@ const logoSrc = computed(() => {
 });
 
 // Funciones
-function formatDate(dateString: string): string {
-  try {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('es-ES', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
-  } catch {
-    return dateString;
+const formatDate = (date: string) => {
+  return new Date(date).toLocaleDateString('es-ES', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+};
+
+const getDownloadUrl = (cert: Certificate) => {
+  // Si ya tiene la URL dinámica (generada por el backend nuevo)
+  if (cert.pdfUrl && cert.pdfUrl.includes('/public/certificates/download/')) {
+      return cert.pdfUrl;
   }
-}
+  
+  // Fallback para certificados antiguos (zombies) o si la URL es estática/antigua
+  // Forzamos el uso del nuevo endpoint dinámico usando el hash (verificationCode)
+  return `${import.meta.env.VITE_API_URL}/public/certificates/download/${cert.verificationCode}`;
+};
 
 function formatDateTime(dateString: string): string {
   try {
