@@ -96,6 +96,8 @@ function mapBackendToDomain(backendData: BackendUser): User {
     address: persona.direccion || undefined,
     empresaId: persona.empresaId,
     empresa: persona.empresa,
+    company: persona.empresa?.razonSocial || undefined,
+    companyName: persona.empresa?.razonSocial || undefined,
     createdAt: backendData.fechaCreacion || new Date().toISOString(),
   };
 

@@ -15,7 +15,6 @@
     <!-- Logo Section -->
     <div class="drawer-header q-pa-md">
       <div class="row items-center no-wrap cursor-pointer" @click="$router.push('/')">
-        
         <div v-if="!localMiniState" class="text-center">
           <img :src="logoColor" alt="Formar 360" class="logo-image q-mb-xs" />
           <div class="text-caption text-grey-6">Plataforma de capacitación</div>
@@ -82,9 +81,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { useRouter } from 'vue-router';
-import { useRole, useAuth } from '../composables';
-import { api } from 'boot/axios';
+import { useRole } from '../composables';
 import logoColor from '../../assets/logo_color_formar.svg';
 
 interface Props {
@@ -115,8 +112,6 @@ watch(
   { immediate: true },
 );
 
-const router = useRouter();
-const { user, logout } = useAuth();
 const {
   canViewDashboard,
   canViewTrainings,
@@ -225,11 +220,11 @@ const menuSections = computed<MenuSection[]>(() => {
           visible: canManageAlerts.value,
         },
         {
-          label: 'Nuevo Conductor',
-          caption: 'Registrar conductor externo',
-          icon: 'person_add',
+          label: 'Empresas',
+          caption: 'Gestionar empresas',
+          icon: 'business',
           iconColor: 'purple',
-          to: '/people/external-drivers/new',
+          to: '/empresas',
           visible: canCreateExternalDrivers.value,
         },
         {
@@ -246,44 +241,6 @@ const menuSections = computed<MenuSection[]>(() => {
 
   return sections;
 });
-
-const userImageUrl = computed(() => {
-  const fotoUrl = user.value?.persona?.fotoUrl;
-  if (!fotoUrl) {
-    return `https://api.dicebear.com/8.x/adventurer/svg?seed=${user.value?.username || 'default'}`;
-  }
-  if (fotoUrl.startsWith('http')) {
-    return fotoUrl;
-  }
-  return `${api.defaults.baseURL}${fotoUrl}`;
-});
-
-const userFullName = computed(() => {
-  const persona = user.value?.persona;
-  if (!persona) return 'Usuario';
-  const nombres = persona.nombres || '';
-  const apellidos = persona.apellidos || '';
-  return `${nombres} ${apellidos}`.trim() || 'Usuario';
-});
-
-const userEmail = computed(() => {
-  return user.value?.persona?.email || '';
-});
-
-const userInitials = computed(() => {
-  const persona = user.value?.persona;
-  if (!persona) return 'U';
-  const nombres = persona.nombres || '';
-  const apellidos = persona.apellidos || '';
-  const firstInitial = nombres.charAt(0).toUpperCase() || '';
-  const secondInitial = apellidos.charAt(0).toUpperCase() || '';
-  return `${firstInitial}${secondInitial}` || 'U';
-});
-
-function handleLogout() {
-  logout();
-  emit('logout');
-}
 </script>
 
 <style lang="scss" scoped>

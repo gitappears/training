@@ -69,58 +69,89 @@
         </q-td>
       </template>
 
+      <template #body-cell-company="props">
+        <q-td :props="props">
+          <div v-if="props.row.company || props.row.companyName" class="text-body2">
+            {{ props.row.company || props.row.companyName }}
+          </div>
+          <div v-else class="text-grey-5 text-italic">Sin empresa</div>
+        </q-td>
+      </template>
+
       <template #body-cell-actions="props">
         <q-td :props="props">
-          <div class="row q-gutter-xs">
-            <q-btn
-              flat
-              dense
-              round
-              icon="visibility"
-              color="primary"
-              size="sm"
-              @click="$emit('view-user', props.row.id)"
-            >
-              <q-tooltip>Ver detalles</q-tooltip>
-            </q-btn>
-            <q-btn
-              flat
-              dense
-              round
-              icon="edit"
-              color="primary"
-              size="sm"
-              @click="$emit('edit-user', props.row)"
-            >
-              <q-tooltip>Editar</q-tooltip>
-            </q-btn>
-            <q-btn
-              flat
-              dense
-              round
-              :icon="props.row.enabled ? 'block' : 'check_circle'"
-              :color="props.row.enabled ? 'negative' : 'positive'"
-              size="sm"
-              @click="$emit('toggle-status', props.row)"
-            >
-              <q-tooltip>
-                {{ props.row.enabled ? 'Deshabilitar' : 'Habilitar' }}
-              </q-tooltip>
-            </q-btn>
-            <q-btn
-              flat
-              dense
-              round
-              icon="gavel"
-              color="info"
-              size="sm"
-              :loading="acceptingTerms[props.row.id] === true"
-              :disable="acceptingTerms[props.row.id] === true"
-              @click="$emit('accept-terms', props.row)"
-            >
-              <q-tooltip>Aceptar términos y condiciones</q-tooltip>
-            </q-btn>
-          </div>
+          <q-btn
+            flat
+            dense
+            round
+            icon="more_vert"
+            color="grey-7"
+            size="sm"
+          >
+            <q-menu anchor="top right" self="top left">
+              <q-list style="min-width: 180px">
+                <q-item
+                  clickable
+                  v-close-popup
+                  @click="$emit('view-user', props.row.id)"
+                >
+                  <q-item-section avatar>
+                    <q-icon name="visibility" color="primary" />
+                  </q-item-section>
+                  <q-item-section>
+                    <q-item-label>Ver detalles</q-item-label>
+                  </q-item-section>
+                </q-item>
+                <q-item
+                  clickable
+                  v-close-popup
+                  @click="$emit('edit-user', props.row)"
+                >
+                  <q-item-section avatar>
+                    <q-icon name="edit" color="primary" />
+                  </q-item-section>
+                  <q-item-section>
+                    <q-item-label>Editar</q-item-label>
+                  </q-item-section>
+                </q-item>
+                <q-separator />
+                <q-item
+                  clickable
+                  v-close-popup
+                  @click="$emit('toggle-status', props.row)"
+                >
+                  <q-item-section avatar>
+                    <q-icon
+                      :name="props.row.enabled ? 'block' : 'check_circle'"
+                      :color="props.row.enabled ? 'negative' : 'positive'"
+                    />
+                  </q-item-section>
+                  <q-item-section>
+                    <q-item-label>
+                      {{ props.row.enabled ? 'Deshabilitar' : 'Habilitar' }}
+                    </q-item-label>
+                  </q-item-section>
+                </q-item>
+                <q-item
+                  clickable
+                  v-close-popup
+                  :disable="acceptingTerms[props.row.id] === true"
+                  @click="$emit('accept-terms', props.row)"
+                >
+                  <q-item-section avatar>
+                    <q-icon
+                      name="gavel"
+                      color="info"
+                      :class="{ 'q-spinner': acceptingTerms[props.row.id] === true }"
+                    />
+                  </q-item-section>
+                  <q-item-section>
+                    <q-item-label>Aceptar términos</q-item-label>
+                  </q-item-section>
+                </q-item>
+              </q-list>
+            </q-menu>
+          </q-btn>
         </q-td>
       </template>
 
