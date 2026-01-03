@@ -170,6 +170,12 @@ export const useAuthStore = defineStore('auth', () => {
 
   // Inicializar: verificar si hay token y cargar perfil
   function init(): void {
+    // Evitar cargar perfil en la página de verificación pública
+    // Esto previene errores 401 si hay un token vencido, los cuales causarían una redirección al login
+    if (window.location.href.includes('/verify')) {
+      return;
+    }
+
     if (token.value) {
       // Si no hay perfil, cargarlo
       if (!profile.value) {
