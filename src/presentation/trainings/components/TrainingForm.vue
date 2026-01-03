@@ -245,43 +245,85 @@
 
       <div class="row q-col-gutter-md">
         <div class="col-12 col-md-6">
-          <q-input
-            v-model="form.coverImageUrl"
+          <div class="q-mb-sm">
+            <div class="text-subtitle2 text-weight-medium q-mb-xs">
+              Imagen de Portada *
+            </div>
+            <div class="text-caption text-grey-7 q-mb-sm">
+              Imagen que se mostrará como portada del curso (recomendado: 1200x675px, máximo 2MB)
+            </div>
+          </div>
+
+          <!-- Vista previa de la imagen -->
+          <div v-if="coverImagePreview || form.coverImageUrl" class="cover-image-preview-container q-mb-md">
+            <div class="cover-image-preview">
+              <q-img
+                :src="getCoverImageUrl"
+                :alt="'Imagen de portada'"
+                fit="contain"
+                class="cover-image-thumbnail"
+                :ratio="16/9"
+              >
+                <template #loading>
+                  <div class="absolute-full flex flex-center">
+                    <q-spinner color="primary" size="2em" />
+                  </div>
+                </template>
+                <template #error>
+                  <div class="absolute-full flex flex-center bg-grey-3">
+                    <q-icon name="broken_image" size="48px" color="grey-6" />
+                  </div>
+                </template>
+                <div class="absolute-top-right q-pa-xs">
+                  <q-btn
+                    flat
+                    round
+                    dense
+                    icon="close"
+                    color="white"
+                    size="sm"
+                    class="bg-negative"
+                    @click="removeCoverImage"
+                  >
+                    <q-tooltip>Eliminar imagen</q-tooltip>
+                  </q-btn>
+                </div>
+              </q-img>
+            </div>
+          </div>
+
+          <!-- Input de archivo -->
+          <q-file
+            v-model="coverImageFile"
             filled
-            label="URL de Imagen de Portada"
-            placeholder="https://ejemplo.com/imagen.jpg"
-            hint="Imagen que se mostrará como portada del curso (recomendado: 1200x675px)"
+            label="Seleccionar imagen"
+            accept="image/*"
+            :max-file-size="2 * 1024 * 1024"
+            :loading="uploadingCoverImage"
+            @update:model-value="handleCoverImageSelected"
+            hint="Formatos: JPG, PNG, GIF, WEBP (máximo 2MB)"
             :dense="false"
-            @blur="validateImageUrl"
           >
             <template #prepend>
               <q-icon name="image" />
             </template>
             <template #append>
-              <q-btn
-                v-if="form.coverImageUrl"
-                flat
-                dense
-                round
-                icon="visibility"
-                @click="showImagePreview = !showImagePreview"
-              >
-                <q-tooltip>Ver preview</q-tooltip>
-              </q-btn>
+              <q-icon name="attach_file" v-if="!coverImageFile" />
+              <q-spinner v-if="uploadingCoverImage" color="primary" size="1.5em" />
             </template>
-          </q-input>
-          <div v-if="showImagePreview && form.coverImageUrl" class="q-mt-sm">
-            <q-img
-              :src="form.coverImageUrl"
-              style="max-height: 200px; border-radius: 8px"
-              placeholder-src="https://via.placeholder.com/400x225?text=Imagen+no+disponible"
-            >
-              <template #error>
-                <div class="absolute-full flex flex-center bg-negative text-white">
-                  Error al cargar imagen
-                </div>
-              </template>
-            </q-img>
+          </q-file>
+
+          <!-- Barra de progreso -->
+          <q-linear-progress
+            v-if="uploadingCoverImage"
+            :value="coverImageUploadProgress"
+            color="primary"
+            class="q-mt-sm"
+          />
+
+          <!-- Mensaje de error si existe -->
+          <div v-if="coverImageError" class="text-negative text-caption q-mt-xs">
+            {{ coverImageError }}
           </div>
         </div>
       </div>
@@ -338,9 +380,19 @@
             class="material-card"
           >
             <q-card-section>
-              <div class="row items-center q-gutter-md">
+              <div class="row items-start q-gutter-md">
                 <div class="material-preview-container">
-                  <q-icon name="videocam" size="48px" color="purple" />
+                  <!-- Mostrar iframe si es posible, sino mostrar ícono -->
+                  <div v-if="getVideoEmbedUrl(video.url)" class="video-preview">
+                    <iframe
+                      :src="getVideoEmbedUrl(video.url)"
+                      frameborder="0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowfullscreen
+                      class="video-iframe"
+                    />
+                  </div>
+                  <q-icon v-else name="videocam" size="48px" color="purple" />
                 </div>
                 <div class="col material-info">
                   <div class="text-body1 text-weight-medium q-mb-xs">
@@ -351,7 +403,9 @@
                     {{ video.description }}
                   </div>
                   <div class="text-caption text-grey-6 q-mt-xs">
-                    {{ video.url }}
+                    <a :href="video.url" target="_blank" class="text-primary">
+                      {{ video.url }}
+                    </a>
                   </div>
                 </div>
                 <div class="material-actions">
@@ -422,14 +476,53 @@
             class="material-card"
           >
             <q-card-section>
-              <div class="row items-center q-gutter-md">
+              <div class="row items-start q-gutter-md">
                 <div class="material-preview-container">
-                  <MaterialViewer
-                    :material="file"
-                    :show-preview="true"
-                    :allow-download="false"
-                    class="material-preview"
-                  />
+                  <!-- Mostrar miniatura de imagen si es una imagen -->
+                  <div v-if="file.type === 'IMAGE'" class="image-preview">
+                    <q-img
+                      :src="file.url"
+                      :alt="file.name"
+                      fit="cover"
+                      loading="lazy"
+                      class="image-thumbnail"
+                      :ratio="16/9"
+                      @click="viewImage(file.url)"
+                    >
+                      <template #loading>
+                        <div class="absolute-full flex flex-center">
+                          <q-spinner color="primary" size="2em" />
+                        </div>
+                      </template>
+                      <template #error>
+                        <div class="absolute-full flex flex-center bg-grey-3">
+                          <q-icon name="broken_image" size="32px" color="grey-6" />
+                        </div>
+                      </template>
+                    </q-img>
+                  </div>
+                  <!-- Para PDFs, mostrar preview con overlay -->
+                  <div v-else-if="file.type === 'PDF'" class="pdf-preview" @click="openPdfModal(file)">
+                    <div class="pdf-preview-content">
+                      <q-icon name="picture_as_pdf" size="64px" color="negative" />
+                      <div class="text-caption text-grey-7 q-mt-sm">PDF</div>
+                    </div>
+                    <div class="pdf-overlay">
+                      <div class="pdf-overlay-content">
+                        <q-icon name="visibility" size="32px" color="white" />
+                        <div class="text-body2 text-white q-mt-sm text-weight-medium">Ver PDF</div>
+                        <div class="text-caption text-white q-mt-xs opacity-60">Click para abrir</div>
+                      </div>
+                    </div>
+                  </div>
+                  <!-- Para otros tipos, mostrar ícono -->
+                  <div v-else class="file-icon-container">
+                    <q-icon
+                      name="insert_drive_file"
+                      size="48px"
+                      color="grey-6"
+                    />
+                  </div>
                 </div>
                 <div class="col material-info">
                   <div class="text-body1 text-weight-medium q-mb-xs">
@@ -940,6 +1033,32 @@
       </q-card>
     </q-dialog>
 
+    <!-- Modal para visualizar PDF -->
+    <q-dialog v-model="showPdfModal" :maximized="false">
+      <q-card class="pdf-modal-card">
+        <q-card-section class="row items-center q-pb-sm pdf-modal-header">
+          <div class="row items-center q-gutter-sm">
+            <q-icon name="picture_as_pdf" size="28px" color="negative" />
+            <div class="text-h6 text-weight-medium">{{ selectedPdf?.name }}</div>
+          </div>
+          <q-space />
+          <q-btn icon="close" flat round dense v-close-popup />
+        </q-card-section>
+        <q-separator />
+        <q-card-section v-if="selectedPdf" class="pdf-modal-content q-pa-none">
+          <div class="pdf-viewer-container">
+            <PDFViewer
+              :src="selectedPdf.url"
+              :title="selectedPdf.name"
+              :allow-download="true"
+              :allow-retry="true"
+              class="pdf-viewer-component"
+            />
+          </div>
+        </q-card-section>
+      </q-card>
+    </q-dialog>
+
     <!-- Botones de Acción -->
     <div
       class="row justify-between items-center q-mt-lg q-pt-md"
@@ -969,8 +1088,8 @@
 <script setup lang="ts">
 import { reactive, ref, onMounted, computed, watch } from 'vue';
 import { useQuasar } from 'quasar';
-import MaterialViewer from '../../../shared/components/MaterialViewer.vue';
 import type { Material } from '../../../shared/components/MaterialViewer.vue';
+import PDFViewer from '../../../shared/components/PDFViewer.vue';
 import { materialsService } from '../../../infrastructure/http/materials/materials.service';
 import { useMaterialUrl } from '../../../shared/composables/useMaterialUrl';
 import { TRAINING_TYPE_OPTIONS } from '../../../shared/constants/training-types';
@@ -1066,6 +1185,13 @@ const emit = defineEmits<{
 const $q = useQuasar();
 const showImagePreview = ref(false);
 
+// Estados para imagen de portada
+const coverImageFile = ref<File | null>(null);
+const coverImagePreview = ref<string | undefined>(undefined);
+const uploadingCoverImage = ref(false);
+const coverImageUploadProgress = ref(0);
+const coverImageError = ref('');
+
 // Composables
 const { buildFullUrl } = useMaterialUrl();
 
@@ -1085,6 +1211,10 @@ const editingFileIndex = ref<number | null>(null);
 const files = ref<Material[]>([]);
 const uploading = ref(false);
 const uploadProgress = ref(0);
+
+// Estados para modal de PDF
+const showPdfModal = ref(false);
+const selectedPdf = ref<Material | null>(null);
 
 // Materiales combinados (para compatibilidad con el emit)
 const materials = computed(() => [...videos.value, ...files.value]);
@@ -1156,6 +1286,23 @@ const hasEvaluation = computed(() => {
  */
 const calculatedPuntajeTotal = computed(() => {
   return 100;
+});
+
+/**
+ * Obtiene la URL completa de la imagen de portada para visualización
+ */
+const getCoverImageUrl = computed(() => {
+  // Si hay preview (blob o URL completa), usarlo
+  if (coverImagePreview.value) {
+    return coverImagePreview.value;
+  }
+  
+  // Si hay URL en el formulario, construir URL completa usando buildFullUrl
+  if (form.coverImageUrl) {
+    return buildFullUrl(form.coverImageUrl);
+  }
+  
+  return '';
 });
 
 /**
@@ -1274,6 +1421,14 @@ onMounted(() => {
     }
   }
 
+  // Sincronizar descripción inicial si ya existe una descripción de capacitación
+  if (form.description && form.description.trim() && form.evaluationInline) {
+    const currentEvalDescription = form.evaluationInline.descripcion?.trim() || '';
+    if (!currentEvalDescription && !evaluationDescriptionManuallyModified.value) {
+      form.evaluationInline.descripcion = form.description.trim();
+    }
+  }
+
   // Cargar instructores al montar el componente
   void loadInstructors();
 });
@@ -1289,6 +1444,64 @@ function isValidVideoUrl(url: string): boolean {
     urlLower.includes('drive.google.com') ||
     /\.(mp4|webm|ogg)$/i.test(urlLower)
   );
+}
+
+/**
+ * Convierte una URL de video a una URL de embed para iframe
+ * Soporta YouTube, Vimeo y otros servicios
+ */
+function getVideoEmbedUrl(url: string): string | null {
+  if (!url || !isValidVideoUrl(url)) {
+    return null;
+  }
+
+  const urlLower = url.toLowerCase();
+
+  // YouTube
+  if (urlLower.includes('youtube.com') || urlLower.includes('youtu.be')) {
+    let videoId = '';
+    
+    // Formato: https://www.youtube.com/watch?v=VIDEO_ID
+    const watchMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/);
+    if (watchMatch && watchMatch[1]) {
+      videoId = watchMatch[1];
+    }
+    
+    // Formato: https://www.youtube.com/embed/VIDEO_ID
+    const embedMatch = url.match(/youtube\.com\/embed\/([^&\n?#]+)/);
+    if (embedMatch && embedMatch[1]) {
+      videoId = embedMatch[1];
+    }
+
+    if (videoId) {
+      return `https://www.youtube.com/embed/${videoId}`;
+    }
+  }
+
+  // Vimeo
+  if (urlLower.includes('vimeo.com')) {
+    // Formato: https://vimeo.com/VIDEO_ID
+    const vimeoMatch = url.match(/vimeo\.com\/(?:.*\/)?(\d+)/);
+    if (vimeoMatch && vimeoMatch[1]) {
+      return `https://player.vimeo.com/video/${vimeoMatch[1]}`;
+    }
+  }
+
+  // Google Drive (videos)
+  if (urlLower.includes('drive.google.com')) {
+    // Formato: https://drive.google.com/file/d/FILE_ID/view
+    const driveMatch = url.match(/drive\.google\.com\/file\/d\/([^/]+)/);
+    if (driveMatch && driveMatch[1]) {
+      return `https://drive.google.com/file/d/${driveMatch[1]}/preview`;
+    }
+  }
+
+  // Si es una URL directa de video (mp4, webm, etc.), devolverla directamente
+  if (/\.(mp4|webm|ogg)$/i.test(url)) {
+    return url;
+  }
+
+  return null;
 }
 
 function previewVideo(url: string): void {
@@ -1416,6 +1629,143 @@ function previewFile(file: File | null): void {
     // Mostrar imagen en un modal simple
     window.open(url, '_blank');
   }
+}
+
+/**
+ * Abre una imagen en un modal para visualización completa
+ */
+function viewImage(imageUrl: string): void {
+  // Abrir la imagen en una nueva ventana para visualización completa
+  window.open(imageUrl, '_blank');
+}
+
+/**
+ * Abre un PDF en un modal para visualización completa con PDFViewer
+ */
+function openPdfModal(file: Material): void {
+  selectedPdf.value = file;
+  showPdfModal.value = true;
+}
+
+/**
+ * Maneja la selección de imagen de portada
+ */
+async function handleCoverImageSelected(file: File | null): Promise<void> {
+  coverImageError.value = '';
+  
+  if (!file) {
+    // Si se elimina el archivo, limpiar preview si es un blob
+    if (coverImagePreview.value && coverImagePreview.value.startsWith('blob:')) {
+      URL.revokeObjectURL(coverImagePreview.value);
+    }
+    coverImagePreview.value = undefined;
+    return;
+  }
+
+  // Validar que sea una imagen
+  if (!file.type.startsWith('image/')) {
+    coverImageError.value = 'El archivo seleccionado no es una imagen válida';
+    coverImageFile.value = null;
+    return;
+  }
+
+  // Validar tamaño (2MB)
+  if (file.size > 2 * 1024 * 1024) {
+    coverImageError.value = 'El archivo excede el tamaño máximo de 2MB';
+    coverImageFile.value = null;
+    return;
+  }
+
+  // Mostrar preview inmediato usando URL.createObjectURL
+  if (coverImagePreview.value && coverImagePreview.value.startsWith('blob:')) {
+    URL.revokeObjectURL(coverImagePreview.value);
+  }
+  coverImagePreview.value = URL.createObjectURL(file);
+
+  // Subir el archivo automáticamente
+  await uploadCoverImage(file);
+}
+
+/**
+ * Sube la imagen de portada al servidor
+ */
+async function uploadCoverImage(file: File): Promise<void> {
+  uploadingCoverImage.value = true;
+  coverImageUploadProgress.value = 0;
+  coverImageError.value = '';
+
+  try {
+    const response = await materialsService.uploadFile(file, (progress) => {
+      coverImageUploadProgress.value = progress;
+    });
+
+    // Guardar la URL relativa en el formulario
+    // El backend espera URLs relativas para archivos locales
+    form.coverImageUrl = response.url;
+
+    // Construir URL completa para visualización
+    const fullUrl = buildFullUrl(response.url);
+    
+    // Revocar el blob URL anterior
+    if (coverImagePreview.value && coverImagePreview.value.startsWith('blob:')) {
+      URL.revokeObjectURL(coverImagePreview.value);
+    }
+    
+    // Actualizar preview con la URL del servidor
+    coverImagePreview.value = fullUrl;
+
+    $q.notify({
+      type: 'positive',
+      message: 'Imagen de portada cargada exitosamente',
+      position: 'top',
+      timeout: 2000,
+    });
+  } catch (error) {
+    console.error('Error al subir imagen de portada:', error);
+    coverImageError.value = error instanceof Error 
+      ? error.message 
+      : 'Error al subir la imagen. Por favor, intente nuevamente';
+    
+    // Limpiar preview y archivo en caso de error
+    if (coverImagePreview.value && coverImagePreview.value.startsWith('blob:')) {
+      URL.revokeObjectURL(coverImagePreview.value);
+    }
+    coverImagePreview.value = undefined;
+    coverImageFile.value = null;
+    form.coverImageUrl = '';
+
+    $q.notify({
+      type: 'negative',
+      message: 'Error al subir la imagen de portada',
+      position: 'top',
+      timeout: 3000,
+    });
+  } finally {
+    uploadingCoverImage.value = false;
+    coverImageUploadProgress.value = 0;
+  }
+}
+
+/**
+ * Elimina la imagen de portada
+ */
+function removeCoverImage(): void {
+  // Revocar URL del objeto si es un blob
+  if (coverImagePreview.value && coverImagePreview.value.startsWith('blob:')) {
+    URL.revokeObjectURL(coverImagePreview.value);
+  }
+  
+  coverImagePreview.value = undefined;
+  coverImageFile.value = null;
+  form.coverImageUrl = '';
+  coverImageError.value = '';
+  
+  $q.notify({
+    type: 'info',
+    message: 'Imagen de portada eliminada',
+    position: 'top',
+    timeout: 2000,
+  });
 }
 
 function handleFileSelected(file: File | null): void {
@@ -1658,7 +2008,7 @@ const form = reactive<TrainingFormModel>({
       {
         tipoPreguntaId: 1,
         enunciado: '',
-        puntaje: 1,
+        puntaje: 100,
         orden: 0,
         requerida: true,
         opciones: [
@@ -1674,6 +2024,7 @@ const form = reactive<TrainingFormModel>({
 
 function reset() {
   evaluationTitleManuallyModified.value = false;
+  evaluationDescriptionManuallyModified.value = false;
   form.title = '';
   form.description = '';
   form.type = null;
@@ -1685,6 +2036,14 @@ function reset() {
   form.targetAudience = 'Conductores';
   form.startDate = '';
   form.endDate = '';
+  
+  // Limpiar imagen de portada
+  if (coverImagePreview.value && coverImagePreview.value.startsWith('blob:')) {
+    URL.revokeObjectURL(coverImagePreview.value);
+  }
+  coverImagePreview.value = undefined;
+  coverImageFile.value = null;
+  coverImageError.value = '';
   form.coverImageUrl = '';
   form.evaluationId = null;
   form.evaluationInline = {
@@ -1792,14 +2151,19 @@ function initializeFormWithData() {
 const evaluationTitleManuallyModified = ref(false);
 // Flag temporal para evitar que el watch del título de evaluación se active durante la sincronización
 const isSyncingFromTrainingTitle = ref(false);
+// Flag para rastrear si el usuario modificó manualmente la descripción de evaluación
+const evaluationDescriptionManuallyModified = ref(false);
+// Flag temporal para evitar que el watch de la descripción de evaluación se active durante la sincronización
+const isSyncingFromTrainingDescription = ref(false);
 
 // Inicializar cuando se monta el componente o cambian los props
 watch(
   () => props.initialData,
   () => {
     initializeFormWithData();
-    // Resetear el flag cuando se inicializa con datos nuevos
+    // Resetear los flags cuando se inicializa con datos nuevos
     evaluationTitleManuallyModified.value = false;
+    evaluationDescriptionManuallyModified.value = false;
   },
   { immediate: true },
 );
@@ -1855,6 +2219,50 @@ watch(
       } else if (evalTitle === trainingTitle) {
         // Si vuelve a coincidir, resetear el flag (por si el usuario borra y vuelve a escribir)
         evaluationTitleManuallyModified.value = false;
+      }
+    }
+  },
+);
+
+// Sincronizar descripción de capacitación con descripción de evaluación
+// Sincroniza automáticamente a menos que el usuario haya modificado manualmente la descripción de evaluación
+watch(
+  () => form.description,
+  (newDescription) => {
+    if (form.evaluationInline && newDescription && newDescription.trim()) {
+      // Solo sincronizar si el usuario no ha modificado manualmente la descripción de evaluación
+      if (!evaluationDescriptionManuallyModified.value) {
+        isSyncingFromTrainingDescription.value = true;
+        form.evaluationInline.descripcion = newDescription.trim();
+        // Resetear el flag después de un pequeño delay para que el watch de la descripción de evaluación no se active
+        setTimeout(() => {
+          isSyncingFromTrainingDescription.value = false;
+        }, 0);
+      }
+    }
+  },
+);
+
+// Detectar cuando el usuario modifica manualmente la descripción de evaluación
+watch(
+  () => form.evaluationInline?.descripcion,
+  (newEvalDescription) => {
+    // No hacer nada si estamos sincronizando desde la descripción de capacitación
+    if (isSyncingFromTrainingDescription.value) {
+      return;
+    }
+
+    if (form.evaluationInline && form.description) {
+      // Si la descripción de evaluación no coincide con la descripción de capacitación,
+      // significa que el usuario la modificó manualmente
+      const trainingDescription = form.description.trim();
+      const evalDescription = newEvalDescription?.trim() || '';
+
+      if (evalDescription && evalDescription !== trainingDescription) {
+        evaluationDescriptionManuallyModified.value = true;
+      } else if (evalDescription === trainingDescription) {
+        // Si vuelve a coincidir, resetear el flag (por si el usuario borra y vuelve a escribir)
+        evaluationDescriptionManuallyModified.value = false;
       }
     }
   },
@@ -2021,12 +2429,6 @@ function validateDescription() {
   return true;
 }
 
-function validateImageUrl() {
-  if (form.coverImageUrl && !form.coverImageUrl.startsWith('http')) {
-    // Podrías agregar validación adicional aquí
-  }
-}
-
 // Función para cargar instructores del backend
 async function loadInstructors() {
   loadingInstructors.value = true;
@@ -2157,6 +2559,127 @@ function generateId(): string {
   .material-preview-container {
     width: 120px;
     min-width: 120px;
+    
+    .video-preview {
+      width: 100%;
+      height: 0;
+      padding-bottom: 56.25%; // Aspect ratio 16:9
+      position: relative;
+      border-radius: 8px;
+      overflow: hidden;
+      background-color: rgba(0, 0, 0, 0.1);
+      
+      .video-iframe {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        border-radius: 8px;
+      }
+    }
+    
+    .image-preview {
+      width: 100%;
+      border-radius: 8px;
+      overflow: hidden;
+      background-color: rgba(0, 0, 0, 0.05);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      
+      &:hover {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        
+        .image-thumbnail {
+          transform: scale(1.05);
+        }
+      }
+      
+      .image-thumbnail {
+        width: 100%;
+        border-radius: 8px;
+        transition: transform 0.2s ease;
+      }
+    }
+    
+    .pdf-preview {
+      width: 100%;
+      height: 0;
+      padding-bottom: 56.25%; // Aspect ratio 16:9
+      position: relative;
+      border-radius: 8px;
+      overflow: hidden;
+      background: linear-gradient(135deg, rgba(244, 67, 54, 0.1) 0%, rgba(244, 67, 54, 0.05) 100%);
+      border: 2px solid rgba(244, 67, 54, 0.2);
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      
+      &:hover {
+        box-shadow: 0 6px 20px rgba(244, 67, 54, 0.3);
+        transform: translateY(-2px);
+        border-color: rgba(244, 67, 54, 0.4);
+        
+        .pdf-overlay {
+          opacity: 1;
+        }
+        
+        .pdf-preview-content {
+          opacity: 0.3;
+        }
+      }
+      
+      .pdf-preview-content {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        transition: opacity 0.3s ease;
+        z-index: 1;
+      }
+      
+      .pdf-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(135deg, rgba(244, 67, 54, 0.9) 0%, rgba(211, 47, 47, 0.9) 100%);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+        border-radius: 8px;
+        z-index: 2;
+        
+        .pdf-overlay-content {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          text-align: center;
+        }
+      }
+    }
+    
+    .file-icon-container {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      border-radius: 8px;
+      background-color: rgba(0, 0, 0, 0.02);
+    }
   }
 
   .material-info {
@@ -2165,6 +2688,14 @@ function generateId(): string {
 
   .material-actions {
     flex-shrink: 0;
+  }
+}
+
+// Para hacer el preview más grande en pantallas medianas
+@media (min-width: 600px) {
+  .materials-list .material-preview-container {
+    width: 200px;
+    min-width: 200px;
   }
 }
 
@@ -2229,6 +2760,114 @@ body.body--dark {
   .readonly-field {
     .q-field__control {
       background-color: rgba(255, 255, 255, 0.05);
+    }
+  }
+}
+
+// Estilos para el modal de PDF
+.pdf-modal-card {
+  width: 90vw;
+  max-width: 1400px;
+  height: 90vh;
+  max-height: 900px;
+  display: flex;
+  flex-direction: column;
+  
+  .pdf-modal-header {
+    flex-shrink: 0;
+    padding: 16px 24px;
+    background-color: rgba(0, 0, 0, 0.02);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  }
+  
+  .pdf-modal-content {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    position: relative;
+    
+    .pdf-viewer-container {
+      flex: 1;
+      overflow: auto;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      
+      .pdf-viewer-component {
+        flex: 1;
+        min-height: 650px;
+        width: 100%;
+      }
+    }
+  }
+}
+
+// Ajustes responsivos para el modal de PDF
+@media (max-width: 768px) {
+  .pdf-modal-card {
+    width: 95vw;
+    height: 95vh;
+    max-height: none;
+  }
+}
+
+body.body--dark {
+  .pdf-modal-card {
+    .pdf-modal-header {
+      background-color: rgba(255, 255, 255, 0.05);
+    }
+  }
+  
+  .pdf-preview {
+    background: linear-gradient(135deg, rgba(244, 67, 54, 0.15) 0%, rgba(244, 67, 54, 0.08) 100%);
+    border-color: rgba(244, 67, 54, 0.3);
+    
+    &:hover {
+      border-color: rgba(244, 67, 54, 0.5);
+    }
+  }
+}
+
+// Utilidad para opacidad
+.opacity-60 {
+  opacity: 0.6;
+}
+
+// Estilos para la vista previa de imagen de portada
+.cover-image-preview-container {
+  width: 100%;
+  
+  .cover-image-preview {
+    width: 100%;
+    height: 0;
+    padding-bottom: 56.25%; // Aspect ratio 16:9
+    position: relative;
+    border-radius: 8px;
+    overflow: hidden;
+    background-color: rgba(0, 0, 0, 0.05);
+    border: 2px solid rgba(0, 0, 0, 0.1);
+    
+    .cover-image-thumbnail {
+      width: 100%;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: transform 0.2s ease;
+      
+      &:hover {
+        transform: scale(1.02);
+      }
+    }
+  }
+}
+
+body.body--dark {
+  .cover-image-preview-container {
+    .cover-image-preview {
+      background-color: rgba(255, 255, 255, 0.05);
+      border-color: rgba(255, 255, 255, 0.1);
     }
   }
 }

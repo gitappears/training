@@ -102,6 +102,7 @@ api.interceptors.request.use(
       '/auth/public/register',
       '/auth/register/photo',
       '/auth/refresh',
+      '/public/', // Permitir endpoints públicos generales (ej: verificación de certificados)
     ];
 
     // Verificar si el endpoint es público
@@ -152,7 +153,12 @@ api.interceptors.response.use(
     // Si el error es 401 (No autorizado), redirigir a login
     if (error?.response?.status === 401) {
       // Lista de endpoints públicos que pueden devolver 401 legítimamente
-      const publicEndpoints = ['/auth/login', '/auth/public/register', '/auth/register/photo'];
+      const publicEndpoints = [
+        '/auth/login', 
+        '/auth/public/register', 
+        '/auth/register/photo',
+        '/public/', // Importante: endpoints públicos no deben forzar logout
+      ];
 
       const isPublicEndpoint =
         config?.url && publicEndpoints.some((endpoint) => config.url?.includes(endpoint));
@@ -162,7 +168,8 @@ api.interceptors.response.use(
       if (
         isPublicEndpoint ||
         window.location.pathname.includes('/login') ||
-        window.location.pathname.includes('/register')
+        window.location.pathname.includes('/register') ||
+        window.location.href.includes('/verify') // Permitir acceso a verificación pública (Cualquier modo)
       ) {
         // Asegurar que el error rechazado sea una instancia de Error
         const errorToReject =

@@ -84,7 +84,7 @@ const route = useRoute();
 const $q = useQuasar();
 
 // Composables
-const { mapFromBackend: mapMaterialTypeFromBackend, mapToBackendId: mapMaterialTypeToId } = useMaterialTypeMapper();
+const { mapFromBackend: mapMaterialTypeFromBackend, mapToBackendId: mapMaterialTypeToId, mapFromBackendId: mapMaterialTypeFromBackendId } = useMaterialTypeMapper();
 const { extractRelativeUrl, isExternalLink } = useMaterialUrl();
 
 const loading = ref(true);
@@ -116,11 +116,28 @@ async function loadTraining() {
       try {
         const materials = await materialsService.findByCapacitacion(parseInt(training.value.id));
         trainingMaterials.value = materials.map((m) => {
+          // Priorizar tipoMaterialId (más confiable) sobre código/nombre
+          // El ID es constante y no depende de strings que pueden variar
+          let materialType: Material['type'];
+          
+          if (m.tipoMaterialId && m.tipoMaterialId > 0) {
+            // Usar el ID directamente (método más confiable)
+            materialType = mapMaterialTypeFromBackendId(m.tipoMaterialId);
+          } else {
+            // Fallback: usar código/nombre si el ID no está disponible
+            const tipoMaterialCode = m.tipoMaterial?.codigo?.trim();
+            const tipoMaterialName = m.tipoMaterial?.nombre?.trim();
+            const tipoMaterialInput = (tipoMaterialCode && tipoMaterialCode !== '') 
+              ? tipoMaterialCode 
+              : (tipoMaterialName || 'PDF');
+            materialType = mapMaterialTypeFromBackend(tipoMaterialInput);
+          }
+          
           const material: Material = {
             id: m.id,
             name: m.nombre,
             url: m.url, // La URL ya viene completa desde el servicio
-            type: mapMaterialTypeFromBackend(m.tipoMaterial?.codigo || m.tipoMaterial?.nombre || 'PDF'),
+            type: materialType,
             order: m.orden,
           };
           if (m.descripcion) {
@@ -536,11 +553,21 @@ async function syncMaterials(capacitacionId: number, newMaterials: Material[]) {
   // Obtener materiales actuales
   const currentMaterials = await materialsService.findByCapacitacion(capacitacionId);
 
-  // IDs de materiales nuevos (los que tienen id son existentes)
+  // Crear un Set con los IDs reales de materiales existentes en el backend
+  const currentMaterialIds = new Set(
+    currentMaterials.map((m) => parseInt(m.id)),
+  );
+
+  // IDs de materiales nuevos que realmente existen en el backend
   type MaterialWithId = Omit<Material, 'id'> & { id: string };
   const newMaterialIds = new Set(
     newMaterials
-      .filter((m): m is MaterialWithId => Boolean(m.id))
+      .filter((m): m is MaterialWithId => {
+        if (!m.id) return false;
+        const materialId = parseInt(m.id);
+        // Solo incluir IDs que realmente existen en el backend (no IDs temporales)
+        return currentMaterialIds.has(materialId);
+      })
       .map((m) => parseInt(m.id)),
   );
 
@@ -578,8 +605,12 @@ async function syncMaterials(capacitacionId: number, newMaterials: Material[]) {
         materialUrl = extractRelativeUrl(material.url);
       }
       
-      if (material.id) {
-        // Actualizar material existente
+      // Verificar si el ID realmente existe en el backend (no es un ID temporal)
+      const materialId = material.id ? parseInt(material.id) : null;
+      const existsInBackend = materialId !== null && currentMaterialIds.has(materialId);
+      
+      if (existsInBackend) {
+        // Actualizar material existente (tiene ID real del backend)
         const updateDto: UpdateMaterialDto = {
           nombre: material.name,
           url: materialUrl, // URL relativa para archivos locales, completa para enlaces externos
@@ -589,9 +620,9 @@ async function syncMaterials(capacitacionId: number, newMaterials: Material[]) {
         if (material.description) {
           updateDto.descripcion = material.description;
         }
-        await materialsService.update(parseInt(material.id), updateDto);
+        await materialsService.update(materialId, updateDto);
       } else {
-        // Crear nuevo material
+        // Crear nuevo material (no tiene ID o tiene ID temporal)
         const createDto: CreateMaterialDto = {
           capacitacionId: capacitacionId,
           tipoMaterialId: mapMaterialTypeToId(material.type),

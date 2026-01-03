@@ -18,11 +18,13 @@ import type { UserRole } from '../shared/composables/useRole';
  */
 
 export default defineRouter(function (/* { store, ssrContext } */) {
+  /* 
+   * FORCE HASH MODE to solve URL resolution issues in Docker/Production
+   * The env var might be defaulting to history in some contexts
+   */
   const createHistory = process.env.SERVER
     ? createMemoryHistory
-    : process.env.VUE_ROUTER_MODE === 'history'
-      ? createWebHistory
-      : createWebHashHistory;
+    : createWebHashHistory;
 
   const Router = createRouter({
     scrollBehavior: () => ({ left: 0, top: 0 }),
@@ -78,6 +80,12 @@ export default defineRouter(function (/* { store, ssrContext } */) {
 
   // Guard de navegación para proteger rutas que requieren autenticación y roles
   Router.beforeEach(async (to, from, next) => {
+    // ✅ BYPASS: Si la ruta es pública de verificación, permitir acceso inmediato
+    if (to.path.includes('/verify/')) {
+        next();
+        return;
+    }
+
     const token = localStorage.getItem('auth_token');
     const requiresAuth = to.matched.some((record) => record.meta.requiresAuth);
     const requiredRoles = to.meta.roles as UserRole[] | undefined;

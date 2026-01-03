@@ -13,8 +13,24 @@
       <div
         v-if="training.coverImageUrl"
         class="hero-image"
-        :style="{ backgroundImage: `url(${training.coverImageUrl})` }"
-      />
+        :style="{ backgroundImage: `url(${coverImageUrl})` }"
+      >
+        <!-- Botón de eliminar imagen (solo si tiene permisos) -->
+        <div v-if="canManageTrainings" class="absolute-top-right q-pa-md">
+          <q-btn
+            flat
+            round
+            dense
+            icon="close"
+            color="white"
+            size="md"
+            class="bg-negative"
+            @click="handleRemoveCoverImage"
+          >
+            <q-tooltip>Eliminar imagen de portada</q-tooltip>
+          </q-btn>
+        </div>
+      </div>
       <div v-else class="hero-watermark">
         <div class="watermark-content">
           <q-icon name="school" size="120px" color="grey-4" />
@@ -405,9 +421,25 @@
               <q-card-section class="q-pa-none">
                 <div
                   v-if="training.coverImageUrl"
-                  class="sidebar-image"
-                  :style="{ backgroundImage: `url(${training.coverImageUrl})` }"
-                />
+                  class="sidebar-image relative-position"
+                  :style="{ backgroundImage: `url(${coverImageUrl})` }"
+                >
+                  <!-- Botón de eliminar imagen (solo si tiene permisos) -->
+                  <div v-if="canManageTrainings" class="absolute-top-right q-pa-xs">
+                    <q-btn
+                      flat
+                      round
+                      dense
+                      icon="close"
+                      color="white"
+                      size="sm"
+                      class="bg-negative"
+                      @click="handleRemoveCoverImage"
+                    >
+                      <q-tooltip>Eliminar imagen de portada</q-tooltip>
+                    </q-btn>
+                  </div>
+                </div>
                 <div v-else class="sidebar-watermark">
                   <q-icon name="image" size="64px" color="grey-4" />
                   <div class="text-caption text-grey-5 q-mt-sm">Imagen del curso</div>
@@ -554,6 +586,7 @@ import type { Material } from '../../../domain/material/models';
 import { useRole } from '../../../shared/composables/useRole';
 import { useTrainingEvaluation, type TrainingWithEvaluations } from '../../../shared/composables/useTrainingEvaluation';
 import { useEnrollmentCheck } from '../../../shared/composables/useEnrollmentCheck';
+import { useMaterialUrl } from '../../../shared/composables/useMaterialUrl';
 import { useAuthStore } from '../../../stores/auth.store';
 import { inscriptionsService, type InscriptionWithDocument } from '../../../infrastructure/http/inscriptions/inscriptions.service';
 import EnrollStudentDialog from '../../../shared/components/EnrollStudentDialog.vue';
@@ -572,6 +605,14 @@ const training = ref<Training | null>(null);
 const loading = ref(false);
 const materials = ref<Material[]>([]);
 const loadingMaterials = ref(false);
+
+/**
+ * Obtiene la URL completa de la imagen de portada para visualización
+ */
+const coverImageUrl = computed(() => {
+  if (!training.value?.coverImageUrl) return '';
+  return buildFullUrl(training.value.coverImageUrl);
+});
 
 // Tipo extendido para estudiantes con documento e ID de inscripción
 interface StudentWithDocument extends TrainingStudent {
@@ -594,6 +635,9 @@ const loadingEvaluation = ref(false);
 const { isEnrolled, loading: loadingEnrollment, checkEnrollment } = useEnrollmentCheck({
   courseId: computed(() => training.value?.id ?? ''),
 });
+
+// Composable para construir URLs de materiales
+const { buildFullUrl } = useMaterialUrl();
 
 // Control del diálogo de inscripción
 const enrollDialogOpen = ref(false);
@@ -621,10 +665,15 @@ function loadMaterials(): void {
 
 /**
  * Mapea un material del dominio a un TrainingAttachment
+ * Construye la URL completa usando buildFullUrl para archivos locales
  */
 function mapMaterialToAttachment(material: Material): TrainingAttachment {
   const tipoNombre = material.tipoMaterial?.nombre?.toLowerCase() || '';
   const tipoCodigo = material.tipoMaterial?.codigo?.toUpperCase() || '';
+
+  // Construir URL completa: si es un enlace externo, mantenerla; si es archivo local, construir URL completa
+  const isExternalLink = material.url.startsWith('http://') || material.url.startsWith('https://');
+  const materialUrl = isExternalLink ? material.url : buildFullUrl(material.url);
 
   // Detectar si es un video
   if (tipoNombre === 'video' || tipoCodigo === 'VIDEO') {
@@ -632,7 +681,7 @@ function mapMaterialToAttachment(material: Material): TrainingAttachment {
       id: material.id,
       type: 'video',
       label: material.nombre,
-      url: material.url,
+      url: materialUrl,
     };
   }
 
@@ -641,22 +690,31 @@ function mapMaterialToAttachment(material: Material): TrainingAttachment {
     tipoNombre.includes('enlace') ||
     tipoNombre.includes('link') ||
     tipoCodigo === 'LINK' ||
-    (material.url.startsWith('http') && !material.url.match(/\.(pdf|doc|docx|ppt|pptx|jpg|jpeg|png|gif|mp4|webm|mp3|wav)$/i));
+    (isExternalLink && !material.url.match(/\.(pdf|doc|docx|ppt|pptx|jpg|jpeg|png|gif|mp4|webm|mp3|wav)$/i));
 
   return {
     id: material.id,
     type: isLink ? 'link' : 'file',
     label: material.nombre,
-    url: material.url,
+    url: materialUrl,
   };
 }
 
 /**
  * Computed que combina los attachments del training con los materiales cargados
  * Elimina duplicados basándose en la URL
+ * Construye URLs completas para archivos locales usando buildFullUrl
  */
 const allAttachments = computed<TrainingAttachment[]>(() => {
-  const attachmentsFromTraining = training.value?.attachments || [];
+  // Mapear attachments del training construyendo URLs completas si son relativas
+  const attachmentsFromTraining = (training.value?.attachments || []).map((att) => {
+    const isExternalLink = att.url.startsWith('http://') || att.url.startsWith('https://');
+    return {
+      ...att,
+      url: isExternalLink ? att.url : buildFullUrl(att.url),
+    };
+  });
+  
   const attachmentsFromMaterials = materials.value
     .filter((m) => m.activo !== false)
     .map(mapMaterialToAttachment);
@@ -1167,6 +1225,61 @@ async function handleToggleStatusConfirm(): Promise<void> {
       timeout: 7000,
     });
   }
+}
+
+/**
+ * Elimina la imagen de portada de la capacitación
+ */
+function handleRemoveCoverImage(): void {
+  if (!training.value) return;
+
+  // Confirmar eliminación
+  $q.dialog({
+    title: 'Eliminar imagen de portada',
+    message: '¿Está seguro de que desea eliminar la imagen de portada? Podrá cargar una nueva imagen después.',
+    cancel: {
+      label: 'Cancelar',
+      flat: true,
+      color: 'grey-7',
+    },
+    ok: {
+      label: 'Eliminar',
+      color: 'negative',
+      unelevated: true,
+    },
+    persistent: true,
+  }).onOk(() => {
+    void (async () => {
+    try {
+      // Actualizar capacitación eliminando la imagen de portada
+      const updateTrainingUseCase = TrainingUseCasesFactory.getUpdateTrainingUseCase(trainingsService);
+      
+      await updateTrainingUseCase.execute(parseInt(training.value!.id), {
+        imagenPortadaUrl: '', // String vacío para eliminar la imagen
+      });
+
+      // Recargar la capacitación para reflejar los cambios
+      await loadTraining();
+
+      $q.notify({
+        type: 'positive',
+        message: 'Imagen de portada eliminada exitosamente',
+        icon: 'check_circle',
+        position: 'top',
+        timeout: 3000,
+      });
+    } catch (error) {
+      console.error('Error al eliminar imagen de portada:', error);
+      $q.notify({
+        type: 'negative',
+        message: 'Error al eliminar la imagen de portada',
+        icon: 'error',
+        position: 'top',
+        timeout: 5000,
+      });
+    }
+    })();
+  });
 }
 
 const trainingModalityLabel = computed(() =>
