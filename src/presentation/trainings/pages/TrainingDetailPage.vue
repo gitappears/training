@@ -13,7 +13,7 @@
       <div
         v-if="training.coverImageUrl"
         class="hero-image"
-        :style="{ backgroundImage: `url(${training.coverImageUrl})` }"
+        :style="{ backgroundImage: `url(${coverImageUrl})` }"
       />
       <div v-else class="hero-watermark">
         <div class="watermark-content">
@@ -406,7 +406,7 @@
                 <div
                   v-if="training.coverImageUrl"
                   class="sidebar-image"
-                  :style="{ backgroundImage: `url(${training.coverImageUrl})` }"
+                  :style="{ backgroundImage: `url(${coverImageUrl})` }"
                 />
                 <div v-else class="sidebar-watermark">
                   <q-icon name="image" size="64px" color="grey-4" />
@@ -554,6 +554,7 @@ import type { Material } from '../../../domain/material/models';
 import { useRole } from '../../../shared/composables/useRole';
 import { useTrainingEvaluation, type TrainingWithEvaluations } from '../../../shared/composables/useTrainingEvaluation';
 import { useEnrollmentCheck } from '../../../shared/composables/useEnrollmentCheck';
+import { useMaterialUrl } from '../../../shared/composables/useMaterialUrl';
 import { useAuthStore } from '../../../stores/auth.store';
 import { inscriptionsService, type InscriptionWithDocument } from '../../../infrastructure/http/inscriptions/inscriptions.service';
 import EnrollStudentDialog from '../../../shared/components/EnrollStudentDialog.vue';
@@ -572,6 +573,14 @@ const training = ref<Training | null>(null);
 const loading = ref(false);
 const materials = ref<Material[]>([]);
 const loadingMaterials = ref(false);
+
+/**
+ * Obtiene la URL completa de la imagen de portada para visualización
+ */
+const coverImageUrl = computed(() => {
+  if (!training.value?.coverImageUrl) return '';
+  return buildFullUrl(training.value.coverImageUrl);
+});
 
 // Tipo extendido para estudiantes con documento e ID de inscripción
 interface StudentWithDocument extends TrainingStudent {
@@ -594,6 +603,9 @@ const loadingEvaluation = ref(false);
 const { isEnrolled, loading: loadingEnrollment, checkEnrollment } = useEnrollmentCheck({
   courseId: computed(() => training.value?.id ?? ''),
 });
+
+// Composable para construir URLs de materiales
+const { buildFullUrl } = useMaterialUrl();
 
 // Control del diálogo de inscripción
 const enrollDialogOpen = ref(false);
