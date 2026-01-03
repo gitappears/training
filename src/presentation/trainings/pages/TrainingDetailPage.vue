@@ -665,10 +665,15 @@ function loadMaterials(): void {
 
 /**
  * Mapea un material del dominio a un TrainingAttachment
+ * Construye la URL completa usando buildFullUrl para archivos locales
  */
 function mapMaterialToAttachment(material: Material): TrainingAttachment {
   const tipoNombre = material.tipoMaterial?.nombre?.toLowerCase() || '';
   const tipoCodigo = material.tipoMaterial?.codigo?.toUpperCase() || '';
+
+  // Construir URL completa: si es un enlace externo, mantenerla; si es archivo local, construir URL completa
+  const isExternalLink = material.url.startsWith('http://') || material.url.startsWith('https://');
+  const materialUrl = isExternalLink ? material.url : buildFullUrl(material.url);
 
   // Detectar si es un video
   if (tipoNombre === 'video' || tipoCodigo === 'VIDEO') {
@@ -676,7 +681,7 @@ function mapMaterialToAttachment(material: Material): TrainingAttachment {
       id: material.id,
       type: 'video',
       label: material.nombre,
-      url: material.url,
+      url: materialUrl,
     };
   }
 
@@ -685,22 +690,31 @@ function mapMaterialToAttachment(material: Material): TrainingAttachment {
     tipoNombre.includes('enlace') ||
     tipoNombre.includes('link') ||
     tipoCodigo === 'LINK' ||
-    (material.url.startsWith('http') && !material.url.match(/\.(pdf|doc|docx|ppt|pptx|jpg|jpeg|png|gif|mp4|webm|mp3|wav)$/i));
+    (isExternalLink && !material.url.match(/\.(pdf|doc|docx|ppt|pptx|jpg|jpeg|png|gif|mp4|webm|mp3|wav)$/i));
 
   return {
     id: material.id,
     type: isLink ? 'link' : 'file',
     label: material.nombre,
-    url: material.url,
+    url: materialUrl,
   };
 }
 
 /**
  * Computed que combina los attachments del training con los materiales cargados
  * Elimina duplicados basándose en la URL
+ * Construye URLs completas para archivos locales usando buildFullUrl
  */
 const allAttachments = computed<TrainingAttachment[]>(() => {
-  const attachmentsFromTraining = training.value?.attachments || [];
+  // Mapear attachments del training construyendo URLs completas si son relativas
+  const attachmentsFromTraining = (training.value?.attachments || []).map((att) => {
+    const isExternalLink = att.url.startsWith('http://') || att.url.startsWith('https://');
+    return {
+      ...att,
+      url: isExternalLink ? att.url : buildFullUrl(att.url),
+    };
+  });
+  
   const attachmentsFromMaterials = materials.value
     .filter((m) => m.activo !== false)
     .map(mapMaterialToAttachment);
