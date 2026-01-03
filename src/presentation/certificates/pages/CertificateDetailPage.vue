@@ -102,9 +102,9 @@
                     <div class="cert-header-group">
                       <div class="cert-text-sm">Otorgado por</div>
                       <div class="cert-text-lg-bold">FORMAR360</div>
-                      <div class="cert-text-sm">con el respaldo de</div>
+                      <!-- <div class="cert-text-sm">con el respaldo de</div>
                       <div class="cert-text-md-bold">ANDAR DEL LLANO</div>
-                      <div class="cert-text-sm">Centro de Enseñanza Automovilística</div>
+                      <div class="cert-text-sm">Centro de Enseñanza Automovilística</div> -->
                     </div>
                     
                     <!-- 3. Certifica Que -->
@@ -129,7 +129,7 @@
                     <!-- 7. Details -->
                     <div class="cert-details">
                       <p>Con una intensidad de {{ certificate.durationHours || 20 }} horas</p>
-                      <p>Modalidad: Virtual</p>
+                      <p>Resolucion: 0000000000</p>
                     </div>
 
                     <div class="cert-push-bottom"></div>
