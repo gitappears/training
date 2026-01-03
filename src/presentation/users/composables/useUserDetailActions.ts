@@ -1,3 +1,4 @@
+import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 import type { User } from '../../../domain/user/models';
@@ -9,17 +10,14 @@ import { certificatesService } from '../../../infrastructure/http/certificates/c
 export function useUserDetailActions() {
   const router = useRouter();
   const $q = useQuasar();
+  const assignCourseDialogOpen = ref(false);
 
   function editUser(userId: string) {
     void router.push(`/users/${userId}?edit=true`);
   }
 
   function assignCourse() {
-    $q.notify({
-      type: 'info',
-      message: 'Funcionalidad de asignación de cursos próximamente',
-      position: 'top',
-    });
+    assignCourseDialogOpen.value = true;
   }
 
   function viewCertificate(id: string) {
@@ -82,6 +80,7 @@ export function useUserDetailActions() {
   return {
     editUser,
     assignCourse,
+    assignCourseDialogOpen,
     viewCertificate,
     downloadCertificate,
     goBack,

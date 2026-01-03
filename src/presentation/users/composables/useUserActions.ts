@@ -1,7 +1,9 @@
+import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 import type { User } from '../../../domain/user/models';
 import { useUserRoles } from './useUserRoles';
+import { termsService } from '../../../infrastructure/http/terms/terms.service';
 
 /**
  * Composable para manejar acciones de usuarios
@@ -11,6 +13,7 @@ export function useUserActions() {
   const router = useRouter();
   const $q = useQuasar();
   const { getRoleLabel } = useUserRoles();
+  const acceptingTerms = ref<Record<string, boolean>>({});
 
   function viewUser(id: string) {
     void router.push(`/users/${id}`);
@@ -128,6 +131,62 @@ export function useUserActions() {
     });
   }
 
+  async function acceptTermsForUser(
+    user: User,
+    onSuccess?: () => void | Promise<void>,
+  ) {
+    $q.dialog({
+      title: 'Confirmar aceptación de términos',
+      message: `¿Está seguro de aceptar los términos y condiciones en nombre de ${user.name}?`,
+      cancel: true,
+      persistent: true,
+    }).onOk(async () => {
+      // Activar loading para este usuario
+      acceptingTerms.value[user.id] = true;
+      
+      try {
+        // Obtener documentos activos
+        const documentosActivos = await termsService.getActiveDocuments();
+        
+        if (documentosActivos.length === 0) {
+          $q.notify({
+            type: 'warning',
+            message: 'No hay documentos legales activos para aceptar',
+            position: 'top',
+          });
+          return;
+        }
+
+        // Obtener los IDs de los documentos activos
+        const documentosIds = documentosActivos.map((doc) => doc.id);
+
+        // Aceptar términos para el usuario
+        await termsService.acceptTermsForUser(user.id, documentosIds);
+        
+        $q.notify({
+          type: 'positive',
+          message: `Términos y condiciones aceptados exitosamente para ${user.name}`,
+          position: 'top',
+        });
+        
+        await onSuccess?.();
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error
+            ? error.message
+            : 'Error al aceptar términos y condiciones';
+        $q.notify({
+          type: 'negative',
+          message: errorMessage,
+          position: 'top',
+        });
+      } finally {
+        // Desactivar loading para este usuario
+        acceptingTerms.value[user.id] = false;
+      }
+    });
+  }
+
   return {
     viewUser,
     editUser,
@@ -137,6 +196,8 @@ export function useUserActions() {
     bulkDisable,
     exportToCSV,
     exportToExcel,
+    acceptTermsForUser,
+    acceptingTerms,
   };
 }
 

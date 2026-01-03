@@ -85,9 +85,32 @@ export function useMaterialTypeMapper() {
     return map[type] ?? 1; // Default: PDF
   };
 
+  /**
+   * Mapea el ID del tipo de material del backend al tipo del dominio
+   * Esta es la forma más confiable de mapear, ya que el ID es constante
+   * @param tipoMaterialId - ID del tipo de material en el backend
+   * @returns Tipo de material del dominio
+   */
+  const mapFromBackendId = (tipoMaterialId: number | null | undefined): Material['type'] => {
+    if (!tipoMaterialId) return 'PDF'; // Default
+    
+    const idMap: Record<number, Material['type']> = {
+      1: 'PDF',
+      2: 'IMAGE',
+      3: 'VIDEO',
+      4: 'DOC',
+      5: 'LINK',
+      6: 'PRESENTATION',
+      7: 'AUDIO',
+    };
+    
+    return idMap[tipoMaterialId] ?? 'PDF'; // Default: PDF
+  };
+
   return {
     mapFromBackend,
     mapToBackendId,
+    mapFromBackendId,
   };
 }
 

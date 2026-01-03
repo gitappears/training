@@ -83,26 +83,26 @@ const routes: RouteRecordRaw[] = [
         },
       },
 
-      // Usuarios (Gestión de usuarios según RF-01 a RF-07) - Solo ADMIN
+      // Usuarios (Gestión de usuarios según RF-01 a RF-07) - ADMIN y CLIENTE
       {
         path: 'users',
         component: () => import('../presentation/users/pages/UsersListPage.vue'),
         meta: {
-          roles: ['ADMIN'] as UserRole[],
+          roles: ['ADMIN', 'CLIENTE'] as UserRole[],
         },
       },
       {
         path: 'users/new',
         component: () => import('../presentation/users/pages/UserCreatePage.vue'),
         meta: {
-          roles: ['ADMIN'] as UserRole[],
+          roles: ['ADMIN', 'CLIENTE'] as UserRole[],
         },
       },
       {
         path: 'users/:id',
         component: () => import('../presentation/users/pages/UserDetailPage.vue'),
         meta: {
-          roles: ['ADMIN'] as UserRole[],
+          roles: ['ADMIN', 'CLIENTE'] as UserRole[],
         },
       },
 
