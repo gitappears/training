@@ -52,7 +52,12 @@
                   </q-item-section>
                   <q-item-section>
                     <q-item-label class="text-weight-medium">{{ userFullName }}</q-item-label>
-                    <q-item-label caption class="text-grey-7">{{ userEmail }}</q-item-label>
+                    <q-item-label
+                      caption
+                      class="text-grey-7 text-uppercase"
+                      style="font-size: 0.75rem"
+                      >{{ userRole }}</q-item-label
+                    >
                   </q-item-section>
                 </q-item>
                 <q-separator />
@@ -116,15 +121,36 @@ const userImageUrl = computed(() => {
 });
 
 const userFullName = computed(() => {
-  const persona = user.value?.persona;
-  if (!persona) return 'Usuario';
-  const nombres = persona.nombres || '';
-  const apellidos = persona.apellidos || '';
-  return `${nombres} ${apellidos}`.trim() || 'Usuario';
+  const u = user.value;
+  if (!u) return 'Usuario';
+
+  // Try persona object first
+  if (u.persona) {
+    const nombres = u.persona.nombres || '';
+    const apellidos = u.persona.apellidos || '';
+    if (nombres || apellidos) {
+      return `${nombres} ${apellidos}`.trim();
+    }
+  }
+
+  // Fallback to top level properties if they exist (for backwards compatibility)
+  type UserWithOptionalFields = typeof u & { nombres?: string; apellidos?: string };
+  const userWithFields = u as UserWithOptionalFields;
+  const nombres = userWithFields.nombres || '';
+  const apellidos = userWithFields.apellidos || '';
+  if (nombres || apellidos) {
+    return `${nombres} ${apellidos}`.trim();
+  }
+
+  // Fallback to username
+  if (u.username) return u.username;
+
+  return 'Usuario';
 });
 
-const userEmail = computed(() => {
-  return user.value?.persona?.email || '';
+const userRole = computed(() => {
+  // UserProfile has 'rol' (singular string), not 'roles' (array)
+  return user.value?.rol || 'Usuario';
 });
 
 // Sincronizar el tema con el body

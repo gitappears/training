@@ -123,6 +123,8 @@ function mapBackendToDomain(backendData: BackendCertificate): Certificate {
   }
   if (backendData.codigoQr) {
     certificate.qrCodeUrl = backendData.codigoQr;
+  } else if ((backendData as any).codigo_qr) {
+    certificate.qrCodeUrl = (backendData as any).codigo_qr;
   }
   if (backendData.urlCertificado) {
     certificate.pdfUrl = backendData.urlCertificado;

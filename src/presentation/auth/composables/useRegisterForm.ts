@@ -1,6 +1,7 @@
 import { ref, watch, computed } from 'vue';
 import { useAuth, useForm, useFileUpload, useNotifications } from '../../../shared/composables';
 import type { RegisterDto } from '../../../application/auth/auth.repository.port';
+import { authService } from '../../../infrastructure/http/auth/auth.service';
 
 /**
  * Composable para manejar el formulario de registro
@@ -93,9 +94,8 @@ export function useRegisterForm() {
   function handleFileUpload(file: File | null) {
     if (file) {
       handleFileSelect(file);
-      // TODO: Implementar subida de archivo real cuando exista endpoint
-      // Por ahora solo tomamos el nombre como URL simulada si se requiere
-      form.value.fotoUrl = 'https://placeholder.com/' + file.name;
+      // La foto se subirá después del registro exitoso
+      // Por ahora solo guardamos la referencia del archivo
     } else {
       handleFileSelect(null);
       form.value.fotoUrl = '';
@@ -200,8 +200,21 @@ export function useRegisterForm() {
     };
 
     try {
+      // Si hay una foto seleccionada, subirla primero (usando endpoint público)
+      if (photoFile.value && photoFile.value instanceof File) {
+        try {
+          const { fotoUrl } = await authService.uploadProfilePhoto(photoFile.value, true);
+          payload.fotoUrl = fotoUrl;
+        } catch (error) {
+          showError(error instanceof Error ? error.message : 'Error al subir la foto de perfil');
+          return;
+        }
+      }
+
       await register(payload);
-    } catch {
+    } catch (error) {
+      console.error('Error al registrar el usuario');
+      console.error(error);
       // El error ya se maneja en el composable useAuth
     }
   }
