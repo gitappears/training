@@ -153,7 +153,12 @@ function mapStatus(backendData: BackendCertificate): CertificateStatus {
   
   if (backendData.fechaVencimiento) {
     const fechaVencimiento = new Date(backendData.fechaVencimiento);
-    if (new Date() > fechaVencimiento) {
+    const ahora = new Date();
+    
+    // Debug fecha
+    console.log(`[Cert Status] ID: ${backendData.id}, Vence: ${fechaVencimiento.toISOString()}, Ahora: ${ahora.toISOString()}`);
+
+    if (ahora > fechaVencimiento) {
       return 'expired';
     }
   }

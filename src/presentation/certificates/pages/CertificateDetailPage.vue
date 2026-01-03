@@ -466,7 +466,11 @@
                 />
                 <div class="col">
                   <div class="text-body1 text-weight-medium">
-                    {{ certificate.status === 'valid' ? 'Certificado Válido' : 'Certificado Vencido' }}
+                    {{ 
+                      certificate.status === 'valid' ? 'Certificado Válido' : 
+                      certificate.status === 'revoked' ? 'Certificado Revocado' : 
+                      'Certificado Vencido' 
+                    }}
                   </div>
                   <div class="text-caption text-grey-6">
                     {{ getValidityMessage(certificate.expiryDate) }}
