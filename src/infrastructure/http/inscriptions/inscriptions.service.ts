@@ -419,6 +419,46 @@ export class InscriptionsService implements IInscriptionRepository {
     }
     return this.create(dto);
   }
+
+  /**
+   * Asigna múltiples cursos a múltiples usuarios
+   */
+  async bulkAssignCourses(
+    userIds: number[],
+    courseIds: number[],
+  ): Promise<{
+    success: number;
+    failed: number;
+    total: number;
+    details: {
+      created: Array<{ userId: number; courseId: number; inscripcionId: number }>;
+      skipped: Array<{ userId: number; courseId: number; reason: string }>;
+      errors: Array<{ userId: number; courseId: number; error: string }>;
+    };
+  }> {
+    try {
+      const response = await api.post<{
+        success: number;
+        failed: number;
+        total: number;
+        details: {
+          created: Array<{ userId: number; courseId: number; inscripcionId: number }>;
+          skipped: Array<{ userId: number; courseId: number; reason: string }>;
+          errors: Array<{ userId: number; courseId: number; error: string }>;
+        };
+      }>(`${this.baseUrl}/bulk-assign`, {
+        userIds,
+        courseIds,
+      });
+      return response.data;
+    } catch (error) {
+      const axiosError = error as AxiosError<{ message?: string | string[] }>;
+      const errorMessage = Array.isArray(axiosError.response?.data?.message)
+        ? axiosError.response.data.message.join(', ')
+        : axiosError.response?.data?.message ?? 'Error al asignar cursos masivamente';
+      throw new Error(errorMessage);
+    }
+  }
 }
 
 // Exportar instancia singleton

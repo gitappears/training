@@ -94,7 +94,8 @@ export class AuthService implements IAuthRepository {
 
   async register(dto: RegisterDto): Promise<RegisterResponse> {
     try {
-      const response = await api.post<RegisterResponse>(`${this.baseUrl}/register`, dto);
+      // Usar endpoint público para registro de nuevos usuarios
+      const response = await api.post<RegisterResponse>(`${this.baseUrl}/public/register`, dto);
       return response.data;
     } catch (error) {
       const axiosError = error as AxiosError<{ message?: string }>;
@@ -224,6 +225,22 @@ export class AuthService implements IAuthRepository {
     }
   }
 
+  async validatePassword(password: string): Promise<{ valid: boolean }> {
+    try {
+      const response = await api.post<{ valid: boolean }>(`${this.baseUrl}/profile/validate-password`, {
+        password,
+      });
+      return response.data;
+    } catch (error) {
+      const axiosError = error as AxiosError<{ message?: string }>;
+      // Si es 401, la contraseña es inválida
+      if (axiosError.response?.status === 401) {
+        return { valid: false };
+      }
+      throw new Error(axiosError.response?.data?.message ?? 'Error al validar la contraseña');
+    }
+  }
+
   async createAdmin(dto: CreateAdminDto): Promise<CreateAdminResponse> {
     try {
       const response = await api.post<CreateAdminResponse>(`${this.baseUrl}/admin`, dto);
@@ -231,6 +248,32 @@ export class AuthService implements IAuthRepository {
     } catch (error) {
       const axiosError = error as AxiosError<{ message?: string }>;
       throw new Error(axiosError.response?.data?.message ?? 'Error al crear el administrador');
+    }
+  }
+
+  async uploadProfilePhoto(file: File, isPublic: boolean = false): Promise<{ fotoUrl: string }> {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      // Usar endpoint público durante el registro, autenticado para actualizar perfil
+      const endpoint = isPublic 
+        ? `${this.baseUrl}/register/photo`
+        : `${this.baseUrl}/profile/photo`;
+      
+      const response = await api.post<{ message: string; fotoUrl: string }>(
+        endpoint,
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        },
+      );
+      return { fotoUrl: response.data.fotoUrl };
+    } catch (error) {
+      const axiosError = error as AxiosError<{ message?: string }>;
+      throw new Error(axiosError.response?.data?.message ?? 'Error al subir la foto de perfil');
     }
   }
 }
