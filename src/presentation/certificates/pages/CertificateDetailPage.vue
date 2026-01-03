@@ -691,6 +691,12 @@ function getValidityMessage(expiryDate: string): string {
  * se usen los dominios correctos.
  */
 function getBaseUrl(): string {
+  // Fix: Priorizar siempre la URL configurada (ej: Producción o Dev público)
+  // Esto permite que los QRs generados en local sean escaneables por celurales (que no acceden a localhost)
+  if (import.meta.env.VITE_FRONTEND_URL) {
+    return import.meta.env.VITE_FRONTEND_URL;
+  }
+
   const hostname = window.location.hostname;
   const isLocal = hostname === 'localhost' || hostname === '127.0.0.1';
   
@@ -698,7 +704,7 @@ function getBaseUrl(): string {
     return window.location.origin;
   }
   
-  return import.meta.env.VITE_FRONTEND_URL || window.location.origin;
+  return window.location.origin;
 }
 
 function getValidityProgress(expiryDate: string): number {
