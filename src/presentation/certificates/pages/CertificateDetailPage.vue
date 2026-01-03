@@ -519,7 +519,37 @@
       </div>
     </div>
 
+    <!-- Dialogo de Codigo QR -->
+    <q-dialog v-model="showQrDialog">
+      <q-card style="min-width: 350px">
+        <q-card-section class="row items-center q-pb-none">
+          <div class="text-h6">Verificar Certificado</div>
+          <q-space />
+          <q-btn icon="close" flat round dense v-close-popup />
+        </q-card-section>
 
+        <q-card-section class="column items-center">
+            <QRCodeDisplay
+              v-if="getQRValue"
+              :value="getQRValue"
+              :size="250"
+            />
+            <div class="text-caption text-grey-6 q-mt-md text-center">
+              Escanea este código con tu celular para verificar la autenticidad del certificado.
+            </div>
+            
+            <q-btn
+              outline
+              color="primary"
+              label="Abrir enlace directo"
+              icon="open_in_new"
+              class="q-mt-md full-width"
+              @click="openPublicVerification"
+              v-close-popup
+            />
+        </q-card-section>
+      </q-card>
+    </q-dialog>
 
   </q-page>
 </template>
@@ -560,6 +590,7 @@ const viewerContainer = ref<HTMLElement | null>(null);
 // URL del blob para mostrar el PDF en el iframe
 const pdfViewerUrl = ref<string>('');
 const loadingPDF = ref(false);
+const showQrDialog = ref(false);
 
 // Historial de verificaciones (mock por ahora, puede conectarse al backend después)
 const verificationHistory = ref<CertificateVerificationHistory[]>([]);
@@ -848,6 +879,27 @@ async function loadPDFForView() {
 onMounted(async () => {
   if (certificateId) {
     await loadCertificate(certificateId);
+    
+    // Mock History Data for testing
+    if (verificationHistory.value.length === 0) {
+       verificationHistory.value = [
+         {
+           id: 'VER-' + Math.random().toString(36).substring(7).toUpperCase(),
+           verifiedAt: new Date(Date.now() - 3600000).toISOString(),
+           verifiedBy: '192.168.1.10',
+           userAgent: 'Chrome on Windows',
+           status: 'valid'
+         },
+         {
+           id: 'VER-' + Math.random().toString(36).substring(7).toUpperCase(),
+           verifiedAt: new Date(Date.now() - 86400000).toISOString(),
+           verifiedBy: '10.0.0.5',
+           userAgent: 'Safari on iPhone',
+           status: 'valid'
+         }
+       ];
+    }
+
     // Cargar el PDF después de cargar el certificado
     await loadPDFForView();
   } else {
