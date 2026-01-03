@@ -107,7 +107,7 @@
                 :label="isNIT ? 'NIT *' : 'No. Documento *'"
                 outlined
                 :disable="loading"
-                :maxlength="10"
+                :maxlength="15"
                 :rules="[
                   (val) => !!val || 'Requerido',
                   (val) => !val || /^[0-9]+$/.test(val) || 'Solo se permiten números',

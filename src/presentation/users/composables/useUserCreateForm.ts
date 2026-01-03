@@ -27,7 +27,8 @@ export function useUserCreateForm() {
   interface UserForm {
     documentType: 'CC' | 'CE' | 'PA' | 'TI' | 'NIT' | null;
     document: string;
-    name: string;
+    nombres: string;
+    apellidos: string;
     email: string;
     phone: string;
     personType: PersonType | null;
@@ -43,7 +44,8 @@ export function useUserCreateForm() {
   const form = ref<UserForm>({
     documentType: null,
     document: '',
-    name: '',
+    nombres: '',
+    apellidos: '',
     email: '',
     phone: '',
     personType: null,
@@ -213,6 +215,17 @@ export function useUserCreateForm() {
     { immediate: true },
   );
 
+  // Watcher para limpiar empresaId cuando se marca como conductor externo
+  watch(
+    () => form.value.isExternal,
+    (newValue) => {
+      if (newValue === true) {
+        // Limpiar el valor seleccionado en el select de empresa
+        form.value.empresaId = null;
+      }
+    },
+  );
+
   function onPersonTypeChange(value: PersonType) {
     if (value === 'natural') {
       form.value.companyName = '';
@@ -245,21 +258,22 @@ export function useUserCreateForm() {
   }
 
   // Función para generar username automáticamente
-  function generateUsername(name: string, document: string): string {
+  function generateUsername(nombres: string, apellidos: string, document: string): string {
     // Tomar el primer nombre y primer apellido, convertir a minúsculas y quitar acentos
-    const nameParts = name.trim().split(' ');
     const firstName =
-      nameParts[0]
+      nombres
+        .trim()
+        .split(' ')[0]
         ?.toLowerCase()
         .normalize('NFD')
         .replace(/[\u0300-\u036f]/g, '') || '';
     const lastName =
-      nameParts.length > 1
-        ? nameParts[nameParts.length - 1]
-            ?.toLowerCase()
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '') || ''
-        : '';
+      apellidos
+        .trim()
+        .split(' ')[0]
+        ?.toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '') || '';
 
     // Combinar nombre.apellido y agregar últimos 4 dígitos del documento
     const baseUsername = lastName ? `${firstName}.${lastName}` : firstName;
@@ -308,8 +322,11 @@ export function useUserCreateForm() {
       ]);
 
       if (validations.every((v) => v !== false)) {
-        const { nombres, apellidos } = splitName(form.value.name);
-        const username = generateUsername(form.value.name, form.value.document);
+        // Para NIT, nombres es opcional (nombre de contacto), apellidos puede estar vacío
+        // Para otros tipos, ambos son requeridos
+        const nombres = form.value.nombres.trim();
+        const apellidos = form.value.apellidos.trim();
+        const username = generateUsername(nombres, apellidos, form.value.document);
         const password = generateTemporaryPassword();
 
         // Si es conductor externo, usar el servicio de personas

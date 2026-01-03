@@ -181,6 +181,15 @@ const routes: RouteRecordRaw[] = [
         },
       },
 
+      // Empresas
+      {
+        path: 'empresas',
+        component: () => import('../presentation/empresas/pages/EmpresasListPage.vue'),
+        meta: {
+          roles: ['ADMIN'] as UserRole[],
+        },
+      },
+
       // Pagos
       {
         path: 'payments',
