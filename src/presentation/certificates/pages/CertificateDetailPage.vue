@@ -95,6 +95,11 @@
                 <div class="certificate-html-view" :style="{ backgroundImage: `url(${certificateBg})` }">
                   <div class="certificate-content">
                     
+                    <!-- LOGO DINAMICO -->
+                    <div class="cert-logo-container">
+                        <img :src="logoSrc" class="cert-logo-img" alt="Logo" />
+                    </div>
+
                     <!-- 1. Main Title -->
                     <div class="cert-main-title">CERTIFICADO DE APROBACIÓN</div>
 
@@ -102,9 +107,6 @@
                     <div class="cert-header-group">
                       <div class="cert-text-sm">Otorgado por</div>
                       <div class="cert-text-lg-bold">FORMAR360</div>
-                      <!-- <div class="cert-text-sm">con el respaldo de</div>
-                      <div class="cert-text-md-bold">ANDAR DEL LLANO</div>
-                      <div class="cert-text-sm">Centro de Enseñanza Automovilística</div> -->
                     </div>
                     
                     <!-- 3. Certifica Que -->
@@ -504,6 +506,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import certificateBg from '../../../assets/certificado_svg.svg';
+import logoAndar from '../../../assets/andar.png';
+import logoSaroto from '../../../assets/saroto.jpeg';
 import { useRoute, useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 import type { Certificate, CertificateVerificationHistory } from '../../../domain/certificate/models';
@@ -538,6 +542,21 @@ const loadingPDF = ref(false);
 
 // Historial de verificaciones (mock por ahora, puede conectarse al backend después)
 const verificationHistory = ref<CertificateVerificationHistory[]>([]);
+
+// LOGICA DE LOGO DINAMICO
+const logoSrc = computed(() => {
+  if (!certificate.value) return logoAndar;
+  
+  const title = (certificate.value.courseName || '').toLowerCase().trim();
+  // Misma validación que el backend
+  const contieneSustancias = title.includes('sustancias');
+  const contienePeligrosas = title.includes('peligrosas');
+
+  if (contieneSustancias && contienePeligrosas) {
+      return logoSaroto;
+  }
+  return logoAndar;
+});
 
 // Funciones
 function formatDate(dateString: string): string {
@@ -596,7 +615,28 @@ function getValidityMessage(expiryDate: string): string {
   if (daysUntilExpiry <= 30) {
     return `Vence en ${daysUntilExpiry} día(s)`;
   }
+  if (daysUntilExpiry <= 30) {
+    return `Vence en ${daysUntilExpiry} día(s)`;
+  }
   return `Válido hasta ${formatDate(expiryDate)}`;
+}
+
+/**
+ * Determina la URL base correcta.
+ * - Si estamos en localhost, usa el origen local (dev).
+ * - Si estamos en producción (no localhost), usa la variable de entorno configurada.
+ * Esto permite probar en dev sin que te mande a producción, pero asegura que en prod
+ * se usen los dominios correctos.
+ */
+function getBaseUrl(): string {
+  const hostname = window.location.hostname;
+  const isLocal = hostname === 'localhost' || hostname === '127.0.0.1';
+  
+  if (isLocal) {
+    return window.location.origin;
+  }
+  
+  return import.meta.env.VITE_FRONTEND_URL || window.location.origin;
 }
 
 function getValidityProgress(expiryDate: string): number {
@@ -691,60 +731,63 @@ function copyVerificationCode() {
 
 function openPublicVerification() {
   if (!certificate.value) return;
-  // Construir la URL completa si es relativa
-  const url = certificate.value.publicVerificationUrl.startsWith('http')
-    ? certificate.value.publicVerificationUrl
-    : `${window.location.origin}${certificate.value.publicVerificationUrl}`;
-  window.open(url, '_blank');
+  
+  const baseUrl = getBaseUrl();
+  const code = certificate.value.verificationCode;
+  
+  if (!code && certificate.value.publicVerificationUrl?.startsWith('http')) {
+      window.open(certificate.value.publicVerificationUrl, '_blank');
+      return;
+  }
+  
+  if (code) {
+    const routeLocation = router.resolve({ path: `/verify/${code}` });
+    const href = routeLocation.href;
+    
+    // href es relativo al root del dominio (ej: "#/verify/..." o "/verify/...")
+    // Usamos new URL para asegurar que se combina correctamente con el origen sin duplicar paths
+    try {
+      const finalUrl = new URL(href, baseUrl).href;
+      console.log('🔗 Abriendo verificación:', finalUrl);
+      window.open(finalUrl, '_blank');
+    } catch (e) {
+      console.error('Error constructing URL:', e);
+      // Fallback seguro
+      window.open(`${baseUrl}${href.startsWith('/') ? '' : '/'}${href}`, '_blank');
+    }
+  }
 }
 
-function goBack() {
-  void router.push('/certificates');
-}
+// ... (skipping goBack)
 
 // Computed para obtener el valor del QR
 const getQRValue = computed(() => {
-  if (!certificate.value) {
-    console.log('🔍 getQRValue: certificate.value es null');
-    return null;
-  }
+  if (!certificate.value) return null;
   
-  console.log('🔍 getQRValue - Datos del certificado:', {
-    tieneQRCodeUrl: !!certificate.value.qrCodeUrl,
-    qrCodeUrlLength: certificate.value.qrCodeUrl?.length || 0,
-    tieneVerificationCode: !!certificate.value.verificationCode,
-    verificationCode: certificate.value.verificationCode,
-    tienePublicVerificationUrl: !!certificate.value.publicVerificationUrl,
-    publicVerificationUrl: certificate.value.publicVerificationUrl,
-  });
-  
-  // Si tenemos el código QR base64 del backend, usarlo directamente
-  if (certificate.value.qrCodeUrl) {
-    console.log('✅ Usando qrCodeUrl del backend');
+  if (certificate.value.qrCodeUrl && certificate.value.qrCodeUrl.startsWith('data:')) {
     return certificate.value.qrCodeUrl;
   }
   
-  // Si no hay QR base64, generar uno desde la URL de verificación
-  // Prioridad: verificationCode > publicVerificationUrl
   if (certificate.value.verificationCode) {
-    // Si tenemos el código, construir la URL completa para el QR
-    const baseUrl = window.location.origin;
-    const verificationPath = certificate.value.publicVerificationUrl || `/verify/${certificate.value.verificationCode}`;
-    const qrValue = verificationPath.startsWith('http') 
-      ? verificationPath 
-      : `${baseUrl}${verificationPath}`;
-    console.log('✅ Generando QR desde verificationCode:', qrValue);
-    return qrValue;
+      const code = certificate.value.verificationCode;
+      const baseUrl = getBaseUrl();
+      const routeLocation = router.resolve({ path: `/verify/${code}` });
+      const href = routeLocation.href;
+      
+      try {
+        const finalUrl = new URL(href, baseUrl).href;
+        console.log('✅ QR Generado:', finalUrl);
+        return finalUrl;
+      } catch (e) {
+         console.error('Error QR:', e);
+         return `${baseUrl}${href.startsWith('/') ? '' : '/'}${href}`;
+      }
   }
   
-  if (certificate.value.publicVerificationUrl) {
-    const url = certificate.value.publicVerificationUrl;
-    const qrValue = url.startsWith('http') ? url : `${window.location.origin}${url}`;
-    console.log('✅ Generando QR desde publicVerificationUrl:', qrValue);
-    return qrValue;
+  if (certificate.value.publicVerificationUrl?.startsWith('http')) {
+    return certificate.value.publicVerificationUrl;
   }
   
-  console.warn('⚠️ No hay datos para generar el QR');
   return null;
 });
 
@@ -1064,5 +1107,19 @@ body.body--dark code {
   display: flex;
   flex-direction: column;
   align-items: center;
+}
+
+/* Logo Styles */
+.cert-logo-container {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 5px; /* Adjust spacing as needed */
+    z-index: 10;
+}
+
+.cert-logo-img {
+    width: 120px;
+    height: auto;
+    object-fit: contain;
 }
 </style>
