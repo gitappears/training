@@ -22,7 +22,6 @@
         <q-stepper v-model="step" color="primary" animated flat class="wizard-stepper">
           <q-step :name="1" title="Información Básica" icon="person" :done="step > 1">
             <div class="q-pa-lg">
-              <div class="text-subtitle1 q-mb-md text-weight-medium">Datos Personales</div>
               <q-form ref="basicFormRef" @submit="nextStep" class="column q-gutter-md">
                 <div class="row q-col-gutter-md">
                   <div class="col-12 col-md-6">
@@ -171,7 +170,6 @@
 
           <q-step :name="2" title="Tipo y Rol" icon="category" :done="step > 2">
             <div class="q-pa-lg">
-              <div class="text-subtitle1 q-mb-md text-weight-medium">Configuración de Usuario</div>
               <q-form ref="typeFormRef" @submit="nextStep" class="column q-gutter-md">
                 <div class="row q-col-gutter-md">
                   <div class="col-12 col-md-6">
@@ -238,8 +236,13 @@
                       emit-value
                       map-options
                       :loading="loadingEmpresas"
+                      :disable="loading || form.isExternal"
                       clearable
-                      hint="Seleccione la empresa a la que pertenecerá el usuario"
+                      :hint="
+                        form.isExternal
+                          ? 'Los conductores externos no pueden estar asociados a una empresa'
+                          : 'Seleccione la empresa a la que pertenecerá el usuario'
+                      "
                     >
                       <template #prepend>
                         <q-icon name="business" />
@@ -273,62 +276,37 @@
                       </div>
                     </q-card>
                   </div>
-                </div>
 
-                <q-input
-                  v-if="form.role === 'driver'"
-                  :model-value="isCliente ? currentUserEmpresaName || '' : form.company"
-                  outlined
-                  :label="isCliente ? 'Empresa' : 'Empresa (Opcional)'"
-                  :disable="loading || isCliente"
-                  :hint="
-                    isCliente
-                      ? 'Empresa asociada automáticamente'
-                      : 'Empresa a la que pertenece el conductor'
-                  "
-                  :readonly="isCliente"
-                  @update:model-value="
-                    (val: string | number | null) => {
-                      if (!isCliente && typeof val === 'string') form.company = val;
-                    }
-                  "
-                >
-                  <template #prepend>
-                    <q-icon name="business" />
-                  </template>
-                </q-input>
-
-                <!-- Conductor Externo (RF-04) - Solo para ADMIN -->
-                <q-card
-                  v-if="form.role === 'driver' && isAdmin"
-                  flat
-                  bordered
-                  class="q-pa-md bg-blue-1"
-                >
-                  <div class="row items-center q-gutter-sm">
-                    <q-icon name="info" color="primary" size="24px" />
-                    <div class="col">
-                      <div class="text-subtitle2 text-weight-medium q-mb-xs">Conductor Externo</div>
-                      <div class="text-body2 text-grey-7">
-                        Los conductores externos deben ser habilitados por el Administrador después
-                        de registrar el pago correspondiente (RF-05).
+                  <div class="col-12">
+                    <!-- Conductor Externo (RF-04) - Solo para ADMIN -->
+                    <q-card flat bordered class="q-pa-md bg-blue-1">
+                      <div class="row items-center q-gutter-sm">
+                        <q-icon name="info" color="primary" size="24px" />
+                        <div class="col">
+                          <div class="text-subtitle2 text-weight-medium q-mb-xs">
+                            Conductor Externo
+                          </div>
+                          <div class="text-body2 text-grey-7">
+                            Los conductores externos deben ser habilitados por el Administrador
+                            después de registrar el pago correspondiente (RF-05).
+                          </div>
+                        </div>
+                        <q-toggle
+                          v-model="form.isExternal"
+                          label="Es conductor externo"
+                          color="primary"
+                          :disable="loading"
+                        />
                       </div>
-                    </div>
-                    <q-toggle
-                      v-model="form.isExternal"
-                      label="Es conductor externo"
-                      color="primary"
-                      :disable="loading"
-                    />
+                    </q-card>
                   </div>
-                </q-card>
+                </div>
               </q-form>
             </div>
           </q-step>
 
           <q-step :name="3" title="Configuración" icon="settings" :done="step > 3">
             <div class="q-pa-lg">
-              <div class="text-subtitle1 q-mb-md text-weight-medium">Configuración Adicional</div>
               <q-form ref="configFormRef" @submit="nextStep" class="column q-gutter-md">
                 <q-checkbox
                   v-model="form.enabled"
@@ -352,7 +330,6 @@
 
           <q-step :name="4" title="Revisión" icon="preview">
             <div class="q-pa-lg">
-              <div class="text-subtitle1 q-mb-md text-weight-medium">Revisar Información</div>
               <div class="review-section">
                 <q-card flat bordered class="q-pa-md q-mb-md">
                   <div class="text-subtitle2 q-mb-sm text-weight-medium">Datos Personales</div>
@@ -493,7 +470,6 @@ const {
   isAdmin,
   isCliente,
   currentUserEmpresaId,
-  currentUserEmpresaName,
   isValidEmail,
   onPersonTypeChange,
   nextStep,

@@ -215,6 +215,17 @@ export function useUserCreateForm() {
     { immediate: true },
   );
 
+  // Watcher para limpiar empresaId cuando se marca como conductor externo
+  watch(
+    () => form.value.isExternal,
+    (newValue) => {
+      if (newValue === true) {
+        // Limpiar el valor seleccionado en el select de empresa
+        form.value.empresaId = null;
+      }
+    },
+  );
+
   function onPersonTypeChange(value: PersonType) {
     if (value === 'natural') {
       form.value.companyName = '';
