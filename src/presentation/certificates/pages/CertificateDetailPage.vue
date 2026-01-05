@@ -1160,7 +1160,9 @@ body.body--dark code {
 .cert-sig-col {
   display: flex;
   flex-direction: column;
-  /* ... existing styles ... */
+  align-items: center;
+  position: relative;
+  width: 200px;
 }
 
 /* Version Indicator for Deployment Verification */
@@ -1174,10 +1176,6 @@ body.body--dark code {
   padding: 2px 5px;
   z-index: 9999;
   pointer-events: none;
-}
-  align-items: center;
-  position: relative;
-  width: 200px;
 }
 
 .cert-scribble {
