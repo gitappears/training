@@ -103,7 +103,21 @@ export function useCertificates() {
   const loadCertificate = async (id: string): Promise<void> => {
     loading.value = true;
     try {
-      currentCertificate.value = await certificatesService.findOne(id);
+      const certificado = await certificatesService.findOne(id);
+      currentCertificate.value = certificado;
+      
+      // Log para debugging: verificar que los datos se cargaron correctamente
+      if (certificado) {
+        console.log('✅ Certificado cargado en frontend:', {
+          certificadoId: certificado.id,
+          courseId: certificado.courseId,
+          courseName: certificado.courseName,
+          tieneQRCodeUrl: !!certificado.qrCodeUrl,
+          qrCodeUrlLength: certificado.qrCodeUrl?.length || 0,
+          tieneVerificationCode: !!certificado.verificationCode,
+          verificationCode: certificado.verificationCode,
+        });
+      }
     } catch (error) {
       console.error('Error al cargar certificado:', error);
       const errorMessage =

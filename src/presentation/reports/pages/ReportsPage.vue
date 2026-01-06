@@ -294,8 +294,8 @@
         <q-tab-panel name="overview">
           <div class="row q-col-gutter-lg">
             <!-- Top Courses Chart -->
-            <div class="col-12 col-md-6">
-              <q-card flat bordered>
+            <div class="col-12 col-md-4">
+              <q-card flat bordered class="full-height">
                 <q-card-section>
                   <div class="text-subtitle1 q-mb-md text-weight-medium">Cursos Más Asignados</div>
                   <div class="column q-gutter-md">
@@ -332,8 +332,8 @@
             </div>
 
             <!-- Approval Rate Chart -->
-            <div class="col-12 col-md-6">
-              <q-card flat bordered>
+            <div class="col-12 col-md-4">
+              <q-card flat bordered class="full-height">
                 <q-card-section>
                   <div class="text-subtitle1 q-mb-md text-weight-medium">Tasa de Aprobación por Curso</div>
                   <div class="column q-gutter-sm">
@@ -354,6 +354,23 @@
                         track-color="grey-3"
                       />
                     </div>
+                  </div>
+                </q-card-section>
+              </q-card>
+            </div>
+
+            <!-- Client Distribution Chart -->
+            <div class="col-12 col-md-4">
+              <q-card flat bordered class="full-height">
+                <q-card-section>
+                  <div class="text-subtitle1 q-mb-md text-weight-medium">Cursos por Cliente</div>
+                  <div class="flex flex-center">
+                    <VueApexCharts
+                      type="donut"
+                      height="300"
+                      :options="clientChartOptions"
+                      :series="clientChartSeries"
+                    />
                   </div>
                 </q-card-section>
               </q-card>
@@ -514,11 +531,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useQuasar } from 'quasar';
 import type { QTableColumn } from 'quasar';
+import VueApexCharts from 'vue3-apexcharts';
 import FiltersPanel from '../../../shared/components/FiltersPanel.vue';
 import DataTable from '../../../shared/components/DataTable.vue';
+import { reportsService, type ReportsStats } from '../../../infrastructure/http/reports/reports.service';
 
 const $q = useQuasar();
 
@@ -537,27 +556,28 @@ const filters = ref({
 });
 
 const kpis = ref({
-  complianceRate: 84,
+  complianceRate: 0,
   complianceTarget: 90,
-  approvalRate: 76,
-  approvalRateVariation: 5,
-  certificatesIssued: 245,
-  certificatesValid: 198,
-  avgCompletionTime: 12.5,
-  activeUsers: 342,
-  activeCourses: 18,
-  avgSatisfaction: 4.6,
-  expiringSoon: 23,
+  approvalRate: 0,
+  approvalRateVariation: 0,
+  certificatesIssued: 0,
+  certificatesValid: 0,
+  avgCompletionTime: 0,
+  activeUsers: 0,
+  activeCourses: 0,
+  avgSatisfaction: 0,
+  expiringSoon: 0,
 });
 
 const courseOptions = [
+  // Esto debería venir del backend idealmente, por ahora hardcodeado o cargado aparte
   { label: 'Manejo Defensivo', value: '1' },
   { label: 'Primeros Auxilios', value: '2' },
   { label: 'Transporte de Mercancías Peligrosas', value: '3' },
 ];
 
 const statusOptions = [
-  { label: 'Aprobado', value: 'approved' },
+  { label: 'Aprobado', value: 'completed' }, // Adjusted to match backend enum if needed
   { label: 'Reprobado', value: 'failed' },
   { label: 'En progreso', value: 'in_progress' },
 ];
@@ -568,115 +588,108 @@ const comparisonOptions = [
   { label: 'Mismo período año anterior', value: 'same_period_last_year' },
 ];
 
-const topCourses = ref([
-  {
-    id: '1',
-    name: 'Manejo Defensivo',
-    short: 'MD',
-    color: 'primary',
-    assignments: 152,
-    completionRate: 78,
+// Datos Gráfico de Clientes (Reactivos)
+const clientChartSeries = ref<number[]>([]);
+const clientChartOptions = ref({
+  chart: {
+    type: 'donut',
+    fontFamily: 'inherit',
   },
-  {
-    id: '2',
-    name: 'Primeros Auxilios',
-    short: 'PA',
-    color: 'red',
-    assignments: 128,
-    completionRate: 85,
+  labels: [] as string[],
+  colors: ['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#6366f1'],
+  dataLabels: {
+    enabled: false,
   },
-  {
-    id: '3',
-    name: 'Transporte de Mercancías Peligrosas',
-    short: 'TM',
-    color: 'orange',
-    assignments: 95,
-    completionRate: 72,
+  legend: {
+    position: 'bottom',
   },
-]);
+  plotOptions: {
+    pie: {
+      donut: {
+        size: '65%',
+        labels: {
+          show: true,
+          total: {
+            show: true,
+            label: 'Total',
+            formatter: function (w: { globals: { seriesTotals: number[] } }) {
+              return w.globals.seriesTotals.reduce((a: number, b: number) => a + b, 0);
+            },
+          },
+        },
+      },
+    },
+  },
+  tooltip: {
+    y: {
+      formatter: function (val: number) {
+        return val + ' inscripciones';
+      },
+    },
+  },
+});
 
-const approvalByCourse = ref([
-  { id: '1', name: 'Manejo Defensivo', rate: 78 },
-  { id: '2', name: 'Primeros Auxilios', rate: 85 },
-  { id: '3', name: 'Transporte de Mercancías Peligrosas', rate: 72 },
-]);
+const topCourses = ref<ReportsStats['topCourses']>([]);
+const approvalByCourse = ref<ReportsStats['approvalByCourse']>([]);
+const completionTrend = ref<ReportsStats['completionTrend']>([]);
+const certificatesTrend = ref<ReportsStats['certificatesTrend']>([]);
+const courseReports = ref<ReportsStats['courseReports']>([]);
+const userReports = ref<ReportsStats['userReports']>([]);
+const expiringCertificates = ref<ReportsStats['expiringCertificates']>([]);
 
-const completionTrend = ref([
-  { label: 'Jul', value: 65 },
-  { label: 'Ago', value: 72 },
-  { label: 'Sep', value: 68 },
-  { label: 'Oct', value: 78 },
-  { label: 'Nov', value: 82 },
-  { label: 'Dic', value: 84 },
-]);
+// Cargar datos reales
+async function loadReportsData() {
+  loading.value = true;
+  try {
+    const data: ReportsStats = await reportsService.getStats({
+      dateFrom: filters.value.dateFrom || undefined,
+      dateTo: filters.value.dateTo || undefined,
+      courseId: filters.value.course || undefined,
+      status: filters.value.status || undefined,
+    });
 
-const certificatesTrend = ref([
-  { label: 'Jul', value: 45 },
-  { label: 'Ago', value: 52 },
-  { label: 'Sep', value: 48 },
-  { label: 'Oct', value: 58 },
-  { label: 'Nov', value: 62 },
-  { label: 'Dic', value: 64 },
-]);
+    // Actualizar KPIs
+    kpis.value = data.kpis;
 
-const courseReports = ref([
-  {
-    id: '1',
-    courseName: 'Manejo Defensivo',
-    enrolled: 152,
-    completed: 118,
-    approved: 92,
-    completionRate: 78,
-    approvalRate: 78,
-  },
-  {
-    id: '2',
-    courseName: 'Primeros Auxilios',
-    enrolled: 128,
-    completed: 109,
-    approved: 93,
-    completionRate: 85,
-    approvalRate: 85,
-  },
-]);
+    // Actualizar Gráfico Clientes
+    clientChartSeries.value = data.clientDistribution.series;
+    clientChartOptions.value = {
+      ...clientChartOptions.value,
+      labels: data.clientDistribution.labels
+    };
 
-const userReports = ref([
-  {
-    id: '1',
-    userName: 'Juan Pérez',
-    coursesAssigned: 3,
-    coursesCompleted: 2,
-    certificatesObtained: 2,
-    avgScore: 85,
-  },
-  {
-    id: '2',
-    userName: 'María González',
-    coursesAssigned: 2,
-    coursesCompleted: 2,
-    certificatesObtained: 2,
-    avgScore: 90,
-  },
-]);
+    // Actualizar Listas y Tablas
+    topCourses.value = data.topCourses;
+    approvalByCourse.value = data.approvalByCourse;
+    completionTrend.value = data.completionTrend;
+    certificatesTrend.value = data.certificatesTrend;
+    courseReports.value = data.courseReports;
+    userReports.value = data.userReports;
+    expiringCertificates.value = data.expiringCertificates;
 
-const expiringCertificates = ref([
-  {
-    id: '1',
-    userName: 'Juan Pérez',
-    courseName: 'Manejo Defensivo',
-    expiryDate: '2025-02-15',
-    daysUntilExpiry: 30,
-    status: 'Próximo a vencer',
-  },
-  {
-    id: '2',
-    userName: 'María González',
-    courseName: 'Primeros Auxilios',
-    expiryDate: '2025-02-20',
-    daysUntilExpiry: 35,
-    status: 'Próximo a vencer',
-  },
-]);
+    $q.notify({
+      type: 'positive',
+      message: 'Datos actualizados',
+      position: 'top',
+      timeout: 1000
+    });
+
+  } catch (error) {
+    console.error('Error loading reports:', error);
+    $q.notify({
+      type: 'negative',
+      message: 'Error al cargar datos de reportes',
+      position: 'top',
+    });
+  } finally {
+    loading.value = false;
+  }
+}
+
+// Inicializar
+onMounted(() => {
+    void loadReportsData();
+});
 
 const courseColumns: QTableColumn[] = [
   { name: 'courseName', field: 'courseName', label: 'Curso', align: 'left', sortable: true },
@@ -714,7 +727,7 @@ const activeFiltersCount = computed(() => {
 });
 
 const maxCertificates = computed(() => {
-  return Math.max(...certificatesTrend.value.map((m) => m.value));
+  return Math.max(...certificatesTrend.value.map((m: { value: number }) => m.value));
 });
 
 // Funciones
@@ -753,11 +766,7 @@ function refreshData() {
 }
 
 function generateReport() {
-  $q.notify({
-    type: 'info',
-    message: 'Reporte generado exitosamente',
-    position: 'top',
-  });
+  void loadReportsData();
 }
 
 function showExportMenu() {

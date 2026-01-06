@@ -40,6 +40,8 @@ export function useUserList() {
     toggleUserStatus,
     bulkEnable,
     bulkDisable,
+    acceptTermsForUser,
+    acceptingTerms,
     exportToCSV,
     exportToExcel,
   } = useUserActions();
@@ -125,6 +127,12 @@ export function useUserList() {
     exportToExcel();
   }
 
+  async function handleAcceptTerms(user: User) {
+    await acceptTermsForUser(user, () => {
+      void loadUsers();
+    });
+  }
+
   // Watchers
   watch(
     () => debouncedSearch.value,
@@ -170,6 +178,8 @@ export function useUserList() {
     handleToggleUserStatus,
     handleBulkEnable,
     handleBulkDisable,
+    handleAcceptTerms,
+    acceptingTerms,
     viewUser,
     editUser,
     createUser,

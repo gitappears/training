@@ -2,6 +2,7 @@ import { ref, watch, computed, type Ref } from 'vue';
 import { useQuasar } from 'quasar';
 import type { User } from '../../../domain/user/models';
 import { useUsers } from './useUsers';
+import { useRoles } from './useRoles';
 
 /**
  * Composable para manejar el formulario de edición de datos de usuario
@@ -9,6 +10,7 @@ import { useUsers } from './useUsers';
 export function useUserEditForm(user: Ref<User | null> | User | null) {
   const $q = useQuasar();
   const { updateUser, loading } = useUsers();
+  const { roles } = useRoles();
 
   // Convertir a ref si es necesario
   const userRef = typeof user === 'object' && 'value' in user ? user : ref(user);
@@ -16,25 +18,57 @@ export function useUserEditForm(user: Ref<User | null> | User | null) {
   const formData = ref<{
     username: string;
     role: string;
+    roleId?: number;
     habilitado: boolean;
     activo: boolean;
     debeCambiarPassword: boolean;
   }>({
     username: '',
     role: '',
+    roleId: undefined,
     habilitado: true,
     activo: true,
     debeCambiarPassword: false,
   });
 
+  // Función para mapear el rol del usuario al código del backend
+  function mapUserRoleToBackendCode(userRole: string): string {
+    const roleMap: Record<string, string> = {
+      admin: 'ADMIN',
+      institutional: 'CLIENTE',
+      driver: 'ALUMNO',
+    };
+    return roleMap[userRole] || 'ALUMNO';
+  }
+
   // Inicializar datos cuando cambia el usuario
   watch(
-    userRef,
-    (currentUser) => {
-      if (currentUser) {
+    [userRef, roles],
+    ([currentUser, loadedRoles]) => {
+      if (currentUser && loadedRoles.length > 0) {
+        // Buscar el rol del backend basado en el roleId o mapear desde el role del frontend
+        let backendRoleCode = '';
+        let roleId: number | undefined = currentUser.roleId;
+
+        if (roleId) {
+          // Si tenemos el roleId, buscar el rol correspondiente
+          const role = loadedRoles.find((r) => r.id === roleId);
+          if (role) {
+            backendRoleCode = role.codigo;
+          }
+        } else {
+          // Si no tenemos roleId, mapear desde el role del frontend
+          backendRoleCode = mapUserRoleToBackendCode(currentUser.role);
+          const role = loadedRoles.find((r) => r.codigo === backendRoleCode);
+          if (role) {
+            roleId = role.id;
+          }
+        }
+
         formData.value = {
           username: currentUser.username || '',
-          role: currentUser.role || '',
+          role: backendRoleCode,
+          roleId,
           habilitado: currentUser.enabled ?? true,
           activo: currentUser.active ?? true,
           debeCambiarPassword: currentUser.mustChangePassword ?? false,
@@ -46,10 +80,27 @@ export function useUserEditForm(user: Ref<User | null> | User | null) {
 
   function resetForm() {
     const currentUser = userRef.value;
-    if (currentUser) {
+    if (currentUser && roles.value.length > 0) {
+      let backendRoleCode = '';
+      let roleId: number | undefined = currentUser.roleId;
+
+      if (roleId) {
+        const role = roles.value.find((r) => r.id === roleId);
+        if (role) {
+          backendRoleCode = role.codigo;
+        }
+      } else {
+        backendRoleCode = mapUserRoleToBackendCode(currentUser.role);
+        const role = roles.value.find((r) => r.codigo === backendRoleCode);
+        if (role) {
+          roleId = role.id;
+        }
+      }
+
       formData.value = {
         username: currentUser.username || '',
-        role: currentUser.role || '',
+        role: backendRoleCode,
+        roleId,
         habilitado: currentUser.enabled ?? true,
         activo: currentUser.active ?? true,
         debeCambiarPassword: currentUser.mustChangePassword ?? false,
@@ -63,6 +114,7 @@ export function useUserEditForm(user: Ref<User | null> | User | null) {
 
     const updateDto: {
       username?: string;
+      rolPrincipalId?: number;
       habilitado?: boolean;
       activo?: boolean;
       debeCambiarPassword?: boolean;
@@ -70,6 +122,11 @@ export function useUserEditForm(user: Ref<User | null> | User | null) {
 
     if (formData.value.username && formData.value.username !== currentUser.username) {
       updateDto.username = formData.value.username;
+    }
+
+    // Actualizar rol si cambió
+    if (formData.value.roleId && formData.value.roleId !== currentUser.roleId) {
+      updateDto.rolPrincipalId = formData.value.roleId;
     }
 
     if (formData.value.habilitado !== currentUser.enabled) {

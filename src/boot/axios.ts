@@ -16,9 +16,9 @@ declare module 'vue' {
 // for each client)
 // Configuración de la API
 // En desarrollo: http://localhost:3000
-// En producción: usar variable de entorno VITE_API_URL
+// En producción/Docker: /api (proxy por nginx)
 const apiBaseURL =
-  import.meta.env.VITE_API_URL || 'http://localhost:3000';
+  import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '/api' : 'http://localhost:3000');
 
 const api = axios.create({
   baseURL: apiBaseURL,
@@ -96,9 +96,25 @@ function logError(method: string, url: string, error: unknown): void {
 // Interceptor para agregar token JWT a las peticiones
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('auth_token');
-    if (token && config.headers) {
-      config.headers.Authorization = `Bearer ${token}`;
+    // Lista de endpoints públicos que no requieren token
+    const publicEndpoints = [
+      '/auth/login',
+      '/auth/public/register',
+      '/auth/register/photo',
+      '/auth/refresh',
+      '/public/', // Permitir endpoints públicos generales (ej: verificación de certificados)
+    ];
+
+    // Verificar si el endpoint es público
+    const isPublicEndpoint =
+      config.url && publicEndpoints.some((endpoint) => config.url?.includes(endpoint));
+
+    // Solo agregar token si no es un endpoint público
+    if (!isPublicEndpoint) {
+      const token = localStorage.getItem('auth_token');
+      if (token && config.headers) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
     }
 
     // Logging en desarrollo
@@ -122,32 +138,55 @@ api.interceptors.response.use(
   (response) => {
     // Logging en desarrollo
     if (response.config.url && response.config.method) {
-      logResponse(
-        response.config.method,
-        response.config.url,
-        response.status,
-        response.data,
-      );
+      logResponse(response.config.method, response.config.url, response.status, response.data);
     }
     return response;
   },
   async (error) => {
     const config = error?.config;
 
-    // Logging de errores
-    if (config?.url && config?.method) {
+    // Logging de errores (excepto 401 que es esperado)
+    if (config?.url && config?.method && error?.response?.status !== 401) {
       logError(config.method, config.url, error);
     }
 
     // Si el error es 401 (No autorizado), redirigir a login
     if (error?.response?.status === 401) {
-      // Si el error 401 ocurre en la página de login, no redirigir, solo mostrar el error
-      if (window.location.pathname !== '/auth/login') {
-        localStorage.removeItem('auth_token');
-        localStorage.removeItem('auth_profile');
-        window.location.href = '/auth/login';
-        return Promise.reject(new Error('Sesión expirada. Por favor, inicia sesión de nuevo.'));
+      // Lista de endpoints públicos que pueden devolver 401 legítimamente
+      const publicEndpoints = [
+        '/auth/login', 
+        '/auth/public/register', 
+        '/auth/register/photo',
+        '/public/', // Importante: endpoints públicos no deben forzar logout
+      ];
+
+      const isPublicEndpoint =
+        config?.url && publicEndpoints.some((endpoint) => config.url?.includes(endpoint));
+
+      // Si el error 401 ocurre en un endpoint público o en la página de login, no redirigir
+      // Y devolver el error original para que lo maneje el componente
+      if (
+        isPublicEndpoint ||
+        window.location.pathname.includes('/login') ||
+        window.location.pathname.includes('/register') ||
+        window.location.href.includes('/verify') // Permitir acceso a verificación pública (Cualquier modo)
+      ) {
+        // Asegurar que el error rechazado sea una instancia de Error
+        const errorToReject =
+          error instanceof Error
+            ? error
+            : new Error(
+                axios.isAxiosError(error) && error.response?.data?.message
+                  ? error.response.data.message
+                  : 'Error de autenticación',
+              );
+        return Promise.reject(errorToReject);
       }
+
+      localStorage.removeItem('auth_token');
+      localStorage.removeItem('auth_profile');
+      window.location.href = '/auth/login';
+      return Promise.reject(new Error('Sesión expirada. Por favor, inicia sesión de nuevo.'));
     }
 
     // Retry automático para errores retryables
@@ -161,19 +200,24 @@ api.interceptors.response.use(
       }
     }
 
-    // Determinar el mensaje de error final
+    // Determinar el mensaje de error final pero mantener el objeto error original si es AxiosError
     let finalErrorMessage: string;
     if (axios.isAxiosError(error) && error.response) {
       // Si hay un mensaje específico del backend, usarlo
       if (typeof error.response.data.message === 'string') {
         finalErrorMessage = error.response.data.message;
-      } else if (Array.isArray(error.response.data.message) && error.response.data.message.length > 0) {
-        // Si el backend envía un array de mensajes (ej. por ValidationPipe), usar el primero o unirlos
+      } else if (
+        Array.isArray(error.response.data.message) &&
+        error.response.data.message.length > 0
+      ) {
         finalErrorMessage = error.response.data.message[0];
       } else {
-        // Mensaje genérico para errores de respuesta HTTP
         finalErrorMessage = `Error ${error.response.status}: ${error.response.statusText}`;
       }
+
+      // Actualizar el mensaje del error original pero devolver el objeto completo
+      error.message = finalErrorMessage;
+      return Promise.reject(error);
     } else if (error instanceof Error) {
       finalErrorMessage = error.message;
     } else {

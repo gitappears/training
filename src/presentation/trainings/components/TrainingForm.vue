@@ -8,6 +8,23 @@
       </div>
 
       <div class="row q-col-gutter-md">
+        <div class="col-12 col-md-4">
+          <q-select
+            v-model="form.type"
+            filled
+            :options="trainingTypes"
+            label="Tipo de capacitación"
+            emit-value
+            map-options
+            :rules="[(val) => !!val || 'Seleccione un tipo']"
+            hint="Tipo de certificación que otorgará"
+            :dense="false"
+          >
+            <template #prepend>
+              <q-icon name="category" />
+            </template>
+          </q-select>
+        </div>
         <div class="col-12 col-md-8">
           <q-input
             v-model="form.title"
@@ -28,23 +45,6 @@
               <q-icon name="title" />
             </template>
           </q-input>
-        </div>
-        <div class="col-12 col-md-4">
-          <q-select
-            v-model="form.type"
-            filled
-            :options="trainingTypes"
-            label="Tipo de capacitación"
-            emit-value
-            map-options
-            :rules="[(val) => !!val || 'Seleccione un tipo']"
-            hint="Tipo de certificación que otorgará"
-            :dense="false"
-          >
-            <template #prepend>
-              <q-icon name="category" />
-            </template>
-          </q-select>
         </div>
       </div>
 
@@ -110,29 +110,7 @@
             </template>
           </q-input>
         </div>
-        <div class="col-12 col-md-2">
-          <q-input
-            v-model.number="form.durationHours"
-            type="number"
-            min="0"
-            step="1"
-            filled
-            label="Duración (horas)"
-            placeholder="0"
-            hint="Horas totales del curso (número entero)"
-            :rules="[
-              (val) => val === null || val === undefined || val === '' || (!isNaN(val) && val >= 0) || 'La duración debe ser un número mayor o igual a 0',
-              (val) => val === null || val === undefined || val === '' || Number.isInteger(Number(val)) || 'La duración debe ser un número entero',
-            ]"
-            :dense="false"
-            @update:model-value="handleDurationChange"
-          >
-            <template #prepend>
-              <q-icon name="schedule" />
-            </template>
-          </q-input>
-        </div>
-        <div class="col-12 col-md-2">
+        <div class="col-12 col-md-3">
           <q-input
             v-model.number="form.capacity"
             type="number"
@@ -149,23 +127,39 @@
           </q-input>
         </div>
         <div class="col-12 col-md-4">
-          <q-input
+          <q-select
             v-model="form.instructor"
             filled
+            use-input
+            input-debounce="300"
+            :options="instructorOptions"
+            option-label="label"
+            option-value="value"
+            emit-value
+            map-options
+            @filter="filterInstructors"
             label="Relator / Instructor"
-            placeholder="Nombre del instructor principal"
+            placeholder="Buscar instructor..."
             hint="Persona responsable de impartir la capacitación"
+            :rules="[(val) => !!val || 'Seleccione un instructor']"
+            :loading="loadingInstructors"
             :dense="false"
           >
             <template #prepend>
               <q-icon name="person" />
             </template>
-          </q-input>
+            <template #no-option>
+              <q-item>
+                <q-item-section class="text-grey">
+                  {{ loadingInstructors ? 'Cargando instructores...' : 'No se encontraron instructores' }}
+                </q-item-section>
+              </q-item>
+            </template>
+          </q-select>
         </div>
       </div>
 
       <div class="row q-col-gutter-md q-mt-sm">
-      
         <div v-if="false" class="col-12 col-md-4">
           <q-input
             v-model="form.area"
@@ -251,58 +245,86 @@
 
       <div class="row q-col-gutter-md">
         <div class="col-12 col-md-6">
-          <q-input
-            v-model="form.coverImageUrl"
+          <div class="q-mb-sm">
+            <div class="text-subtitle2 text-weight-medium q-mb-xs">
+              Imagen de Portada *
+            </div>
+            <div class="text-caption text-grey-7 q-mb-sm">
+              Imagen que se mostrará como portada del curso (recomendado: 1200x675px, máximo 2MB)
+            </div>
+          </div>
+
+          <!-- Vista previa de la imagen -->
+          <div v-if="coverImagePreview || form.coverImageUrl" class="cover-image-preview-container q-mb-md">
+            <div class="cover-image-preview">
+              <q-img
+                :src="getCoverImageUrl"
+                :alt="'Imagen de portada'"
+                fit="contain"
+                class="cover-image-thumbnail"
+                :ratio="16/9"
+              >
+                <template #loading>
+                  <div class="absolute-full flex flex-center">
+                    <q-spinner color="primary" size="2em" />
+                  </div>
+                </template>
+                <template #error>
+                  <div class="absolute-full flex flex-center bg-grey-3">
+                    <q-icon name="broken_image" size="48px" color="grey-6" />
+                  </div>
+                </template>
+                <div class="absolute-top-right q-pa-xs">
+                  <q-btn
+                    flat
+                    round
+                    dense
+                    icon="close"
+                    color="white"
+                    size="sm"
+                    class="bg-negative"
+                    @click="removeCoverImage"
+                  >
+                    <q-tooltip>Eliminar imagen</q-tooltip>
+                  </q-btn>
+                </div>
+              </q-img>
+            </div>
+          </div>
+
+          <!-- Input de archivo -->
+          <q-file
+            v-model="coverImageFile"
             filled
-            label="URL de Imagen de Portada"
-            placeholder="https://ejemplo.com/imagen.jpg"
-            hint="Imagen que se mostrará como portada del curso (recomendado: 1200x675px)"
+            label="Seleccionar imagen"
+            accept="image/*"
+            :max-file-size="2 * 1024 * 1024"
+            :loading="uploadingCoverImage"
+            @update:model-value="handleCoverImageSelected"
+            hint="Formatos: JPG, PNG, GIF, WEBP (máximo 2MB)"
             :dense="false"
-            @blur="validateImageUrl"
           >
             <template #prepend>
               <q-icon name="image" />
             </template>
             <template #append>
-              <q-btn
-                v-if="form.coverImageUrl"
-                flat
-                dense
-                round
-                icon="visibility"
-                @click="showImagePreview = !showImagePreview"
-              >
-                <q-tooltip>Ver preview</q-tooltip>
-              </q-btn>
+              <q-icon name="attach_file" v-if="!coverImageFile" />
+              <q-spinner v-if="uploadingCoverImage" color="primary" size="1.5em" />
             </template>
-          </q-input>
-          <div v-if="showImagePreview && form.coverImageUrl" class="q-mt-sm">
-            <q-img
-              :src="form.coverImageUrl"
-              style="max-height: 200px; border-radius: 8px"
-              placeholder-src="https://via.placeholder.com/400x225?text=Imagen+no+disponible"
-            >
-              <template #error>
-                <div class="absolute-full flex flex-center bg-negative text-white">
-                  Error al cargar imagen
-                </div>
-              </template>
-            </q-img>
+          </q-file>
+
+          <!-- Barra de progreso -->
+          <q-linear-progress
+            v-if="uploadingCoverImage"
+            :value="coverImageUploadProgress"
+            color="primary"
+            class="q-mt-sm"
+          />
+
+          <!-- Mensaje de error si existe -->
+          <div v-if="coverImageError" class="text-negative text-caption q-mt-xs">
+            {{ coverImageError }}
           </div>
-        </div>
-        <div class="col-12 col-md-6">
-          <q-input
-            v-model="form.promoVideoUrl"
-            filled
-            label="URL de Video Promocional"
-            placeholder="https://youtube.com/watch?v=..."
-            hint="Video de presentación del curso (opcional)"
-            :dense="false"
-          >
-            <template #prepend>
-              <q-icon name="videocam" />
-            </template>
-          </q-input>
         </div>
       </div>
     </q-card>
@@ -335,7 +357,8 @@
             <q-icon name="info" color="purple" />
           </template>
           <div class="text-body2">
-            Los videos se reproducen directamente en la plataforma. Ingresa URLs de YouTube, Vimeo u otros servicios compatibles.
+            Los videos se reproducen directamente en la plataforma. Ingresa URLs de YouTube, Vimeo u
+            otros servicios compatibles.
           </div>
         </q-banner>
 
@@ -343,7 +366,9 @@
         <div v-if="videos.length === 0" class="empty-materials q-pa-lg text-center">
           <q-icon name="videocam" size="48px" color="grey-5" class="q-mb-md" />
           <div class="text-body2 text-grey-7 q-mb-sm">No hay videos agregados</div>
-          <div class="text-caption text-grey-6">Agrega videos que se reproducirán en la plataforma</div>
+          <div class="text-caption text-grey-6">
+            Agrega videos que se reproducirán en la plataforma
+          </div>
         </div>
 
         <div v-else class="materials-list q-gutter-md">
@@ -355,33 +380,37 @@
             class="material-card"
           >
             <q-card-section>
-              <div class="row items-center q-gutter-md">
+              <div class="row items-start q-gutter-md">
                 <div class="material-preview-container">
-                  <q-icon name="videocam" size="48px" color="purple" />
+                  <!-- Mostrar iframe si es posible, sino mostrar ícono -->
+                  <div v-if="getVideoEmbedUrl(video.url)" class="video-preview">
+                    <iframe
+                      :src="getVideoEmbedUrl(video.url)"
+                      frameborder="0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowfullscreen
+                      class="video-iframe"
+                    />
+                  </div>
+                  <q-icon v-else name="videocam" size="48px" color="purple" />
                 </div>
                 <div class="col material-info">
                   <div class="text-body1 text-weight-medium q-mb-xs">
                     {{ video.name }}
                   </div>
-                  <q-chip color="purple" text-color="white" size="sm" dense>
-                    Video
-                  </q-chip>
+                  <q-chip color="purple" text-color="white" size="sm" dense> Video </q-chip>
                   <div v-if="video.description" class="text-caption text-grey-6 q-mt-xs">
                     {{ video.description }}
                   </div>
                   <div class="text-caption text-grey-6 q-mt-xs">
-                    {{ video.url }}
+                    <a :href="video.url" target="_blank" class="text-primary">
+                      {{ video.url }}
+                    </a>
                   </div>
                 </div>
                 <div class="material-actions">
                   <q-btn-group flat>
-                    <q-btn
-                      icon="edit"
-                      flat
-                      round
-                      dense
-                      @click="editVideo(index)"
-                    >
+                    <q-btn icon="edit" flat round dense @click="editVideo(index)">
                       <q-tooltip>Editar</q-tooltip>
                     </q-btn>
                     <q-btn
@@ -425,7 +454,8 @@
             <q-icon name="info" color="info" />
           </template>
           <div class="text-body2">
-            Sube PDFs e imágenes que se almacenarán en el servidor. Los archivos estarán disponibles en:
+            Sube PDFs e imágenes que se almacenarán en el servidor. Los archivos estarán disponibles
+            en:
             <code>localhost:3000/storage/materials</code>
           </div>
         </q-banner>
@@ -446,14 +476,53 @@
             class="material-card"
           >
             <q-card-section>
-              <div class="row items-center q-gutter-md">
+              <div class="row items-start q-gutter-md">
                 <div class="material-preview-container">
-                  <MaterialViewer
-                    :material="file"
-                    :show-preview="true"
-                    :allow-download="false"
-                    class="material-preview"
-                  />
+                  <!-- Mostrar miniatura de imagen si es una imagen -->
+                  <div v-if="file.type === 'IMAGE'" class="image-preview">
+                    <q-img
+                      :src="file.url"
+                      :alt="file.name"
+                      fit="cover"
+                      loading="lazy"
+                      class="image-thumbnail"
+                      :ratio="16/9"
+                      @click="viewImage(file.url)"
+                    >
+                      <template #loading>
+                        <div class="absolute-full flex flex-center">
+                          <q-spinner color="primary" size="2em" />
+                        </div>
+                      </template>
+                      <template #error>
+                        <div class="absolute-full flex flex-center bg-grey-3">
+                          <q-icon name="broken_image" size="32px" color="grey-6" />
+                        </div>
+                      </template>
+                    </q-img>
+                  </div>
+                  <!-- Para PDFs, mostrar preview con overlay -->
+                  <div v-else-if="file.type === 'PDF'" class="pdf-preview" @click="openPdfModal(file)">
+                    <div class="pdf-preview-content">
+                      <q-icon name="picture_as_pdf" size="64px" color="negative" />
+                      <div class="text-caption text-grey-7 q-mt-sm">PDF</div>
+                    </div>
+                    <div class="pdf-overlay">
+                      <div class="pdf-overlay-content">
+                        <q-icon name="visibility" size="32px" color="white" />
+                        <div class="text-body2 text-white q-mt-sm text-weight-medium">Ver PDF</div>
+                        <div class="text-caption text-white q-mt-xs opacity-60">Click para abrir</div>
+                      </div>
+                    </div>
+                  </div>
+                  <!-- Para otros tipos, mostrar ícono -->
+                  <div v-else class="file-icon-container">
+                    <q-icon
+                      name="insert_drive_file"
+                      size="48px"
+                      color="grey-6"
+                    />
+                  </div>
                 </div>
                 <div class="col material-info">
                   <div class="text-body1 text-weight-medium q-mb-xs">
@@ -473,13 +542,7 @@
                 </div>
                 <div class="material-actions">
                   <q-btn-group flat>
-                    <q-btn
-                      icon="edit"
-                      flat
-                      round
-                      dense
-                      @click="editFile(index)"
-                    >
+                    <q-btn icon="edit" flat round dense @click="editFile(index)">
                       <q-tooltip>Editar</q-tooltip>
                     </q-btn>
                     <q-btn
@@ -511,22 +574,16 @@
           class="q-mr-sm"
         />
         <div class="text-h6 text-weight-medium">Evaluación</div>
-        <q-badge v-if="!hasEvaluation" color="warning" class="q-ml-md">
-          Requerida
-        </q-badge>
+        <q-badge v-if="!hasEvaluation" color="warning" class="q-ml-md"> Requerida </q-badge>
       </div>
 
-      <q-banner
-        dense
-        class="bg-primary-1 text-primary q-mb-md"
-        rounded
-      >
+      <q-banner dense class="bg-primary-1 text-primary q-mb-md" rounded>
         <template #avatar>
           <q-icon name="info" color="primary" />
         </template>
         <div class="text-body2">
-          <strong>Evaluación obligatoria (RF-09):</strong> Cada capacitación requiere una evaluación.
-          Créela aquí con preguntas y opciones de respuesta.
+          <strong>Evaluación obligatoria:</strong> Cada capacitación requiere una evaluación. Créela
+          aquí con preguntas y opciones de respuesta.
         </div>
       </q-banner>
 
@@ -537,7 +594,8 @@
               <q-icon name="info" color="info" />
             </template>
             <div class="text-body2">
-              Cree una evaluación completa con preguntas y opciones. La evaluación se creará junto con la capacitación.
+            Cree una evaluación completa con preguntas y opciones. La evaluación se creará junto con
+            la capacitación.
             </div>
           </q-banner>
 
@@ -606,7 +664,7 @@
                   filled
                   type="number"
                   label="Puntaje total *"
-                  hint="Calculado automáticamente: suma de los puntajes de todas las preguntas"
+                hint="Siempre será 100 (calculado automáticamente según porcentajes de preguntas)"
                   :dense="false"
                   readonly
                   class="readonly-field"
@@ -656,7 +714,7 @@
             <q-separator class="q-my-md" />
             <div class="text-subtitle1 text-weight-medium q-mb-md">
               <q-icon name="help" class="q-mr-xs" />
-              Preguntas (mínimo 1 según RF-08)
+            Preguntas (mínimo 1)
             </div>
 
             <div
@@ -722,16 +780,42 @@
                     </template>
                   </q-input>
 
+                <div class="row q-col-gutter-md">
+                  <div class="col-12 col-md-6">
                   <q-input
-                    v-model.number="pregunta.puntaje"
+                      v-model.number="pregunta.porcentaje"
                     filled
                     type="number"
-                    label="Puntaje de la pregunta"
-                    hint="Puntaje que vale esta pregunta"
+                      label="Porcentaje de la pregunta (%)"
+                      hint="Porcentaje que vale esta pregunta (opcional, se distribuye automáticamente si no se especifica)"
                     :dense="false"
                     min="0"
+                      max="100"
                     step="0.01"
-                  />
+                      @update:model-value="calculateQuestionScores"
+                    >
+                      <template #prepend>
+                        <q-icon name="percent" />
+                      </template>
+                    </q-input>
+                  </div>
+                  <div class="col-12 col-md-6">
+                    <q-input
+                      :model-value="pregunta.puntaje?.toFixed(2) || '0.00'"
+                      filled
+                      type="text"
+                      label="Puntaje calculado"
+                      hint="Puntaje calculado automáticamente (siempre suma 100)"
+                      readonly
+                      :dense="false"
+                      class="readonly-field"
+                    >
+                      <template #prepend>
+                        <q-icon name="calculate" />
+                      </template>
+                    </q-input>
+                  </div>
+                </div>
 
                   <!-- Opciones de respuesta -->
                   <q-separator class="q-my-sm" />
@@ -756,11 +840,7 @@
                           />
                         </div>
                         <div class="col-auto">
-                          <q-checkbox
-                            v-model="opcion.esCorrecta"
-                            label="Correcta"
-                            color="positive"
-                          />
+                        <q-checkbox v-model="opcion.esCorrecta" label="Correcta" color="positive" />
                         </div>
                         <div class="col-auto">
                           <q-btn
@@ -800,68 +880,6 @@
               @click="addQuestion"
             />
           </div>
-        </div>
-    </q-card>
-
-    <!-- Enlaces externos (mantener compatibilidad) -->
-    <q-card flat bordered class="q-pa-md q-mt-md">
-      <div class="text-subtitle2 q-mb-sm text-weight-medium">
-        <q-icon name="link" size="18px" class="q-mr-xs" />
-        Enlaces Externos (Legacy)
-      </div>
-      <div v-if="form.links.length === 0" class="text-grey-6 q-mb-sm">
-        No hay enlaces agregados
-      </div>
-      <div class="column q-gutter-sm">
-        <q-card
-          v-for="(link, index) in form.links"
-          :key="link.id"
-          flat
-          bordered
-          class="q-pa-sm"
-        >
-          <div class="row q-col-gutter-sm items-center">
-            <div class="col-5">
-              <q-input
-                v-model="link.label"
-                dense
-                filled
-                label="Texto del enlace"
-                placeholder="Ej: Documentación oficial"
-              />
-            </div>
-            <div class="col-6">
-              <q-input
-                v-model="link.url"
-                dense
-                filled
-                label="URL"
-                placeholder="https://..."
-              />
-            </div>
-            <div class="col-auto">
-              <q-btn
-                dense
-                flat
-                round
-                icon="delete"
-                color="negative"
-                size="sm"
-                @click="removeLink(index)"
-              >
-                <q-tooltip>Eliminar enlace</q-tooltip>
-              </q-btn>
-            </div>
-          </div>
-        </q-card>
-        <q-btn
-          outline
-          color="primary"
-          icon="add"
-          label="Agregar enlace"
-          @click="addLink"
-          class="q-mt-sm"
-        />
       </div>
     </q-card>
 
@@ -890,7 +908,7 @@
             placeholder="https://youtube.com/watch?v=... o https://vimeo.com/..."
             :rules="[
               (val) => !!val || 'La URL es requerida',
-              (val) => isValidVideoUrl(val) || 'URL de video no válida (YouTube, Vimeo, etc.)'
+              (val) => isValidVideoUrl(val) || 'URL de video no válida (YouTube, Vimeo, etc.)',
             ]"
             hint="Soporta YouTube, Vimeo y otros servicios de video"
             class="q-mb-md"
@@ -918,17 +936,8 @@
         </q-card-section>
 
         <q-card-actions align="right">
-          <q-btn
-            flat
-            label="Cancelar"
-            color="grey-7"
-            @click="cancelAddVideo"
-          />
-          <q-btn
-            color="primary"
-            label="Agregar"
-            @click="saveVideo"
-          />
+          <q-btn flat label="Cancelar" color="grey-7" @click="cancelAddVideo" />
+          <q-btn color="primary" label="Agregar" @click="saveVideo" />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -1013,12 +1022,7 @@
         </q-card-section>
 
         <q-card-actions align="right">
-          <q-btn
-            flat
-            label="Cancelar"
-            color="grey-7"
-            @click="cancelUploadFile"
-          />
+          <q-btn flat label="Cancelar" color="grey-7" @click="cancelUploadFile" />
           <q-btn
             color="primary"
             label="Subir y Agregar"
@@ -1029,27 +1033,51 @@
       </q-card>
     </q-dialog>
 
+    <!-- Modal para visualizar PDF -->
+    <q-dialog v-model="showPdfModal" :maximized="false">
+      <q-card class="pdf-modal-card">
+        <q-card-section class="row items-center q-pb-sm pdf-modal-header">
+          <div class="row items-center q-gutter-sm">
+            <q-icon name="picture_as_pdf" size="28px" color="negative" />
+            <div class="text-h6 text-weight-medium">{{ selectedPdf?.name }}</div>
+          </div>
+          <q-space />
+          <q-btn icon="close" flat round dense v-close-popup />
+        </q-card-section>
+        <q-separator />
+        <q-card-section v-if="selectedPdf" class="pdf-modal-content q-pa-none">
+          <div class="pdf-viewer-container">
+            <PDFViewer
+              :src="selectedPdf.url"
+              :title="selectedPdf.name"
+              :allow-download="true"
+              :allow-retry="true"
+              class="pdf-viewer-component"
+            />
+          </div>
+        </q-card-section>
+      </q-card>
+    </q-dialog>
+
     <!-- Botones de Acción -->
-    <div class="row justify-between items-center q-mt-lg q-pt-md" style="border-top: 1px solid rgba(0,0,0,0.12)">
+    <div
+      class="row justify-between items-center q-mt-lg q-pt-md"
+      style="border-top: 1px solid rgba(0, 0, 0, 0.12)"
+    >
       <div class="text-caption text-grey-6">
         <q-icon name="info" size="14px" class="q-mr-xs" />
         Los campos marcados con * son obligatorios
       </div>
       <div class="row q-gutter-sm">
-        <q-btn
-          flat
-          label="Limpiar formulario"
-          color="grey-7"
-          icon="refresh"
-          @click="reset"
-        />
+        <q-btn flat label="Limpiar formulario" color="grey-7" icon="refresh" @click="reset" />
         <q-btn
           type="submit"
           color="primary"
           unelevated
           :label="isEditMode ? 'Actualizar capacitación' : 'Crear capacitación'"
           icon="check"
-          :loading="false"
+          :loading="isSubmitting"
+          :disable="isSubmitting"
           class="q-px-xl"
         />
       </div>
@@ -1060,10 +1088,13 @@
 <script setup lang="ts">
 import { reactive, ref, onMounted, computed, watch } from 'vue';
 import { useQuasar } from 'quasar';
-import MaterialViewer from '../../../shared/components/MaterialViewer.vue';
 import type { Material } from '../../../shared/components/MaterialViewer.vue';
+import PDFViewer from '../../../shared/components/PDFViewer.vue';
 import { materialsService } from '../../../infrastructure/http/materials/materials.service';
 import { useMaterialUrl } from '../../../shared/composables/useMaterialUrl';
+import { TRAINING_TYPE_OPTIONS } from '../../../shared/constants/training-types';
+import { usersService } from '../../../infrastructure/http/users/users.service';
+import { useAuthStore } from '../../../stores/auth.store';
 
 export interface EvaluationOption {
   id?: number; // ID de la opción (para edición)
@@ -1078,7 +1109,8 @@ export interface QuestionOption {
   tipoPreguntaId: number;
   enunciado: string;
   imagenUrl?: string;
-  puntaje?: number;
+  puntaje?: number; // Se calculará automáticamente desde porcentaje
+  porcentaje?: number; // Porcentaje específico (0-100), opcional. Si no se especifica, se distribuye automáticamente
   orden?: number;
   requerida?: boolean;
   opciones: EvaluationOption[];
@@ -1103,15 +1135,13 @@ export interface TrainingFormModel {
   type: string | null;
   modality: string | null;
   location: string;
-  durationHours: number | null;
   capacity: number | null;
-  instructor: string;
+  instructor: string | null;
   area: string;
   targetAudience: string | null;
   startDate: string;
   endDate: string;
   coverImageUrl: string;
-  promoVideoUrl: string;
   evaluationId: number | null; // RF-09: Evaluación obligatoria (para vincular existente)
   evaluationInline: InlineEvaluation | null; // RF-09: Evaluación a crear inline
   attachments: { id: string; label: string; url: string }[];
@@ -1127,15 +1157,13 @@ const props = withDefaults(
       type?: 'standard' | 'certified' | 'survey' | null;
       modality?: 'online' | 'onsite' | 'hybrid' | null;
       location?: string;
-      durationHours?: number | null;
       capacity?: number | null;
-      instructor?: string;
+      instructor?: string | null;
       area?: string;
       targetAudience?: string | null;
       startDate?: string;
       endDate?: string;
       coverImageUrl?: string;
-      promoVideoUrl?: string;
       evaluations?: Array<{ id: number }>;
     } | null;
     initialMaterials?: Material[];
@@ -1147,7 +1175,7 @@ const props = withDefaults(
     initialMaterials: () => [],
     initialEvaluationId: null,
     initialEvaluationInline: null,
-  }
+  },
 );
 
 const emit = defineEmits<{
@@ -1156,6 +1184,13 @@ const emit = defineEmits<{
 
 const $q = useQuasar();
 const showImagePreview = ref(false);
+
+// Estados para imagen de portada
+const coverImageFile = ref<File | null>(null);
+const coverImagePreview = ref<string | undefined>(undefined);
+const uploadingCoverImage = ref(false);
+const coverImageUploadProgress = ref(0);
+const coverImageError = ref('');
 
 // Composables
 const { buildFullUrl } = useMaterialUrl();
@@ -1177,6 +1212,10 @@ const files = ref<Material[]>([]);
 const uploading = ref(false);
 const uploadProgress = ref(0);
 
+// Estados para modal de PDF
+const showPdfModal = ref(false);
+const selectedPdf = ref<Material | null>(null);
+
 // Materiales combinados (para compatibilidad con el emit)
 const materials = computed(() => [...videos.value, ...files.value]);
 
@@ -1184,6 +1223,13 @@ const materials = computed(() => [...videos.value, ...files.value]);
 const titleError = ref('');
 const descriptionError = ref('');
 
+// Estados para instructores
+const loadingInstructors = ref(false);
+const allInstructors = ref<Array<{ label: string; value: string }>>([]);
+const instructorOptions = ref<Array<{ label: string; value: string }>>([]);
+
+// Estado para prevenir doble submit
+const isSubmitting = ref(false);
 const newVideo = reactive<Material>({
   name: '',
   url: '',
@@ -1209,11 +1255,8 @@ const fileTypes = [
   { label: 'Imagen', value: 'IMAGE' },
 ];
 
-const trainingTypes = [
-  { label: 'Capacitación estándar', value: 'standard' },
-  { label: 'Capacitación certificada', value: 'certified' },
-  { label: 'Encuesta', value: 'survey' },
-];
+// Usar constantes centralizadas de tipos
+const trainingTypes = TRAINING_TYPE_OPTIONS;
 
 const modalities = [
   { label: 'Online', value: 'online' },
@@ -1221,14 +1264,7 @@ const modalities = [
   { label: 'Mixta', value: 'hybrid' },
 ];
 
-const targetAudiences = [
-  'Conductores',
-  'Administrativos',
-  'Operadores',
-  'Clientes',
-  'Proveedores',
-  'Otros',
-];
+const targetAudiences = ['Administrativos', 'Clientes Corporativos', 'Operadores'];
 
 // Tipos de pregunta (RF-16)
 const questionTypes = [
@@ -1246,17 +1282,105 @@ const hasEvaluation = computed(() => {
 
 /**
  * Calcula automáticamente el puntaje total de la evaluación
- * como la suma de los puntajes de todas las preguntas
+ * Siempre será 100 según el requerimiento
  */
 const calculatedPuntajeTotal = computed(() => {
-  if (!form.evaluationInline?.preguntas || form.evaluationInline.preguntas.length === 0) {
-    return 0;
+  return 100;
+});
+
+/**
+ * Obtiene la URL completa de la imagen de portada para visualización
+ */
+const getCoverImageUrl = computed(() => {
+  // Si hay preview (blob o URL completa), usarlo
+  if (coverImagePreview.value) {
+    return coverImagePreview.value;
   }
-  return form.evaluationInline.preguntas.reduce(
-    (sum, pregunta) => sum + (pregunta.puntaje || 0),
+  
+  // Si hay URL en el formulario, construir URL completa usando buildFullUrl
+  if (form.coverImageUrl) {
+    return buildFullUrl(form.coverImageUrl);
+  }
+  
+  return '';
+});
+
+/**
+ * Calcula y actualiza los puntajes de las preguntas basándose en porcentajes
+ * - Si una pregunta tiene porcentaje específico, se usa ese valor
+ * - El resto se distribuye equitativamente entre las preguntas sin porcentaje
+ * - El puntaje total siempre suma 100
+ */
+function calculateQuestionScores() {
+  if (!form.evaluationInline?.preguntas || form.evaluationInline.preguntas.length === 0) {
+    return;
+  }
+
+  const preguntas = form.evaluationInline.preguntas;
+  
+  // Separar preguntas con porcentaje específico y sin porcentaje
+  const preguntasConPorcentaje = preguntas.filter(
+    (p) => p.porcentaje !== undefined && p.porcentaje !== null && p.porcentaje > 0
+  );
+  const preguntasSinPorcentaje = preguntas.filter(
+    (p) => !p.porcentaje || p.porcentaje === null || p.porcentaje === 0
+  );
+  
+  // Calcular suma de porcentajes especificados
+  const sumaPorcentajesEspecificados = preguntasConPorcentaje.reduce(
+    (sum, p) => sum + (p.porcentaje || 0),
     0
   );
-});
+  
+  // Validar que no se exceda el 100%
+  if (sumaPorcentajesEspecificados > 100) {
+    $q.notify({
+      type: 'warning',
+      message: `La suma de porcentajes especificados (${sumaPorcentajesEspecificados.toFixed(2)}%) no puede exceder 100%`,
+      position: 'top',
+      timeout: 4000,
+    });
+    // Ajustar el último porcentaje para que no exceda 100%
+    if (preguntasConPorcentaje.length > 0) {
+      const ultimaPregunta = preguntasConPorcentaje[preguntasConPorcentaje.length - 1];
+      if (ultimaPregunta) {
+        const porcentajeAjustado = 100 - (sumaPorcentajesEspecificados - (ultimaPregunta.porcentaje || 0));
+        ultimaPregunta.porcentaje = Math.max(0, porcentajeAjustado);
+      }
+    }
+    // Recalcular después del ajuste
+    calculateQuestionScores();
+    return;
+  }
+  
+  // Calcular porcentaje restante a distribuir
+  const porcentajeRestante = 100 - sumaPorcentajesEspecificados;
+  
+  // Distribuir porcentaje restante entre preguntas sin porcentaje específico
+  const porcentajePorPregunta = preguntasSinPorcentaje.length > 0
+    ? porcentajeRestante / preguntasSinPorcentaje.length
+    : 0;
+  
+  // Actualizar puntajes de todas las preguntas
+  preguntas.forEach((pregunta) => {
+    if (pregunta.porcentaje !== undefined && pregunta.porcentaje !== null && pregunta.porcentaje > 0) {
+      // Usar porcentaje especificado
+      pregunta.puntaje = pregunta.porcentaje;
+    } else {
+      // Usar porcentaje calculado automáticamente
+      pregunta.puntaje = porcentajePorPregunta;
+      // Limpiar el campo porcentaje si es 0 para que se muestre como no especificado
+      if (pregunta.porcentaje === 0) {
+        delete pregunta.porcentaje;
+      }
+    }
+  });
+  
+  // Actualizar puntajeTotal en el formulario
+  if (form.evaluationInline) {
+    form.evaluationInline.puntajeTotal = 100;
+  }
+}
 
 // Inicializar evaluación inline si no existe (para modo edición)
 onMounted(() => {
@@ -1274,7 +1398,8 @@ onMounted(() => {
         {
           tipoPreguntaId: 1,
           enunciado: '',
-          puntaje: 1,
+          // Sin porcentaje específico, se distribuirá automáticamente
+          puntaje: 100, // Se calculará automáticamente (100% / 1 pregunta = 100)
           orden: 0,
           requerida: true,
           opciones: [
@@ -1284,7 +1409,28 @@ onMounted(() => {
         },
       ],
     };
+    // Calcular puntajes iniciales
+    calculateQuestionScores();
   }
+
+  // Sincronizar título inicial si ya existe un título de capacitación
+  if (form.title && form.title.trim() && form.evaluationInline) {
+    const currentEvalTitle = form.evaluationInline.titulo?.trim() || '';
+    if (!currentEvalTitle && !evaluationTitleManuallyModified.value) {
+      form.evaluationInline.titulo = form.title.trim();
+    }
+  }
+
+  // Sincronizar descripción inicial si ya existe una descripción de capacitación
+  if (form.description && form.description.trim() && form.evaluationInline) {
+    const currentEvalDescription = form.evaluationInline.descripcion?.trim() || '';
+    if (!currentEvalDescription && !evaluationDescriptionManuallyModified.value) {
+      form.evaluationInline.descripcion = form.description.trim();
+    }
+  }
+
+  // Cargar instructores al montar el componente
+  void loadInstructors();
 });
 
 // Funciones para manejar videos
@@ -1298,6 +1444,64 @@ function isValidVideoUrl(url: string): boolean {
     urlLower.includes('drive.google.com') ||
     /\.(mp4|webm|ogg)$/i.test(urlLower)
   );
+}
+
+/**
+ * Convierte una URL de video a una URL de embed para iframe
+ * Soporta YouTube, Vimeo y otros servicios
+ */
+function getVideoEmbedUrl(url: string): string | null {
+  if (!url || !isValidVideoUrl(url)) {
+    return null;
+  }
+
+  const urlLower = url.toLowerCase();
+
+  // YouTube
+  if (urlLower.includes('youtube.com') || urlLower.includes('youtu.be')) {
+    let videoId = '';
+    
+    // Formato: https://www.youtube.com/watch?v=VIDEO_ID
+    const watchMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/);
+    if (watchMatch && watchMatch[1]) {
+      videoId = watchMatch[1];
+    }
+    
+    // Formato: https://www.youtube.com/embed/VIDEO_ID
+    const embedMatch = url.match(/youtube\.com\/embed\/([^&\n?#]+)/);
+    if (embedMatch && embedMatch[1]) {
+      videoId = embedMatch[1];
+    }
+
+    if (videoId) {
+      return `https://www.youtube.com/embed/${videoId}`;
+    }
+  }
+
+  // Vimeo
+  if (urlLower.includes('vimeo.com')) {
+    // Formato: https://vimeo.com/VIDEO_ID
+    const vimeoMatch = url.match(/vimeo\.com\/(?:.*\/)?(\d+)/);
+    if (vimeoMatch && vimeoMatch[1]) {
+      return `https://player.vimeo.com/video/${vimeoMatch[1]}`;
+    }
+  }
+
+  // Google Drive (videos)
+  if (urlLower.includes('drive.google.com')) {
+    // Formato: https://drive.google.com/file/d/FILE_ID/view
+    const driveMatch = url.match(/drive\.google\.com\/file\/d\/([^/]+)/);
+    if (driveMatch && driveMatch[1]) {
+      return `https://drive.google.com/file/d/${driveMatch[1]}/preview`;
+    }
+  }
+
+  // Si es una URL directa de video (mp4, webm, etc.), devolverla directamente
+  if (/\.(mp4|webm|ogg)$/i.test(url)) {
+    return url;
+  }
+
+  return null;
 }
 
 function previewVideo(url: string): void {
@@ -1427,6 +1631,143 @@ function previewFile(file: File | null): void {
   }
 }
 
+/**
+ * Abre una imagen en un modal para visualización completa
+ */
+function viewImage(imageUrl: string): void {
+  // Abrir la imagen en una nueva ventana para visualización completa
+  window.open(imageUrl, '_blank');
+}
+
+/**
+ * Abre un PDF en un modal para visualización completa con PDFViewer
+ */
+function openPdfModal(file: Material): void {
+  selectedPdf.value = file;
+  showPdfModal.value = true;
+}
+
+/**
+ * Maneja la selección de imagen de portada
+ */
+async function handleCoverImageSelected(file: File | null): Promise<void> {
+  coverImageError.value = '';
+  
+  if (!file) {
+    // Si se elimina el archivo, limpiar preview si es un blob
+    if (coverImagePreview.value && coverImagePreview.value.startsWith('blob:')) {
+      URL.revokeObjectURL(coverImagePreview.value);
+    }
+    coverImagePreview.value = undefined;
+    return;
+  }
+
+  // Validar que sea una imagen
+  if (!file.type.startsWith('image/')) {
+    coverImageError.value = 'El archivo seleccionado no es una imagen válida';
+    coverImageFile.value = null;
+    return;
+  }
+
+  // Validar tamaño (2MB)
+  if (file.size > 2 * 1024 * 1024) {
+    coverImageError.value = 'El archivo excede el tamaño máximo de 2MB';
+    coverImageFile.value = null;
+    return;
+  }
+
+  // Mostrar preview inmediato usando URL.createObjectURL
+  if (coverImagePreview.value && coverImagePreview.value.startsWith('blob:')) {
+    URL.revokeObjectURL(coverImagePreview.value);
+  }
+  coverImagePreview.value = URL.createObjectURL(file);
+
+  // Subir el archivo automáticamente
+  await uploadCoverImage(file);
+}
+
+/**
+ * Sube la imagen de portada al servidor
+ */
+async function uploadCoverImage(file: File): Promise<void> {
+  uploadingCoverImage.value = true;
+  coverImageUploadProgress.value = 0;
+  coverImageError.value = '';
+
+  try {
+    const response = await materialsService.uploadFile(file, (progress) => {
+      coverImageUploadProgress.value = progress;
+    });
+
+    // Guardar la URL relativa en el formulario
+    // El backend espera URLs relativas para archivos locales
+    form.coverImageUrl = response.url;
+
+    // Construir URL completa para visualización
+    const fullUrl = buildFullUrl(response.url);
+    
+    // Revocar el blob URL anterior
+    if (coverImagePreview.value && coverImagePreview.value.startsWith('blob:')) {
+      URL.revokeObjectURL(coverImagePreview.value);
+    }
+    
+    // Actualizar preview con la URL del servidor
+    coverImagePreview.value = fullUrl;
+
+    $q.notify({
+      type: 'positive',
+      message: 'Imagen de portada cargada exitosamente',
+      position: 'top',
+      timeout: 2000,
+    });
+  } catch (error) {
+    console.error('Error al subir imagen de portada:', error);
+    coverImageError.value = error instanceof Error 
+      ? error.message 
+      : 'Error al subir la imagen. Por favor, intente nuevamente';
+    
+    // Limpiar preview y archivo en caso de error
+    if (coverImagePreview.value && coverImagePreview.value.startsWith('blob:')) {
+      URL.revokeObjectURL(coverImagePreview.value);
+    }
+    coverImagePreview.value = undefined;
+    coverImageFile.value = null;
+    form.coverImageUrl = '';
+
+    $q.notify({
+      type: 'negative',
+      message: 'Error al subir la imagen de portada',
+      position: 'top',
+      timeout: 3000,
+    });
+  } finally {
+    uploadingCoverImage.value = false;
+    coverImageUploadProgress.value = 0;
+  }
+}
+
+/**
+ * Elimina la imagen de portada
+ */
+function removeCoverImage(): void {
+  // Revocar URL del objeto si es un blob
+  if (coverImagePreview.value && coverImagePreview.value.startsWith('blob:')) {
+    URL.revokeObjectURL(coverImagePreview.value);
+  }
+  
+  coverImagePreview.value = undefined;
+  coverImageFile.value = null;
+  form.coverImageUrl = '';
+  coverImageError.value = '';
+  
+  $q.notify({
+    type: 'info',
+    message: 'Imagen de portada eliminada',
+    position: 'top',
+    timeout: 2000,
+  });
+}
+
 function handleFileSelected(file: File | null): void {
   if (file) {
     // Validar tipo
@@ -1475,12 +1816,9 @@ async function uploadAndSaveFile(): Promise<void> {
   uploadProgress.value = 0;
 
   try {
-    const response = await materialsService.uploadFile(
-      newFile.file,
-      (progress) => {
+    const response = await materialsService.uploadFile(newFile.file, (progress) => {
         uploadProgress.value = progress;
-      },
-    );
+    });
 
     // Guardar URL relativa para el backend, pero construir URL completa para visualización
     // El backend espera URLs relativas o URLs completas válidas
@@ -1514,7 +1852,8 @@ async function uploadAndSaveFile(): Promise<void> {
     cancelUploadFile();
     $q.notify({
       type: 'positive',
-      message: editingFileIndex.value !== null ? 'Archivo actualizado' : 'Archivo subido exitosamente',
+      message:
+        editingFileIndex.value !== null ? 'Archivo actualizado' : 'Archivo subido exitosamente',
       position: 'top',
     });
   } catch (error) {
@@ -1576,7 +1915,8 @@ function addQuestion(): void {
   const newQuestion: QuestionOption = {
     tipoPreguntaId: 1,
     enunciado: '',
-    puntaje: 1,
+    // Sin porcentaje específico, se distribuirá automáticamente
+    puntaje: 0, // Se calculará automáticamente
     orden: form.evaluationInline.preguntas.length,
     requerida: true,
     opciones: [
@@ -1585,6 +1925,8 @@ function addQuestion(): void {
     ],
   };
   form.evaluationInline.preguntas.push(newQuestion);
+  // Recalcular puntajes después de agregar
+  calculateQuestionScores();
 }
 
 function removeQuestion(index: number): void {
@@ -1595,10 +1937,12 @@ function removeQuestion(index: number): void {
     form.evaluationInline.preguntas.forEach((p, i) => {
       p.orden = i;
     });
+    // Recalcular puntajes después de eliminar
+    calculateQuestionScores();
   } else {
     $q.notify({
       type: 'warning',
-      message: 'Debe tener al menos una pregunta (RF-08)',
+      message: 'Debe tener al menos una pregunta',
       position: 'top',
       timeout: 3000,
     });
@@ -1643,15 +1987,13 @@ const form = reactive<TrainingFormModel>({
   type: null,
   modality: null,
   location: '',
-  durationHours: null,
   capacity: null,
-  instructor: '',
+  instructor: null,
   area: '',
-  targetAudience: 'Conductores',
+  targetAudience: 'Operadores',
   startDate: '',
   endDate: '',
   coverImageUrl: '',
-  promoVideoUrl: '',
   evaluationId: null, // RF-09: Evaluación obligatoria (para vincular existente)
   evaluationInline: {
     titulo: '',
@@ -1666,7 +2008,7 @@ const form = reactive<TrainingFormModel>({
       {
         tipoPreguntaId: 1,
         enunciado: '',
-        puntaje: 1,
+        puntaje: 100,
         orden: 0,
         requerida: true,
         opciones: [
@@ -1681,20 +2023,28 @@ const form = reactive<TrainingFormModel>({
 });
 
 function reset() {
+  evaluationTitleManuallyModified.value = false;
+  evaluationDescriptionManuallyModified.value = false;
   form.title = '';
   form.description = '';
   form.type = null;
   form.modality = null;
   form.location = '';
-  form.durationHours = null;
   form.capacity = null;
-  form.instructor = '';
+  form.instructor = null;
   form.area = '';
   form.targetAudience = 'Conductores';
   form.startDate = '';
   form.endDate = '';
+  
+  // Limpiar imagen de portada
+  if (coverImagePreview.value && coverImagePreview.value.startsWith('blob:')) {
+    URL.revokeObjectURL(coverImagePreview.value);
+  }
+  coverImagePreview.value = undefined;
+  coverImageFile.value = null;
+  coverImageError.value = '';
   form.coverImageUrl = '';
-  form.promoVideoUrl = '';
   form.evaluationId = null;
   form.evaluationInline = {
     titulo: '',
@@ -1709,7 +2059,8 @@ function reset() {
       {
         tipoPreguntaId: 1,
         enunciado: '',
-        puntaje: 1,
+        // Sin porcentaje específico, se distribuirá automáticamente
+        puntaje: 100, // Se calculará automáticamente (100% / 1 pregunta = 100)
         orden: 0,
         requerida: true,
         opciones: [
@@ -1719,6 +2070,8 @@ function reset() {
       },
     ],
   };
+  // Calcular puntajes iniciales después de reset
+  calculateQuestionScores();
   form.attachments = [];
   form.links = [];
   videos.value = [];
@@ -1739,35 +2092,80 @@ function initializeFormWithData() {
   form.type = data.type ?? null;
   form.modality = data.modality ?? null;
   form.location = data.location || '';
-  form.durationHours = data.durationHours ?? null;
   form.capacity = data.capacity ?? null;
-  form.instructor = data.instructor || '';
+  form.instructor = data.instructor || null;
   form.area = data.area || '';
   form.targetAudience = data.targetAudience ?? 'Conductores';
   form.startDate = data.startDate || '';
   form.endDate = data.endDate || '';
   form.coverImageUrl = data.coverImageUrl || '';
-  form.promoVideoUrl = data.promoVideoUrl || '';
 
   // Cargar materiales iniciales y separar videos de archivos
   if (props.initialMaterials && props.initialMaterials.length > 0) {
-    videos.value = props.initialMaterials.filter(m => m.type === 'VIDEO');
-    files.value = props.initialMaterials.filter(m => m.type !== 'VIDEO');
+    videos.value = props.initialMaterials.filter((m) => m.type === 'VIDEO');
+    files.value = props.initialMaterials.filter((m) => m.type !== 'VIDEO');
   }
 
   // Cargar evaluación inline si se proporciona (modo edición)
+  // Hacer copia profunda para evitar problemas de reactividad
   if (props.initialEvaluationInline) {
-    form.evaluationInline = { ...props.initialEvaluationInline };
+    form.evaluationInline = {
+      titulo: props.initialEvaluationInline.titulo || '',
+      ...(props.initialEvaluationInline.descripcion && {
+        descripcion: props.initialEvaluationInline.descripcion,
+      }),
+      ...(props.initialEvaluationInline.tiempoLimiteMinutos !== undefined && {
+      tiempoLimiteMinutos: props.initialEvaluationInline.tiempoLimiteMinutos,
+      }),
+      intentosPermitidos: props.initialEvaluationInline.intentosPermitidos || 1,
+      mostrarResultados: props.initialEvaluationInline.mostrarResultados ?? true,
+      mostrarRespuestasCorrectas: props.initialEvaluationInline.mostrarRespuestasCorrectas ?? false,
+      puntajeTotal: props.initialEvaluationInline.puntajeTotal || 100,
+      minimoAprobacion: props.initialEvaluationInline.minimoAprobacion || 70,
+      orden: props.initialEvaluationInline.orden || 0,
+      preguntas: props.initialEvaluationInline.preguntas.map((p) => ({
+        ...(p.id !== undefined && { id: p.id }),
+        tipoPreguntaId: p.tipoPreguntaId,
+        enunciado: p.enunciado || '',
+        ...(p.imagenUrl !== undefined && { imagenUrl: p.imagenUrl }),
+        ...(p.porcentaje !== undefined && { porcentaje: p.porcentaje }),
+        puntaje: p.puntaje || 0, // Se recalculará automáticamente
+        orden: p.orden ?? 0,
+        requerida: p.requerida ?? true,
+        opciones: p.opciones.map((o) => ({
+          ...(o.id !== undefined && { id: o.id }),
+          texto: o.texto || '',
+          esCorrecta: Boolean(o.esCorrecta), // Asegurar que sea booleano
+          puntajeParcial: o.puntajeParcial || 0,
+          orden: o.orden ?? 0,
+        })),
+      })),
+    };
+    // Calcular puntajes después de cargar datos iniciales
+    calculateQuestionScores();
   }
 }
+
+// Flag para rastrear si el usuario modificó manualmente el título de evaluación
+// IMPORTANTE: Declarar antes de los watches que lo usan
+const evaluationTitleManuallyModified = ref(false);
+// Flag temporal para evitar que el watch del título de evaluación se active durante la sincronización
+const isSyncingFromTrainingTitle = ref(false);
+// Flag para rastrear si el usuario modificó manualmente la descripción de evaluación
+const evaluationDescriptionManuallyModified = ref(false);
+// Flag temporal para evitar que el watch de la descripción de evaluación se active durante la sincronización
+const isSyncingFromTrainingDescription = ref(false);
 
 // Inicializar cuando se monta el componente o cambian los props
 watch(
   () => props.initialData,
   () => {
     initializeFormWithData();
+    // Resetear los flags cuando se inicializa con datos nuevos
+    evaluationTitleManuallyModified.value = false;
+    evaluationDescriptionManuallyModified.value = false;
   },
-  { immediate: true }
+  { immediate: true },
 );
 
 // También inicializar materiales cuando cambien
@@ -1775,17 +2173,128 @@ watch(
   () => props.initialMaterials,
   (newMaterials) => {
     if (newMaterials && newMaterials.length > 0) {
-      videos.value = newMaterials.filter(m => m.type === 'VIDEO');
-      files.value = newMaterials.filter(m => m.type !== 'VIDEO');
+      videos.value = newMaterials.filter((m) => m.type === 'VIDEO');
+      files.value = newMaterials.filter((m) => m.type !== 'VIDEO');
     }
   },
-  { immediate: true }
+  { immediate: true },
 );
 
+// Sincronizar título de capacitación con título de evaluación
+// Sincroniza automáticamente a menos que el usuario haya modificado manualmente el título de evaluación
+watch(
+  () => form.title,
+  (newTitle) => {
+    if (form.evaluationInline && newTitle && newTitle.trim()) {
+      // Solo sincronizar si el usuario no ha modificado manualmente el título de evaluación
+      if (!evaluationTitleManuallyModified.value) {
+        isSyncingFromTrainingTitle.value = true;
+        form.evaluationInline.titulo = newTitle.trim();
+        // Resetear el flag después de un pequeño delay para que el watch del título de evaluación no se active
+        setTimeout(() => {
+          isSyncingFromTrainingTitle.value = false;
+        }, 0);
+      }
+    }
+  },
+);
 
+// Detectar cuando el usuario modifica manualmente el título de evaluación
+watch(
+  () => form.evaluationInline?.titulo,
+  (newEvalTitle) => {
+    // No hacer nada si estamos sincronizando desde el título de capacitación
+    if (isSyncingFromTrainingTitle.value) {
+      return;
+    }
+
+    if (form.evaluationInline && form.title) {
+      // Si el título de evaluación no coincide con el título de capacitación,
+      // significa que el usuario lo modificó manualmente
+      const trainingTitle = form.title.trim();
+      const evalTitle = newEvalTitle?.trim() || '';
+
+      if (evalTitle && evalTitle !== trainingTitle) {
+        evaluationTitleManuallyModified.value = true;
+      } else if (evalTitle === trainingTitle) {
+        // Si vuelve a coincidir, resetear el flag (por si el usuario borra y vuelve a escribir)
+        evaluationTitleManuallyModified.value = false;
+      }
+    }
+  },
+);
+
+// Sincronizar descripción de capacitación con descripción de evaluación
+// Sincroniza automáticamente a menos que el usuario haya modificado manualmente la descripción de evaluación
+watch(
+  () => form.description,
+  (newDescription) => {
+    if (form.evaluationInline && newDescription && newDescription.trim()) {
+      // Solo sincronizar si el usuario no ha modificado manualmente la descripción de evaluación
+      if (!evaluationDescriptionManuallyModified.value) {
+        isSyncingFromTrainingDescription.value = true;
+        form.evaluationInline.descripcion = newDescription.trim();
+        // Resetear el flag después de un pequeño delay para que el watch de la descripción de evaluación no se active
+        setTimeout(() => {
+          isSyncingFromTrainingDescription.value = false;
+        }, 0);
+      }
+    }
+  },
+);
+
+// Detectar cuando el usuario modifica manualmente la descripción de evaluación
+watch(
+  () => form.evaluationInline?.descripcion,
+  (newEvalDescription) => {
+    // No hacer nada si estamos sincronizando desde la descripción de capacitación
+    if (isSyncingFromTrainingDescription.value) {
+      return;
+    }
+
+    if (form.evaluationInline && form.description) {
+      // Si la descripción de evaluación no coincide con la descripción de capacitación,
+      // significa que el usuario la modificó manualmente
+      const trainingDescription = form.description.trim();
+      const evalDescription = newEvalDescription?.trim() || '';
+
+      if (evalDescription && evalDescription !== trainingDescription) {
+        evaluationDescriptionManuallyModified.value = true;
+      } else if (evalDescription === trainingDescription) {
+        // Si vuelve a coincidir, resetear el flag (por si el usuario borra y vuelve a escribir)
+        evaluationDescriptionManuallyModified.value = false;
+      }
+    }
+  },
+);
+
+// Watch para recalcular puntajes cuando cambian las preguntas (agregar/eliminar)
+watch(
+  () => form.evaluationInline?.preguntas?.length,
+  () => {
+    calculateQuestionScores();
+  }
+);
+
+// Watch para recalcular cuando cambia un porcentaje específico
+watch(
+  () => form.evaluationInline?.preguntas?.map((p) => p.porcentaje),
+  () => {
+    // Usar nextTick para asegurar que el cambio se haya aplicado
+    setTimeout(() => {
+      calculateQuestionScores();
+    }, 0);
+  },
+  { deep: true }
+);
 
 function onSubmit() {
-  // Validar evaluación obligatoria (RF-09) - siempre inline ahora
+  // Prevenir doble submit
+  if (isSubmitting.value) {
+    return;
+  }
+
+  // Validar evaluación obligatoria - siempre inline ahora
   if (!form.evaluationInline || !form.evaluationInline.titulo) {
     $q.notify({
       type: 'warning',
@@ -1799,7 +2308,7 @@ function onSubmit() {
   if (!form.evaluationInline.preguntas || form.evaluationInline.preguntas.length === 0) {
     $q.notify({
       type: 'warning',
-      message: 'Debe agregar al menos una pregunta (RF-08)',
+      message: 'Debe agregar al menos una pregunta',
       position: 'top',
       timeout: 3000,
     });
@@ -1865,22 +2374,28 @@ function onSubmit() {
       }
     }
 
-  emit('submit', { ...form }, materials.value);
+  // Marcar como submitting antes de emitir
+  isSubmitting.value = true;
+  
+  try {
+    emit('submit', { ...form }, materials.value);
+  } catch (error) {
+    // Si hay error en el emit, resetear el estado
+    isSubmitting.value = false;
+    throw error;
+  }
+  // Nota: No resetear isSubmitting aquí, dejar que handleSubmit lo haga cuando termine
 }
+
+// Exponer estado para que el componente padre pueda resetearlo
+defineExpose({
+  isSubmitting,
+  resetSubmitting: () => {
+    isSubmitting.value = false;
+  },
+});
 
 // Funciones de attachments removidas - ya no se usan en el formulario actual
-
-function addLink() {
-  form.links.push({
-    id: Date.now().toString() + Math.random().toString(16).slice(2),
-    label: '',
-    url: '',
-  });
-}
-
-function removeLink(index: number) {
-  form.links.splice(index, 1);
-}
 
 function validateTitle() {
   const title = form.title?.trim() ?? '';
@@ -1914,19 +2429,56 @@ function validateDescription() {
   return true;
 }
 
-function validateImageUrl() {
-  if (form.coverImageUrl && !form.coverImageUrl.startsWith('http')) {
-    // Podrías agregar validación adicional aquí
+// Función para cargar instructores del backend
+async function loadInstructors() {
+  loadingInstructors.value = true;
+  try {
+    // Obtener todos los instructores filtrados únicamente por rol INSTRUCTOR
+    // Sin filtrar por usuario creador - se muestran todos los instructores disponibles
+    const response = await usersService.findAll({
+      page: 1,
+      limit: 1000, // Obtener todos los instructores
+      filters: {
+        // @ts-expect-error - 'instructor' no está en UserRole pero el backend lo soporta
+        role: 'instructor', // El servicio mapeará esto a 'INSTRUCTOR' en el backend
+      },
+    });
+
+    // Mapear usuarios a opciones para el select
+    allInstructors.value = response.data.map((user) => ({
+      label: user.name?.trim() || user.email || `Usuario ${user.id}`,
+      value: user.id.toString(),
+    }));
+
+    instructorOptions.value = [...allInstructors.value];
+  } catch (error) {
+    console.error('Error al cargar instructores:', error);
+    $q.notify({
+      type: 'negative',
+      message: 'Error al cargar la lista de instructores',
+      position: 'top',
+      timeout: 3000,
+    });
+  } finally {
+    loadingInstructors.value = false;
   }
 }
 
-function handleDurationChange(value: string | number | null) {
-  // Convertir a entero si tiene valor
-  if (value !== null && value !== undefined && value !== '') {
-    form.durationHours = Math.round(Number(value));
-  } else {
-    form.durationHours = null;
+// Función para filtrar instructores en el select
+function filterInstructors(val: string, update: (callback: () => void) => void) {
+  if (val === '') {
+    update(() => {
+      instructorOptions.value = [...allInstructors.value];
+    });
+    return;
   }
+
+  update(() => {
+    const needle = val.toLowerCase();
+    instructorOptions.value = allInstructors.value.filter(
+      (instructor) => instructor.label.toLowerCase().indexOf(needle) > -1,
+    );
+  });
 }
 
 // Funciones para gestión de materiales
@@ -1963,8 +2515,6 @@ function getMaterialTypeLabel(type: string): string {
   };
   return typeMap[type] || type;
 }
-
-
 
 function generateId(): string {
   return Date.now().toString() + Math.random().toString(16).slice(2);
@@ -2009,6 +2559,127 @@ function generateId(): string {
   .material-preview-container {
     width: 120px;
     min-width: 120px;
+    
+    .video-preview {
+      width: 100%;
+      height: 0;
+      padding-bottom: 56.25%; // Aspect ratio 16:9
+      position: relative;
+      border-radius: 8px;
+      overflow: hidden;
+      background-color: rgba(0, 0, 0, 0.1);
+      
+      .video-iframe {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        border-radius: 8px;
+      }
+    }
+    
+    .image-preview {
+      width: 100%;
+      border-radius: 8px;
+      overflow: hidden;
+      background-color: rgba(0, 0, 0, 0.05);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      
+      &:hover {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        
+        .image-thumbnail {
+          transform: scale(1.05);
+        }
+      }
+      
+      .image-thumbnail {
+        width: 100%;
+        border-radius: 8px;
+        transition: transform 0.2s ease;
+      }
+    }
+    
+    .pdf-preview {
+      width: 100%;
+      height: 0;
+      padding-bottom: 56.25%; // Aspect ratio 16:9
+      position: relative;
+      border-radius: 8px;
+      overflow: hidden;
+      background: linear-gradient(135deg, rgba(244, 67, 54, 0.1) 0%, rgba(244, 67, 54, 0.05) 100%);
+      border: 2px solid rgba(244, 67, 54, 0.2);
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      
+      &:hover {
+        box-shadow: 0 6px 20px rgba(244, 67, 54, 0.3);
+        transform: translateY(-2px);
+        border-color: rgba(244, 67, 54, 0.4);
+        
+        .pdf-overlay {
+          opacity: 1;
+        }
+        
+        .pdf-preview-content {
+          opacity: 0.3;
+        }
+      }
+      
+      .pdf-preview-content {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        transition: opacity 0.3s ease;
+        z-index: 1;
+      }
+      
+      .pdf-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(135deg, rgba(244, 67, 54, 0.9) 0%, rgba(211, 47, 47, 0.9) 100%);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+        border-radius: 8px;
+        z-index: 2;
+        
+        .pdf-overlay-content {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          text-align: center;
+        }
+      }
+    }
+    
+    .file-icon-container {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      border-radius: 8px;
+      background-color: rgba(0, 0, 0, 0.02);
+    }
   }
 
   .material-info {
@@ -2017,6 +2688,14 @@ function generateId(): string {
 
   .material-actions {
     flex-shrink: 0;
+  }
+}
+
+// Para hacer el preview más grande en pantallas medianas
+@media (min-width: 600px) {
+  .materials-list .material-preview-container {
+    width: 200px;
+    min-width: 200px;
   }
 }
 
@@ -2081,6 +2760,114 @@ body.body--dark {
   .readonly-field {
     .q-field__control {
       background-color: rgba(255, 255, 255, 0.05);
+    }
+  }
+}
+
+// Estilos para el modal de PDF
+.pdf-modal-card {
+  width: 90vw;
+  max-width: 1400px;
+  height: 90vh;
+  max-height: 900px;
+  display: flex;
+  flex-direction: column;
+  
+  .pdf-modal-header {
+    flex-shrink: 0;
+    padding: 16px 24px;
+    background-color: rgba(0, 0, 0, 0.02);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  }
+  
+  .pdf-modal-content {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    position: relative;
+    
+    .pdf-viewer-container {
+      flex: 1;
+      overflow: auto;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      
+      .pdf-viewer-component {
+        flex: 1;
+        min-height: 650px;
+        width: 100%;
+      }
+    }
+  }
+}
+
+// Ajustes responsivos para el modal de PDF
+@media (max-width: 768px) {
+  .pdf-modal-card {
+    width: 95vw;
+    height: 95vh;
+    max-height: none;
+  }
+}
+
+body.body--dark {
+  .pdf-modal-card {
+    .pdf-modal-header {
+      background-color: rgba(255, 255, 255, 0.05);
+    }
+  }
+  
+  .pdf-preview {
+    background: linear-gradient(135deg, rgba(244, 67, 54, 0.15) 0%, rgba(244, 67, 54, 0.08) 100%);
+    border-color: rgba(244, 67, 54, 0.3);
+    
+    &:hover {
+      border-color: rgba(244, 67, 54, 0.5);
+    }
+  }
+}
+
+// Utilidad para opacidad
+.opacity-60 {
+  opacity: 0.6;
+}
+
+// Estilos para la vista previa de imagen de portada
+.cover-image-preview-container {
+  width: 100%;
+  
+  .cover-image-preview {
+    width: 100%;
+    height: 0;
+    padding-bottom: 56.25%; // Aspect ratio 16:9
+    position: relative;
+    border-radius: 8px;
+    overflow: hidden;
+    background-color: rgba(0, 0, 0, 0.05);
+    border: 2px solid rgba(0, 0, 0, 0.1);
+    
+    .cover-image-thumbnail {
+      width: 100%;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: transform 0.2s ease;
+      
+      &:hover {
+        transform: scale(1.02);
+      }
+    }
+  }
+}
+
+body.body--dark {
+  .cover-image-preview-container {
+    .cover-image-preview {
+      background-color: rgba(255, 255, 255, 0.05);
+      border-color: rgba(255, 255, 255, 0.1);
     }
   }
 }

@@ -9,6 +9,20 @@ import { useThemeStore } from './stores/theme.store';
 const themeStore = useThemeStore();
 
 onMounted(() => {
+  // DEBUG: Verificar versión de la App
+  console.log('🚀 APP VERSION: 2026-01-03-DEBUG-FIX-V2');
+  console.log('📍 Current URL:', window.location.href);
+
+  // FORCE: Eliminar Service Workers antiguos que puedan estar cacheando la app vieja
+  if ('serviceWorker' in navigator) {
+    void navigator.serviceWorker.getRegistrations().then(function(registrations) {
+      for(const registration of registrations) {
+        console.log('🗑️ Unregistering Service Worker:', registration);
+        void registration.unregister();
+      }
+    });
+  }
+
   // Asegurar que el tema se aplique correctamente
   themeStore.initTheme();
   

@@ -31,6 +31,12 @@ interface BackendPersona {
   activo: boolean;
   fechaCreacion: string;
   fechaActualizacion: string;
+  empresaId?: number;
+  empresa?: {
+    id: number;
+    razonSocial: string;
+    numeroDocumento: string;
+  };
 }
 
 interface BackendRol {
@@ -88,6 +94,10 @@ function mapBackendToDomain(backendData: BackendUser): User {
     birthDate: persona.fechaNacimiento || undefined,
     gender: (persona.genero as 'M' | 'F' | 'O') || undefined,
     address: persona.direccion || undefined,
+    empresaId: persona.empresaId,
+    empresa: persona.empresa,
+    company: persona.empresa?.razonSocial || undefined,
+    companyName: persona.empresa?.razonSocial || undefined,
     createdAt: backendData.fechaCreacion || new Date().toISOString(),
   };
 
@@ -151,6 +161,7 @@ export class UsersService implements IUserRepository {
           admin: 'ADMIN',
           institutional: 'CLIENTE',
           driver: 'ALUMNO',
+          instructor: 'INSTRUCTOR',
         };
         queryParams.role = roleMap[params.filters.role] || params.filters.role.toUpperCase();
       }
@@ -266,7 +277,7 @@ export class UsersService implements IUserRepository {
         backendDto.email = dto.email;
       }
       if (dto.phone !== undefined) {
-        backendDto.telefono = dto.phone;
+        backendDto.telefono = dto.phone.replace(/\s+/g, '');
       }
       if (dto.birthDate !== undefined) {
         backendDto.fechaNacimiento = dto.birthDate;

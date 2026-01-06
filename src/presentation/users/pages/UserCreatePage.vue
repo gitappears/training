@@ -3,14 +3,7 @@
     <!-- Header -->
     <div class="q-mb-xl">
       <div class="row items-center q-mb-md">
-        <q-btn
-          flat
-          round
-          icon="arrow_back"
-          color="primary"
-          @click="goBack"
-          class="q-mr-sm"
-        >
+        <q-btn flat round icon="arrow_back" color="primary" @click="goBack" class="q-mr-sm">
           <q-tooltip>Volver</q-tooltip>
         </q-btn>
         <div class="col">
@@ -26,21 +19,9 @@
     <q-card flat bordered class="wizard-card">
       <q-card-section class="q-pa-none">
         <!-- Wizard Steps -->
-        <q-stepper
-          v-model="step"
-          color="primary"
-          animated
-          flat
-          class="wizard-stepper"
-        >
-          <q-step
-            :name="1"
-            title="Información Básica"
-            icon="person"
-            :done="step > 1"
-          >
+        <q-stepper v-model="step" color="primary" animated flat class="wizard-stepper">
+          <q-step :name="1" title="Información Básica" icon="person" :done="step > 1">
             <div class="q-pa-lg">
-              <div class="text-subtitle1 q-mb-md text-weight-medium">Datos Personales</div>
               <q-form ref="basicFormRef" @submit="nextStep" class="column q-gutter-md">
                 <div class="row q-col-gutter-md">
                   <div class="col-12 col-md-6">
@@ -61,9 +42,13 @@
                     <q-input
                       v-model="form.document"
                       outlined
-                      label="Número de Documento *"
+                      maxlength="15"
+                      :label="form.documentType === 'NIT' ? 'NIT' : 'Número de Documento *'"
                       :rules="[
-                        (val) => !!val || 'El número de documento es requerido',
+                        (val) =>
+                          form.documentType === 'NIT'
+                            ? !val || /^[0-9]+$/.test(val) || 'Solo números'
+                            : !!val || 'El número de documento es requerido',
                         (val) => /^[0-9]+$/.test(val) || 'Solo números',
                         (val) => (val.length >= 7 && val.length <= 15) || 'Entre 7 y 15 dígitos',
                       ]"
@@ -75,26 +60,64 @@
                       </template>
                     </q-input>
                   </div>
-                </div>
 
-                <div class="row q-col-gutter-md">
-                  <div class="col-12 col-md-6">
+                  <div class="col-12" v-if="isNIT">
                     <q-input
-                      v-model="form.name"
+                      v-model="form.companyName"
+                      label="Razón Social *"
                       outlined
-                      label="Nombre Completo *"
-                      :rules="[
-                        (val) => !!val || 'El nombre es requerido',
-                        (val) => /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(val) || 'Solo letras',
-                        (val) => val.length >= 2 || 'Mínimo 2 caracteres',
-                      ]"
                       :disable="loading"
+                      :rules="[(val) => !!val || 'La razón social es requerida para NIT']"
+                      hint="Nombre legal de la empresa"
+                    >
+                      <template #prepend>
+                        <q-icon name="business" />
+                      </template>
+                    </q-input>
+                  </div>
+                  <div class="col-12" v-if="isNIT">
+                    <q-input
+                      v-model="form.nombres"
+                      label="Nombre de Contacto"
+                      outlined
+                      :disable="loading"
+                      hint="Persona de contacto de la empresa"
                     >
                       <template #prepend>
                         <q-icon name="person" />
                       </template>
                     </q-input>
                   </div>
+
+                  <div class="col-12 col-md-6">
+                    <q-input
+                      v-model="form.nombres"
+                      label="Nombres *"
+                      outlined
+                      :disable="loading"
+                      :rules="[(val) => !!val || 'Requerido']"
+                      hint="Ej: Juan David"
+                    >
+                      <template #prepend>
+                        <q-icon name="person" />
+                      </template>
+                    </q-input>
+                  </div>
+                  <div class="col-12 col-md-6">
+                    <q-input
+                      v-model="form.apellidos"
+                      label="Apellidos *"
+                      outlined
+                      :disable="loading"
+                      :rules="[(val) => !!val || 'Requerido']"
+                      hint="Ej: García Pérez"
+                    >
+                      <template #prepend>
+                        <q-icon name="person" />
+                      </template>
+                    </q-input>
+                  </div>
+
                   <div class="col-12 col-md-6">
                     <q-input
                       v-model="form.email"
@@ -113,19 +136,27 @@
                       </template>
                     </q-input>
                   </div>
-                </div>
-
-                <div class="row q-col-gutter-md">
                   <div class="col-12 col-md-6">
                     <q-input
                       v-model="form.phone"
                       outlined
                       label="Teléfono"
+                      mask="+57 ### ### ####"
+                      fill-mask
                       :rules="[
-                        (val) => !val || /^\+?[0-9\s-]+$/.test(val) || 'Formato inválido',
+                        (val) => {
+                          if (!val) return true;
+                          const digits = val.replace(/\D/g, '');
+                          // Debe tener código de país (1-3 dígitos) + exactamente 10 dígitos
+                          // Total: entre 11 y 13 dígitos
+                          return (
+                            (digits.length >= 11 && digits.length <= 13) ||
+                            'Debe tener código de país (1-3 dígitos) + 10 dígitos'
+                          );
+                        },
                       ]"
                       :disable="loading"
-                      hint="Formato: +57 300 123 4567"
+                      hint="Formato: +57 300 123 4567 (código de país + 10 dígitos)"
                     >
                       <template #prepend>
                         <q-icon name="phone" />
@@ -137,14 +168,8 @@
             </div>
           </q-step>
 
-          <q-step
-            :name="2"
-            title="Tipo y Rol"
-            icon="category"
-            :done="step > 2"
-          >
+          <q-step :name="2" title="Tipo y Rol" icon="category" :done="step > 2">
             <div class="q-pa-lg">
-              <div class="text-subtitle1 q-mb-md text-weight-medium">Configuración de Usuario</div>
               <q-form ref="typeFormRef" @submit="nextStep" class="column q-gutter-md">
                 <div class="row q-col-gutter-md">
                   <div class="col-12 col-md-6">
@@ -158,7 +183,14 @@
                       emit-value
                       map-options
                       :rules="[(val) => !!val || 'El tipo de persona es requerido']"
-                      :disable="loading"
+                      :disable="loading || isNIT || isCliente"
+                      :hint="
+                        isCliente
+                          ? 'Automáticamente establecido como Persona Natural para alumnos'
+                          : isNIT
+                            ? 'Automáticamente establecido como Persona Jurídica para NIT'
+                            : ''
+                      "
                       @update:model-value="onPersonTypeChange"
                     >
                       <template #prepend>
@@ -177,83 +209,104 @@
                       emit-value
                       map-options
                       :rules="[(val) => !!val || 'El rol es requerido']"
-                      :disable="loading"
+                      :disable="loading || isNIT || isCliente"
+                      :hint="
+                        isCliente
+                          ? 'Automáticamente establecido como Alumno'
+                          : isNIT
+                            ? 'Automáticamente establecido como Cliente Institucional para NIT'
+                            : ''
+                      "
                     >
                       <template #prepend>
                         <q-icon name="badge" />
                       </template>
                     </q-select>
                   </div>
-                </div>
 
-                <q-input
-                  v-if="form.personType === 'juridica'"
-                  v-model="form.companyName"
-                  outlined
-                  label="Razón Social *"
-                  :rules="
-                    form.personType === 'juridica'
-                      ? [(val) => !!val || 'La razón social es requerida']
-                      : []
-                  "
-                  :disable="loading"
-                >
-                  <template #prepend>
-                    <q-icon name="business" />
-                  </template>
-                </q-input>
-
-                <q-input
-                  v-if="form.role === 'driver'"
-                  v-model="form.company"
-                  outlined
-                  label="Empresa (Opcional)"
-                  :disable="loading"
-                  hint="Empresa a la que pertenece el conductor"
-                >
-                  <template #prepend>
-                    <q-icon name="business" />
-                  </template>
-                </q-input>
-
-                <!-- Conductor Externo (RF-04) -->
-                <q-card
-                  v-if="form.role === 'driver'"
-                  flat
-                  bordered
-                  class="q-pa-md bg-blue-1"
-                >
-                  <div class="row items-center q-gutter-sm">
-                    <q-icon name="info" color="primary" size="24px" />
-                    <div class="col">
-                      <div class="text-subtitle2 text-weight-medium q-mb-xs">
-                        Conductor Externo
-                      </div>
-                      <div class="text-body2 text-grey-7">
-                        Los conductores externos deben ser habilitados por el Administrador después
-                        de registrar el pago correspondiente (RF-05).
-                      </div>
-                    </div>
-                    <q-toggle
-                      v-model="form.isExternal"
-                      label="Es conductor externo"
-                      color="primary"
-                      :disable="loading"
-                    />
+                  <!-- Select de Empresa (solo para ADMIN) -->
+                  <div v-if="isAdmin" class="col-12">
+                    <q-select
+                      v-model="form.empresaId"
+                      outlined
+                      label="Empresa"
+                      :options="empresas"
+                      option-label="razonSocial"
+                      option-value="id"
+                      emit-value
+                      map-options
+                      :loading="loadingEmpresas"
+                      :disable="loading || form.isExternal"
+                      clearable
+                      :hint="
+                        form.isExternal
+                          ? 'Los conductores externos no pueden estar asociados a una empresa'
+                          : 'Seleccione la empresa a la que pertenecerá el usuario'
+                      "
+                    >
+                      <template #prepend>
+                        <q-icon name="business" />
+                      </template>
+                      <template #option="scope">
+                        <q-item v-bind="scope.itemProps">
+                          <q-item-section>
+                            <q-item-label>{{ scope.opt.razonSocial }}</q-item-label>
+                            <q-item-label caption>
+                              {{ scope.opt.numeroDocumento }} - {{ scope.opt.email || 'Sin email' }}
+                            </q-item-label>
+                          </q-item-section>
+                        </q-item>
+                      </template>
+                    </q-select>
                   </div>
-                </q-card>
+
+                  <!-- Información para CLIENTE -->
+                  <div v-if="!isAdmin && currentUserEmpresaId" class="col-12">
+                    <q-card flat bordered class="q-pa-md bg-blue-1">
+                      <div class="row items-center q-gutter-sm">
+                        <q-icon name="info" color="primary" size="24px" />
+                        <div class="col">
+                          <div class="text-subtitle2 text-weight-medium q-mb-xs">
+                            Empresa Asociada
+                          </div>
+                          <div class="text-body2 text-grey-7">
+                            El usuario será asociado automáticamente a su empresa.
+                          </div>
+                        </div>
+                      </div>
+                    </q-card>
+                  </div>
+
+                  <div class="col-12">
+                    <!-- Conductor Externo (RF-04) - Solo para ADMIN -->
+                    <q-card flat bordered class="q-pa-md bg-blue-1">
+                      <div class="row items-center q-gutter-sm">
+                        <q-icon name="info" color="primary" size="24px" />
+                        <div class="col">
+                          <div class="text-subtitle2 text-weight-medium q-mb-xs">
+                            Conductor Externo
+                          </div>
+                          <div class="text-body2 text-grey-7">
+                            Los conductores externos deben ser habilitados por el Administrador
+                            después de registrar el pago correspondiente (RF-05).
+                          </div>
+                        </div>
+                        <q-toggle
+                          v-model="form.isExternal"
+                          label="Es conductor externo"
+                          color="primary"
+                          :disable="loading"
+                        />
+                      </div>
+                    </q-card>
+                  </div>
+                </div>
               </q-form>
             </div>
           </q-step>
 
-          <q-step
-            :name="3"
-            title="Configuración"
-            icon="settings"
-            :done="step > 3"
-          >
+          <q-step :name="3" title="Configuración" icon="settings" :done="step > 3">
             <div class="q-pa-lg">
-              <div class="text-subtitle1 q-mb-md text-weight-medium">Configuración Adicional</div>
               <q-form ref="configFormRef" @submit="nextStep" class="column q-gutter-md">
                 <q-checkbox
                   v-model="form.enabled"
@@ -264,54 +317,19 @@
                   <template #default>
                     <div class="column q-ml-sm">
                       <div class="text-body2">El usuario podrá iniciar sesión inmediatamente</div>
-                      <div
-                        v-if="form.isExternal"
-                        class="text-caption text-warning q-mt-xs"
-                      >
+                      <div v-if="form.isExternal" class="text-caption text-warning q-mt-xs">
                         ⚠️ Los conductores externos requieren habilitación manual después del pago
                         (RF-05)
                       </div>
                     </div>
                   </template>
                 </q-checkbox>
-
-                <q-separator />
-
-                <div v-if="form.role === 'driver'" class="column q-gutter-sm">
-                  <div class="text-subtitle2 text-weight-medium">Información Adicional (Opcional)</div>
-                  <q-input
-                    v-model="form.studentCode"
-                    outlined
-                    label="Código de Estudiante"
-                    :disable="loading"
-                    hint="Código único del estudiante en el sistema"
-                  >
-                    <template #prepend>
-                      <q-icon name="school" />
-                    </template>
-                  </q-input>
-                </div>
-
-                <div v-if="form.role === 'institutional'" class="column q-gutter-sm">
-                  <div class="text-subtitle2 text-weight-medium">Información de Empresa</div>
-                  <q-input
-                    v-model="form.companyName"
-                    outlined
-                    label="Razón Social"
-                    :disable="loading"
-                  >
-                    <template #prepend>
-                      <q-icon name="business" />
-                    </template>
-                  </q-input>
-                </div>
               </q-form>
             </div>
           </q-step>
 
           <q-step :name="4" title="Revisión" icon="preview">
             <div class="q-pa-lg">
-              <div class="text-subtitle1 q-mb-md text-weight-medium">Revisar Información</div>
               <div class="review-section">
                 <q-card flat bordered class="q-pa-md q-mb-md">
                   <div class="text-subtitle2 q-mb-sm text-weight-medium">Datos Personales</div>
@@ -328,10 +346,18 @@
                         <q-item-label>{{ form.document }}</q-item-label>
                       </q-item-section>
                     </q-item>
-                    <q-item>
+                    <q-item v-if="form.personType === 'natural'">
                       <q-item-section>
                         <q-item-label caption>Nombre Completo</q-item-label>
-                        <q-item-label>{{ form.name }}</q-item-label>
+                        <q-item-label>{{
+                          `${form.nombres} ${form.apellidos}`.trim() || 'Sin nombre'
+                        }}</q-item-label>
+                      </q-item-section>
+                    </q-item>
+                    <q-item v-if="form.personType === 'juridica'">
+                      <q-item-section>
+                        <q-item-label caption>Razón Social</q-item-label>
+                        <q-item-label>{{ form.companyName }}</q-item-label>
                       </q-item-section>
                     </q-item>
                     <q-item>
@@ -356,7 +382,9 @@
                       <q-item-section>
                         <q-item-label caption>Tipo de Persona</q-item-label>
                         <q-item-label>
-                          {{ form.personType === 'juridica' ? 'Persona Jurídica' : 'Persona Natural' }}
+                          {{
+                            form.personType === 'juridica' ? 'Persona Jurídica' : 'Persona Natural'
+                          }}
                         </q-item-label>
                       </q-item-section>
                     </q-item>
@@ -406,12 +434,7 @@
                 class="q-mr-sm"
                 @click="previousStep"
               />
-              <q-btn
-                v-if="step < 4"
-                color="primary"
-                label="Siguiente"
-                @click="nextStep"
-              />
+              <q-btn v-if="step < 4" color="primary" label="Siguiente" @click="nextStep" />
               <q-btn
                 v-else
                 color="primary"
@@ -419,13 +442,7 @@
                 :loading="loading"
                 @click="handleSubmit"
               />
-              <q-btn
-                flat
-                label="Cancelar"
-                color="grey"
-                class="q-ml-sm"
-                @click="goBack"
-              />
+              <q-btn flat label="Cancelar" color="grey" class="q-ml-sm" @click="goBack" />
             </q-stepper-navigation>
           </template>
         </q-stepper>
@@ -435,189 +452,33 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
-import { useRouter } from 'vue-router';
-import { useQuasar } from 'quasar';
-import type { QForm } from 'quasar';
-import { PeopleUseCasesFactory } from '../../../application/people/people.use-cases.factory';
-import { peopleService } from '../../../infrastructure/http/people/people.service';
-import type { UserRole, PersonType } from '../../../domain/user/models';
+import { useUserCreateForm } from '../composables/useUserCreateForm';
 
-const router = useRouter();
-const $q = useQuasar();
-
-// Estado
-const step = ref(1);
-const loading = ref(false);
-const basicFormRef = ref<QForm | null>(null);
-const typeFormRef = ref<QForm | null>(null);
-const configFormRef = ref<QForm | null>(null);
-
-interface UserForm {
-  documentType: 'CC' | 'CE' | 'PA' | 'TI' | 'NIT' | null;
-  document: string;
-  name: string;
-  email: string;
-  phone: string;
-  personType: PersonType | null;
-  role: UserRole | null;
-  companyName: string;
-  company: string;
-  isExternal: boolean;
-  enabled: boolean;
-  studentCode?: string;
-}
-
-const form = ref<UserForm>({
-  documentType: null,
-  document: '',
-  name: '',
-  email: '',
-  phone: '',
-  personType: null,
-  role: null,
-  companyName: '',
-  company: '',
-  isExternal: false,
-  enabled: true,
-  studentCode: '',
-});
-
-// Opciones
-const documentTypeOptions = ['CC', 'CE', 'PA', 'TI', 'NIT'];
-
-const personTypeOptions = [
-  { label: 'Persona Natural', value: 'natural' },
-  { label: 'Persona Jurídica', value: 'juridica' },
-];
-
-const roleOptions = [
-  { label: 'Administrador', value: 'admin' },
-  { label: 'Cliente Institucional', value: 'institutional' },
-  { label: 'Conductor', value: 'driver' },
-];
-
-// Funciones
-function isValidEmail(val: string): boolean | string {
-  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailPattern.test(val) || 'Email inválido';
-}
-
-function onPersonTypeChange(value: PersonType) {
-  if (value === 'natural') {
-    form.value.companyName = '';
-  }
-}
-
-async function nextStep() {
-  if (step.value === 1) {
-    const success = await basicFormRef.value?.validate();
-    if (success) {
-      step.value++;
-    }
-  } else if (step.value === 2) {
-    const success = await typeFormRef.value?.validate();
-    if (success) {
-      step.value++;
-    }
-  } else if (step.value === 3) {
-    const success = await configFormRef.value?.validate();
-    if (success) {
-      step.value++;
-    }
-  }
-}
-
-function previousStep() {
-  if (step.value > 1) {
-    step.value--;
-  }
-}
-
-async function handleSubmit() {
-  loading.value = true;
-
-  try {
-    // Validar formulario completo
-    const validations = await Promise.all([
-      basicFormRef.value?.validate(),
-      typeFormRef.value?.validate(),
-      configFormRef.value?.validate(),
-    ]);
-
-    if (validations.every((v) => v !== false)) {
-      // Si es conductor externo, usar el servicio de personas
-      if (form.value.role === 'driver' && form.value.isExternal) {
-        const createExternalDriverUseCase =
-          PeopleUseCasesFactory.getCreateExternalDriverUseCase(peopleService);
-        await createExternalDriverUseCase.execute({
-          numeroDocumento: form.value.document,
-          tipoDocumento: form.value.documentType || 'CC',
-          nombres: form.value.name.split(' ')[0] || form.value.name,
-          apellidos: form.value.name.split(' ').slice(1).join(' ') || '',
-          email: form.value.email,
-          telefono: form.value.phone || undefined,
-        });
-
-        $q.notify({
-          type: 'positive',
-          message: 'Conductor externo creado exitosamente. Debe ser habilitado después del pago.',
-          position: 'top',
-        });
-      } else {
-        // Para otros tipos de usuarios, usar el servicio de registro
-        // Nota: El backend no tiene endpoint directo de creación de usuarios por ADMIN
-        // Se debe usar el registro o crear conductores externos
-        $q.notify({
-          type: 'info',
-          message:
-            'La creación de usuarios debe realizarse a través del registro o creación de conductores externos.',
-          position: 'top',
-        });
-      }
-
-      void router.push('/users');
-    } else {
-      $q.notify({
-        type: 'negative',
-        message: 'Por favor, complete todos los campos requeridos',
-        position: 'top',
-      });
-    }
-  } catch (error) {
-    $q.notify({
-      type: 'negative',
-      message: error instanceof Error ? error.message : 'Error al crear el usuario',
-      position: 'top',
-    });
-  } finally {
-    loading.value = false;
-  }
-}
-
-function getDocumentTypeLabel(type: string | null): string {
-  const labels: Record<string, string> = {
-    CC: 'Cédula de Ciudadanía',
-    CE: 'Cédula de Extranjería',
-    PA: 'Pasaporte',
-    TI: 'Tarjeta de Identidad',
-    NIT: 'NIT',
-  };
-  return labels[type ?? ''] ?? type ?? '';
-}
-
-function getRoleLabel(role: UserRole | null): string {
-  const labels: Record<string, string> = {
-    admin: 'Administrador',
-    institutional: 'Cliente Institucional',
-    driver: 'Conductor',
-  };
-  return labels[role ?? ''] ?? role ?? '';
-}
-
-function goBack() {
-  void router.push('/users');
-}
+const {
+  step,
+  loading,
+  form,
+  basicFormRef,
+  typeFormRef,
+  configFormRef,
+  isNIT,
+  documentTypeOptions,
+  personTypeOptions,
+  roleOptions,
+  empresas,
+  loadingEmpresas,
+  isAdmin,
+  isCliente,
+  currentUserEmpresaId,
+  isValidEmail,
+  onPersonTypeChange,
+  nextStep,
+  previousStep,
+  handleSubmit,
+  getDocumentTypeLabel,
+  getRoleLabel,
+  goBack,
+} = useUserCreateForm();
 </script>
 
 <style scoped lang="scss">

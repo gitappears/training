@@ -28,13 +28,14 @@
     <!-- Formulario -->
     <div class="row justify-center">
       <div class="col-12" style="max-width: 1200px">
-        <TrainingForm @submit="handleSubmit" />
+        <TrainingForm ref="trainingFormRef" @submit="handleSubmit" />
       </div>
     </div>
   </q-page>
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 import TrainingForm, { type TrainingFormModel } from '../components/TrainingForm.vue';
@@ -48,6 +49,7 @@ import type { CreateTrainingDto } from '../../../application/training/training.r
 import type { CreateMaterialDto } from '../../../application/material/material.repository.port';
 import { useMaterialTypeMapper } from '../../../shared/composables/useMaterialTypeMapper';
 import { useMaterialUrl } from '../../../shared/composables/useMaterialUrl';
+import { mapTrainingTypeToId, isValidTrainingType } from '../../../shared/constants/training-types';
 
 const router = useRouter();
 const $q = useQuasar();
@@ -57,8 +59,31 @@ const authStore = useAuthStore();
 const { mapToBackendId: mapMaterialTypeToId } = useMaterialTypeMapper();
 const { extractRelativeUrl, isExternalLink } = useMaterialUrl();
 
+// Estado para prevenir doble submit
+const isSubmitting = ref(false);
+const trainingFormRef = ref<InstanceType<typeof TrainingForm> | null>(null);
+
 async function handleSubmit(payload: TrainingFormModel, formMaterials: Material[]) {
+  // Protección adicional contra doble submit
+  if (isSubmitting.value) {
+    return;
+  }
+
+  isSubmitting.value = true;
+  
   try {
+    // FAL-002: Validar tipo de capacitación antes de enviar
+    if (!payload.type || !isValidTrainingType(payload.type)) {
+      $q.notify({
+        type: 'negative',
+        message: 'Error: Debe seleccionar un tipo de capacitación válido',
+        icon: 'error',
+        position: 'top',
+        timeout: 5000,
+      });
+      return;
+    }
+
     // Obtener el usuario actual para usuario_creacion
     const usuarioCreacion = authStore.profile?.persona?.email || authStore.profile?.username || 'system';
 
@@ -260,6 +285,11 @@ async function handleSubmit(payload: TrainingFormModel, formMaterials: Material[
 
     void router.push(`/trainings/${created.id}`);
   } catch (error) {
+    // Resetear estado de submitting en caso de error
+    isSubmitting.value = false;
+    if (trainingFormRef.value && typeof (trainingFormRef.value as any).resetSubmitting === 'function') {
+      (trainingFormRef.value as any).resetSubmitting();
+    }
     // Mejorar mensajes de error con más contexto
     let errorMessage = 'Error al crear la capacitación';
 
@@ -297,17 +327,21 @@ async function handleSubmit(payload: TrainingFormModel, formMaterials: Material[
         },
       ],
     });
+  } finally {
+    // Asegurar que siempre se resetee el estado
+    isSubmitting.value = false;
+    if (trainingFormRef.value && typeof (trainingFormRef.value as any).resetSubmitting === 'function') {
+      (trainingFormRef.value as any).resetSubmitting();
+    }
   }
 }
 
-// Mapeos temporales - TODO: Obtener de catálogos del backend
+// Usar funciones centralizadas de mapeo de tipos
 function mapTipoToId(type: string | null): number {
-  const map: Record<string, number> = {
-    standard: 1,
-    certified: 2,
-    survey: 3,
-  };
-  return map[type ?? 'standard'] ?? 1;
+  if (!type || !isValidTrainingType(type)) {
+    throw new Error(`Tipo de capacitación inválido: ${type}`);
+  }
+  return mapTrainingTypeToId(type);
 }
 
 function mapModalityToId(modality: string | null): number {

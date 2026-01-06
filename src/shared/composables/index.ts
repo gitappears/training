@@ -15,4 +15,7 @@ export * from './useEvaluationAttempt';
 export * from './useEnrollmentCheck';
 export * from './useUserEnrolledTrainings';
 export * from './useCertificates';
+export * from './useTrainingType';
+export * from './useTrainingFormValidation';
+export * from './useTrainingFormStepper';
 
