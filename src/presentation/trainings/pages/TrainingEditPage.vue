@@ -189,12 +189,13 @@ async function loadTraining() {
               opciones: Array<{
                 id?: number;
                 texto: string;
+                imagenUrl?: string;
                 esCorrecta: boolean;
                 puntajeParcial: number;
                 orden: number;
               }>;
             } = {
-              tipoPreguntaId: mapQuestionTypeToTipoPreguntaId(q.type),
+              tipoPreguntaId: typeof q.type === 'string' ? mapQuestionTypeToTipoPreguntaId(q.type) : (typeof q.type === 'number' ? q.type : 1),
               enunciado: q.text,
               puntaje: q.score !== undefined && q.score !== null ? q.score : 1, // Usar el puntaje del backend o 1 por defecto
               orden: q.order ?? qIdx,
@@ -204,6 +205,7 @@ async function loadTraining() {
                 const opcion: {
                   id?: number;
                   texto: string;
+                  imagenUrl?: string;
                   esCorrecta: boolean;
                   puntajeParcial: number;
                   orden: number;
@@ -213,6 +215,21 @@ async function loadTraining() {
                   puntajeParcial: 0,
                   orden: optIdx,
                 };
+                // Asegurar que imagenUrl se asigne correctamente si existe (puede ser string vacío o null)
+                if (opt.imageUrl !== undefined && opt.imageUrl !== null && String(opt.imageUrl).trim() !== '') {
+                  opcion.imagenUrl = String(opt.imageUrl).trim();
+                  console.log('✅ Imagen cargada para opción:', {
+                    opcionIndex: optIdx,
+                    texto: opt.text,
+                    imagenUrl: opcion.imagenUrl,
+                  });
+                } else {
+                  console.log('⚠️ No hay imagen para opción:', {
+                    opcionIndex: optIdx,
+                    texto: opt.text,
+                    imageUrl: opt.imageUrl,
+                  });
+                }
                 if (!Number.isNaN(optionId)) {
                   opcion.id = optionId;
                 }
@@ -316,15 +333,19 @@ async function handleSubmit(payload: TrainingFormModel, formMaterials: Material[
     const updated = await updateTrainingUseCase.execute(parseInt(training.value.id), dto);
 
     // Sincronizar materiales
-    if (formMaterials && formMaterials.length >= 0) {
+    if (formMaterials && formMaterials.length > 0) {
       try {
         await syncMaterials(parseInt(training.value.id), formMaterials);
       } catch (materialError) {
+        const errorMessage = materialError instanceof Error ? materialError.message : String(materialError);
         console.error('Error al sincronizar materiales:', materialError);
+        console.error('Materiales que causaron error:', formMaterials);
         $q.notify({
           type: 'warning',
-          message: 'Capacitación actualizada pero algunos materiales no se pudieron sincronizar',
+          message: `Capacitación actualizada pero algunos materiales no se pudieron sincronizar: ${errorMessage}`,
           position: 'top',
+          timeout: 5000,
+          multiLine: true,
         });
       }
     }
@@ -375,6 +396,10 @@ async function handleSubmit(payload: TrainingFormModel, formMaterials: Material[
                 text: o.texto || '',
                 isCorrect: esCorrectaBool,
               };
+              // Incluir imagenUrl si está presente
+              if (o.imagenUrl) {
+                option.imageUrl = o.imagenUrl;
+              }
               // Solo incluir ID si es válido y es un número
               if (optionId !== undefined && !isNaN(optionId) && optionId > 0) {
                 option.id = optionId;
@@ -582,10 +607,24 @@ async function syncMaterials(capacitacionId: number, newMaterials: Material[]) {
   }
 
   // Crear o actualizar materiales
+  const errors: string[] = [];
   for (const material of newMaterials) {
     try {
+      // Validar que el material tenga los campos requeridos
+      if (!material.name || !material.name.trim()) {
+        console.warn(`Material sin nombre, saltando:`, material);
+        errors.push(`Material sin nombre`);
+        continue;
+      }
+      
+      if (!material.url || !material.url.trim()) {
+        console.warn(`Material "${material.name}" sin URL, saltando:`, material);
+        errors.push(`Material "${material.name}" sin URL`);
+        continue;
+      }
+      
       // Extraer URL relativa si es un archivo local, o mantener URL completa si es enlace externo
-      let materialUrl = material.url;
+      let materialUrl = material.url.trim();
       
       // Tipo extendido para incluir URL relativa temporal
       interface MaterialWithRelativeUrl extends Material {
@@ -596,13 +635,20 @@ async function syncMaterials(capacitacionId: number, newMaterials: Material[]) {
       // Si el material tiene _relativeUrl (archivo subido), usar esa
       // Si no, verificar si es un enlace externo o extraer la URL relativa
       if (materialWithRelative._relativeUrl) {
-        materialUrl = materialWithRelative._relativeUrl;
+        materialUrl = materialWithRelative._relativeUrl.trim();
       } else if (isExternalLink(material.url)) {
         // Para enlaces externos (videos, etc.), mantener la URL completa
-        materialUrl = material.url;
+        materialUrl = material.url.trim();
       } else {
         // Para archivos locales, extraer la URL relativa
-        materialUrl = extractRelativeUrl(material.url);
+        materialUrl = extractRelativeUrl(material.url).trim();
+      }
+      
+      // Validar que la URL final no esté vacía
+      if (!materialUrl) {
+        console.warn(`Material "${material.name}" tiene URL inválida después de procesamiento:`, material);
+        errors.push(`Material "${material.name}" tiene URL inválida`);
+        continue;
       }
       
       // Verificar si el ID realmente existe en el backend (no es un ID temporal)
@@ -612,13 +658,13 @@ async function syncMaterials(capacitacionId: number, newMaterials: Material[]) {
       if (existsInBackend) {
         // Actualizar material existente (tiene ID real del backend)
         const updateDto: UpdateMaterialDto = {
-          nombre: material.name,
+          nombre: material.name.trim(),
           url: materialUrl, // URL relativa para archivos locales, completa para enlaces externos
           tipoMaterialId: mapMaterialTypeToId(material.type),
           orden: material.order ?? 0,
         };
         if (material.description) {
-          updateDto.descripcion = material.description;
+          updateDto.descripcion = material.description.trim();
         }
         await materialsService.update(materialId, updateDto);
       } else {
@@ -626,19 +672,27 @@ async function syncMaterials(capacitacionId: number, newMaterials: Material[]) {
         const createDto: CreateMaterialDto = {
           capacitacionId: capacitacionId,
           tipoMaterialId: mapMaterialTypeToId(material.type),
-          nombre: material.name,
+          nombre: material.name.trim(),
           url: materialUrl, // URL relativa para archivos locales, completa para enlaces externos
           orden: material.order ?? 0,
         };
         if (material.description) {
-          createDto.descripcion = material.description;
+          createDto.descripcion = material.description.trim();
         }
         await materialsService.create(createDto);
       }
     } catch (materialError) {
-      console.error(`Error al sincronizar material ${material.name}:`, materialError);
-      throw materialError;
+      const errorMessage = materialError instanceof Error ? materialError.message : String(materialError);
+      console.error(`Error al sincronizar material "${material.name}":`, materialError);
+      errors.push(`Material "${material.name}": ${errorMessage}`);
+      // Continuar con el siguiente material en lugar de lanzar el error
+      // Esto permite que otros materiales se sincronicen correctamente
     }
+  }
+  
+  // Si hubo errores, lanzar un error con todos los mensajes
+  if (errors.length > 0) {
+    throw new Error(`Errores al sincronizar materiales: ${errors.join('; ')}`);
   }
 }
 

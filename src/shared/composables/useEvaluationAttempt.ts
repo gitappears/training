@@ -34,6 +34,7 @@ export interface UseEvaluationAttemptReturn {
   evaluacionId: Ref<number>;
   capacitacionId: Ref<number>;
   tiempoLimiteMinutos: Ref<number>;
+  inscripcionId: Ref<number | null>;
 
   // Computed
   hasActiveAttempt: Ref<boolean>;
@@ -49,6 +50,7 @@ export interface UseEvaluationAttemptReturn {
   stopTimer: () => void;
   enableAutoSave: () => void;
   disableAutoSave: () => void;
+  getInscripcionId: () => Promise<number | null>;
 }
 
 /**
@@ -409,6 +411,7 @@ export function useEvaluationAttempt(
     evaluacionId,
     capacitacionId,
     tiempoLimiteMinutos,
+    inscripcionId,
 
     // Computed
     hasActiveAttempt,
@@ -424,6 +427,7 @@ export function useEvaluationAttempt(
     stopTimer,
     enableAutoSave,
     disableAutoSave,
+    getInscripcionId,
   };
 }
 

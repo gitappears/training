@@ -1,7 +1,7 @@
 // Modelos de dominio para evaluaciones
 // Capa de Dominio (arquitectura hexagonal)
 
-export type QuestionType = 'single' | 'multiple' | 'image' | 'true_false' | 'yes_no';
+export type QuestionType = 'single' | 'multiple' | 'image' | 'true_false' | 'yes_no' | 'open_text';
 export type EvaluationStatus = 'pending' | 'in_progress' | 'passed' | 'failed' | 'expired';
 
 export interface QuestionOption {

@@ -175,6 +175,7 @@ async function handleSubmit(payload: TrainingFormModel, formMaterials: Material[
             requerida?: boolean;
             opciones: Array<{
               texto: string;
+              imagenUrl?: string;
               esCorrecta: boolean;
               puntajeParcial?: number;
               orden?: number;
@@ -185,12 +186,25 @@ async function handleSubmit(payload: TrainingFormModel, formMaterials: Material[
             puntaje: p.puntaje || 1,
             orden: p.orden ?? 0,
             requerida: p.requerida ?? true,
-            opciones: p.opciones.map((o) => ({
-              texto: o.texto,
-              esCorrecta: o.esCorrecta,
-              puntajeParcial: o.puntajeParcial || 0,
-              orden: o.orden ?? 0,
-            })),
+            opciones: p.opciones.map((o) => {
+              const opcion: {
+                texto: string;
+                imagenUrl?: string;
+                esCorrecta: boolean;
+                puntajeParcial?: number;
+                orden?: number;
+              } = {
+                texto: o.texto,
+                esCorrecta: o.esCorrecta,
+                puntajeParcial: o.puntajeParcial || 0,
+                orden: o.orden ?? 0,
+              };
+              // Incluir imagenUrl si está presente
+              if (o.imagenUrl) {
+                opcion.imagenUrl = o.imagenUrl;
+              }
+              return opcion;
+            }),
           };
           if (p.imagenUrl) {
             pregunta.imagenUrl = p.imagenUrl;

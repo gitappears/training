@@ -151,9 +151,9 @@
                 </span>
               </div>
 
-              <!-- Duration & Modality -->
+              <!-- Modality -->
               <div class="text-caption text-grey-7">
-                {{ training.durationHours || 0 }}h · {{ getModalityLabel(training.modality) }}
+                {{ getModalityLabel(training.modality) }}
               </div>
             </div>
 

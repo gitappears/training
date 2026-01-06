@@ -45,7 +45,13 @@
             {{ formatTime(timeRemaining) }}
           </div>
         </div>
-        <q-btn flat label="Cancelar" icon="close" @click="confirmCancel" />
+        <q-btn 
+          v-if="!isViewingResults" 
+          flat 
+          label="Cancelar" 
+          icon="close" 
+          @click="confirmCancel" 
+        />
       </div>
     </div>
 
@@ -231,19 +237,21 @@
                   @click="currentAnswer = option.id"
                 >
                   <div class="relative-position">
-                    <q-img
-                      v-if="option.imageUrl"
-                      :src="option.imageUrl"
-                      :ratio="16 / 9"
-                      class="rounded-borders-top"
-                    >
-                      <div class="absolute-full flex flex-center bg-transparent">
+                    <div v-if="option.imageUrl" class="image-container" style="position: relative; width: 100%; padding-bottom: 56.25%; overflow: hidden; border-radius: 8px 8px 0 0;">
+                      <img
+                        :src="buildFullUrl(option.imageUrl)"
+                        :alt="option.text || 'Imagen de opción'"
+                        style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover;"
+                        loading="lazy"
+                      />
+                      <div class="absolute-full flex flex-center bg-transparent" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; align-items: center; justify-content: center;">
                         <q-icon
                           v-if="currentAnswer === option.id"
                           name="check_circle"
                           color="white"
                           size="48px"
                           class="selection-indicator"
+                          style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));"
                         />
                         <q-icon
                           v-if="canShowCorrectAnswers && option.isCorrect"
@@ -251,6 +259,7 @@
                           color="positive"
                           size="48px"
                           class="correct-indicator"
+                          style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));"
                         />
                         <q-icon
                           v-if="canShowCorrectAnswers && !option.isCorrect && currentAnswer === option.id"
@@ -258,9 +267,10 @@
                           color="negative"
                           size="48px"
                           class="incorrect-indicator"
+                          style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));"
                         />
                       </div>
-                    </q-img>
+                    </div>
                     <div v-else class="image-placeholder flex flex-center" style="height: 200px; background: rgba(0,0,0,0.05);">
                       <q-icon name="image" size="48px" color="grey-5" />
                     </div>
@@ -494,7 +504,7 @@
               {{ passed ? '¡Felicidades!' : 'Evaluación no aprobada' }}
             </div>
             <div class="text-h5 text-grey-7 q-mb-lg">
-              Tu puntuación: <span class="text-weight-bold">{{ finalScore }}%</span> (Mínimo
+              Tu puntuación: <span class="text-weight-bold">{{ finalPercentage }}%</span> (Mínimo
               requerido: {{ evaluation.minimumScore }}%)
             </div>
 
@@ -697,13 +707,19 @@ import { useQuasar } from 'quasar';
 import type { Evaluation, Question } from '../../../domain/evaluation/models';
 import { useEvaluationAttempt } from '../../../shared/composables/useEvaluationAttempt';
 import { evaluationsService } from '../../../infrastructure/http/evaluations/evaluations.service';
+import { certificatesService } from '../../../infrastructure/http/certificates/certificates.service';
+import { evaluationAttemptsService } from '../../../infrastructure/http/evaluation-attempts/evaluation-attempts.service';
+import { inscriptionsService } from '../../../infrastructure/http/inscriptions/inscriptions.service';
+import { api } from '../../../boot/axios';
 import EvaluationPreviewDialog from '../components/EvaluationPreviewDialog.vue';
 import { useAuthStore } from '../../../stores/auth.store';
+import { useMaterialUrl } from '../../../shared/composables/useMaterialUrl';
 
 const route = useRoute();
 const router = useRouter();
 const $q = useQuasar();
 const authStore = useAuthStore();
+const { buildFullUrl } = useMaterialUrl();
 
 // Estado
 const loading = ref(false);
@@ -752,6 +768,10 @@ const timeRemaining = evaluationAttempt.timeRemaining;
 
 // FAL-004: Detectar si es encuesta
 const isSurvey = computed(() => evaluation.value.courseType === 'survey');
+
+const isViewingResults = computed(() => {
+  return route.query.viewResults === 'true';
+});
 
 // Computed
 const currentQuestion = computed(() => questions.value[currentQuestionIndex.value]);
@@ -811,17 +831,24 @@ const correctAnswers = computed(() => {
     const answer = answers.value[question.id];
     if (question.type === 'multiple') {
       const selected = answer as string[];
-      const correct = question.options.filter((o) => o.isCorrect).map((o) => o.id);
+      // Normalizar ambos arrays a string para comparación
+      const selectedNormalized = selected.map((id) => String(id));
+      const correct = question.options.filter((o) => o.isCorrect).map((o) => String(o.id));
       if (
-        selected.length === correct.length &&
-        selected.every((id) => correct.includes(id))
+        selectedNormalized.length === correct.length &&
+        selectedNormalized.every((id) => correct.includes(id))
       ) {
         count++;
       }
     } else {
       const correctOption = question.options.find((o) => o.isCorrect);
-      if (answer === correctOption?.id) {
-        count++;
+      // Normalizar ambos valores a string para comparación
+      if (answer !== undefined && answer !== null && correctOption) {
+        const answerStr = String(answer);
+        const correctIdStr = String(correctOption.id);
+        if (answerStr === correctIdStr) {
+          count++;
+        }
       }
     }
   });
@@ -953,13 +980,40 @@ async function submitEvaluation() {
       preguntaId: parseInt(questionId),
     };
 
-    if (question.type === 'multiple' && Array.isArray(answer)) {
-      answerData.opcionRespuestaIds = answer.map((id) => parseInt(id));
-    } else if (typeof answer === 'string') {
-      answerData.opcionRespuestaId = parseInt(answer);
+    // Manejar preguntas de texto abierto (OPEN_TEXT)
+    if (question.type === 'open_text') {
+      if (typeof answer === 'string' && answer.trim() !== '') {
+        answerData.textoRespuesta = answer.trim();
+      } else {
+        console.warn('⚠️ Respuesta OPEN_TEXT vacía o inválida:', { questionId, answer });
+        continue;
+      }
+    } else if (question.type === 'multiple' && Array.isArray(answer)) {
+      // Validar que el array no esté vacío
+      if (answer.length > 0) {
+        answerData.opcionRespuestaIds = answer.map((id) => parseInt(String(id))).filter((id) => !isNaN(id));
+      }
+    } else if (typeof answer === 'string' && answer.trim() !== '') {
+      const parsedId = parseInt(answer);
+      if (!isNaN(parsedId)) {
+        answerData.opcionRespuestaId = parsedId;
+      }
+    } else if (typeof answer === 'number' && !isNaN(answer)) {
+      answerData.opcionRespuestaId = answer;
     }
 
-    await evaluationAttempt.saveAnswer(answerData);
+    // Solo guardar si hay una respuesta válida
+    if (answerData.textoRespuesta || answerData.opcionRespuestaId || (answerData.opcionRespuestaIds && answerData.opcionRespuestaIds.length > 0)) {
+      try {
+        await evaluationAttempt.saveAnswer(answerData);
+        console.log('✅ Respuesta guardada:', { questionId, questionType: question.type, answerData });
+      } catch (error) {
+        console.error('❌ Error al guardar respuesta:', { questionId, questionType: question.type, answerData, error });
+        // Continuar con las demás respuestas aunque una falle
+      }
+    } else {
+      console.warn('⚠️ Respuesta inválida omitida:', { questionId, answer, questionType: question.type });
+    }
   }
 
   // Finalizar el intento
@@ -970,17 +1024,101 @@ async function submitEvaluation() {
     passed.value = result.aprobado;
     evaluationCompleted.value = true;
     evaluationAttempt.stopTimer();
+    
+    // Recargar la evaluación para obtener el nuevo attemptsRemaining
+    try {
+      const loadedEvaluation = await evaluationsService.findOne(evaluationId);
+      if (loadedEvaluation.attemptsRemaining !== undefined) {
+        evaluation.value.attemptsRemaining = loadedEvaluation.attemptsRemaining;
+        console.log('✅ Intentos restantes actualizados:', {
+          attemptsRemaining: loadedEvaluation.attemptsRemaining,
+          attemptsAllowed: loadedEvaluation.attemptsAllowed,
+        });
+      }
+    } catch (error) {
+      console.error('❌ Error al recargar evaluación para actualizar intentos:', error);
+      // No bloquear la UI si falla la recarga, pero loguear el error
+    }
   }
 }
 
-function downloadCertificate() {
-  // Aquí se llamaría al servicio HTTP para descargar el certificado
-  console.log('Descargar certificado para evaluación:', evaluationId);
-  $q.notify({
-    type: 'positive',
-    message: 'Certificado descargado exitosamente',
-    position: 'top',
-  });
+async function downloadCertificate() {
+  try {
+    // Mostrar loading
+    $q.loading.show({
+      message: 'Buscando certificado...',
+    });
+
+    // Obtener el inscripcionId del composable
+    const inscripcionId = await evaluationAttempt.getInscripcionId();
+    
+    if (!inscripcionId) {
+      $q.loading.hide();
+      $q.notify({
+        type: 'negative',
+        message: 'No se pudo obtener la información de inscripción. Por favor, intenta nuevamente.',
+        position: 'top',
+        timeout: 5000,
+      });
+      return;
+    }
+
+    console.log('🔍 Buscando certificado para inscripción:', inscripcionId);
+
+    // Buscar el certificado por inscripción
+    const certificate = await certificatesService.findByInscripcion(inscripcionId);
+
+    if (!certificate) {
+      $q.loading.hide();
+      $q.notify({
+        type: 'warning',
+        message: 'Certificado no encontrado. El certificado se generará automáticamente. Por favor, intenta nuevamente en unos momentos.',
+        position: 'top',
+        timeout: 6000,
+      });
+      return;
+    }
+
+    console.log('✅ Certificado encontrado:', certificate.id);
+
+    // Actualizar loading
+    $q.loading.show({
+      message: 'Descargando certificado...',
+    });
+
+    // Descargar el PDF
+    const blob = await certificatesService.downloadPDF(certificate.id);
+
+    // Crear URL del blob y descargar
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `certificado-${certificate.courseName.replace(/\s+/g, '-')}-${new Date().getFullYear()}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+
+    $q.loading.hide();
+    $q.notify({
+      type: 'positive',
+      message: 'Certificado descargado exitosamente',
+      icon: 'download',
+      position: 'top',
+    });
+  } catch (error: any) {
+    $q.loading.hide();
+    console.error('❌ Error al descargar certificado:', error);
+    
+    const errorMessage = error.message || 'Error al descargar el certificado. Por favor, intenta nuevamente.';
+    
+    $q.notify({
+      type: 'negative',
+      message: errorMessage,
+      position: 'top',
+      timeout: 5000,
+    });
+  }
 }
 
 async function retryEvaluation() {
@@ -1228,13 +1366,123 @@ onMounted(async () => {
     capacitacionIdRef.value = parseInt(loadedEvaluation.courseId);
     tiempoLimiteRef.value = loadedEvaluation.durationMinutes;
 
-    // Mostrar diálogo de vista previa
-    showPreviewDialog.value = true;
+    // Verificar si se debe mostrar resultados de un intento completado
+    const viewResults = route.query.viewResults === 'true';
+    const attemptIdParam = route.query.attemptId as string;
+
+    if (viewResults) {
+      // Obtener inscripciónId
+      const inscripcionId = await evaluationAttempt.getInscripcionId();
+      
+      if (!inscripcionId) {
+        throw new Error('No se pudo obtener el ID de la inscripción');
+      }
+
+      // Obtener todos los intentos de la evaluación
+      const attempts = await evaluationAttemptsService.getAttempts(
+        parseInt(evaluationId),
+        inscripcionId
+      );
+      
+      // Encontrar el último intento completado
+      const completedAttempts = attempts.filter(
+        (attempt) => attempt.estado === 'completado' && attempt.fechaFinalizacion
+      );
+      
+      if (completedAttempts.length === 0) {
+        throw new Error('No se encontraron intentos completados para esta evaluación');
+      }
+
+      // Ordenar por fecha de finalización descendente y tomar el más reciente
+      const completedAttempt = completedAttempts.sort(
+        (a, b) => 
+          new Date(b.fechaFinalizacion || '').getTime() - 
+          new Date(a.fechaFinalizacion || '').getTime()
+      )[0];
+
+      // Si se proporcionó un attemptId específico, usarlo; de lo contrario, usar el más reciente
+      let attemptId = attemptIdParam ? parseInt(attemptIdParam) : completedAttempt.id;
+      
+      // Verificar que el intento existe y está completado
+      let targetAttempt = attempts.find((a) => a.id === attemptId);
+      
+      if (!targetAttempt || targetAttempt.estado !== 'completado') {
+        // Si el attemptId específico no existe, usar el más reciente
+        attemptId = completedAttempt.id;
+        targetAttempt = completedAttempt;
+      }
+
+      // Cargar las respuestas del intento desde el backend
+      // El backend ahora retorna las respuestas en el intento
+      const backendAttempt = await api.get<any>(
+        `/evaluaciones/${evaluationId}/intentos`,
+        {
+          params: { inscripcionId },
+        }
+      );
+
+      const backendAttemptData = backendAttempt.data.find((a: any) => a.id === attemptId);
+      
+      if (backendAttemptData && backendAttemptData.respuestas) {
+        // Mapear las respuestas del backend al formato del frontend
+        const mappedAnswers: Record<string, string | string[]> = {};
+        
+        for (const respuesta of backendAttemptData.respuestas) {
+          const preguntaId = respuesta.pregunta?.id?.toString() || respuesta.preguntaId?.toString();
+          
+          if (!preguntaId) continue;
+          
+          // Si tiene respuestas múltiples (pregunta de tipo multiple)
+          if (respuesta.respuestasMultiples && respuesta.respuestasMultiples.length > 0) {
+            mappedAnswers[preguntaId] = respuesta.respuestasMultiples.map(
+              (rm: any) => rm.opcionRespuesta?.id?.toString() || rm.opcionRespuestaId?.toString()
+            ).filter((id: string) => id);
+          } 
+          // Si tiene una opción de respuesta única
+          else if (respuesta.opcionRespuesta) {
+            mappedAnswers[preguntaId] = respuesta.opcionRespuesta.id?.toString() || respuesta.opcionRespuestaId?.toString() || '';
+          }
+          // Si tiene texto de respuesta (pregunta abierta)
+          else if (respuesta.textoRespuesta) {
+            mappedAnswers[preguntaId] = respuesta.textoRespuesta;
+          }
+        }
+        
+        // Cargar las respuestas en el estado del componente
+        answers.value = mappedAnswers;
+        
+        console.log('✅ Respuestas del intento cargadas:', {
+          attemptId: targetAttempt.id,
+          respuestasCount: Object.keys(mappedAnswers).length,
+          respuestas: mappedAnswers,
+        });
+      }
+
+      // Establecer los resultados del intento completado
+      finalScore.value = targetAttempt.puntajeObtenido;
+      finalPercentage.value = targetAttempt.porcentaje || 0;
+      passed.value = targetAttempt.aprobado || false;
+      evaluationCompleted.value = true;
+      
+      // Ocultar el diálogo de vista previa ya que vamos directo a resultados
+      showPreviewDialog.value = false;
+      attemptStarted.value = true; // Para evitar que se muestre el diálogo
+      
+      console.log('✅ Resultados del intento cargados:', {
+        attemptId: targetAttempt.id,
+        score: finalScore.value,
+        percentage: finalPercentage.value,
+        passed: passed.value,
+      });
+    } else {
+      // Comportamiento normal: mostrar diálogo de vista previa
+      showPreviewDialog.value = true;
+    }
   } catch (error: any) {
     console.error('Error al cargar evaluación:', error);
     $q.notify({
       type: 'negative',
-      message: error.response?.data?.message || 'Error al cargar la evaluación',
+      message: error.response?.data?.message || error.message || 'Error al cargar la evaluación',
       icon: 'error',
       position: 'top',
     });

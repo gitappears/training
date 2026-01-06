@@ -28,11 +28,14 @@ import { mapBackendCodeToFrontend } from '../../../shared/constants/training-typ
 interface BackendTipoPregunta {
   id: number;
   nombre: string;
+  codigo?: string;
 }
 
 interface BackendOpcionRespuesta {
   id: number;
   texto: string;
+  imagenUrl?: string;
+  imagen_url?: string; // Soporte para snake_case (formato de BD)
   esCorrecta: boolean;
   puntajeParcial?: number;
   orden: number;
@@ -125,6 +128,29 @@ function mapBackendToDomain(backendData: BackendEvaluacion): Evaluation {
             text: opt.texto ?? '',
             isCorrect: opt.esCorrecta ?? false,
           };
+          // Manejar ambos formatos: imagenUrl (camelCase) o imagen_url (snake_case)
+          // TypeORM puede devolver los nombres de las columnas (snake_case) en lugar de las propiedades (camelCase)
+          // cuando se serializa a JSON, dependiendo de la configuración
+          const imagenUrl = opt.imagenUrl || opt.imagen_url;
+          if (imagenUrl && String(imagenUrl).trim() !== '') {
+            option.imageUrl = String(imagenUrl).trim();
+            console.log('✅ Imagen mapeada desde backend:', {
+              opcionId: opt.id,
+              texto: opt.texto,
+              imagenUrl: option.imageUrl,
+              formatoRecibido: opt.imagenUrl ? 'camelCase (imagenUrl)' : 'snake_case (imagen_url)',
+            });
+          } else {
+            // Log detallado para debugging
+            const optAny = opt as unknown as Record<string, unknown>;
+            console.log('⚠️ No hay imagen en opción del backend:', {
+              opcionId: opt.id,
+              texto: opt.texto,
+              tieneImagenUrl: !!opt.imagenUrl,
+              tieneImagen_url: !!opt.imagen_url,
+              todasLasPropiedades: Object.keys(optAny),
+            });
+          }
           return option;
         }) ?? [],
         order: q.orden ?? 0,
@@ -155,13 +181,33 @@ function mapBackendToDomain(backendData: BackendEvaluacion): Evaluation {
  * Mapea el tipo de pregunta del backend al tipo del dominio
  */
 function mapTipoPreguntaToQuestionType(tipoPregunta: BackendTipoPregunta): QuestionType {
+  // Priorizar el ID si está disponible (más confiable que el nombre)
+  if (tipoPregunta?.id) {
+    const idMap: Record<number, QuestionType> = {
+      1: 'single',
+      2: 'multiple',
+      3: 'image',
+      4: 'true_false',
+      5: 'yes_no',
+      6: 'open_text', // OPEN_TEXT
+    };
+    if (idMap[tipoPregunta.id]) {
+      return idMap[tipoPregunta.id];
+    }
+  }
+  
+  // Fallback: usar el código o nombre si el ID no está disponible
+  const codigo = tipoPregunta?.codigo?.toUpperCase() ?? '';
+  if (codigo === 'OPEN_TEXT') return 'open_text';
+  
   const nombre = tipoPregunta?.nombre?.toLowerCase() ?? '';
   if (nombre.includes('única') || nombre.includes('unica') || nombre.includes('single')) return 'single';
   if (nombre.includes('múltiple') || nombre.includes('multiple')) return 'multiple';
-  if (nombre.includes('imagen') || nombre.includes('image')) return 'image';
+  if (nombre.includes('imagen') || nombre.includes('image') || nombre.includes('selección de imagen') || nombre.includes('seleccion de imagen')) return 'image';
   if (nombre.includes('falso') || nombre.includes('verdadero') || nombre.includes('true') || nombre.includes('false')) return 'true_false';
   if (nombre.includes('sí') || nombre.includes('no') || nombre.includes('yes') || nombre.includes('no')) return 'yes_no';
-  return 'single';
+  if (nombre.includes('abierta') || nombre.includes('texto') || nombre.includes('open') || nombre.includes('text')) return 'open_text';
+  return 'single' as QuestionType;
 }
 
 /**
@@ -174,6 +220,7 @@ function mapQuestionTypeToTipoPreguntaId(type: QuestionType): number {
     image: 3, // Selección de imagen
     true_false: 4, // Falso o Verdadero
     yes_no: 5, // Sí o No
+    open_text: 6, // Respuesta abierta
   };
   return map[type] ?? 1;
 }
@@ -457,6 +504,9 @@ export class EvaluationsService implements IEvaluationRepository {
                 puntajeParcial: 0,
                 orden: optIdx,
               };
+              if (opt.imageUrl) {
+                option.imagenUrl = opt.imageUrl;
+              }
               return option;
             }),
           };
@@ -575,6 +625,7 @@ export class EvaluationsService implements IEvaluationRepository {
               const opcion: {
                 id?: number;
                 texto: string;
+                imagenUrl?: string;
                 esCorrecta: boolean;
                 puntajeParcial?: number;
                 orden?: number;
@@ -584,6 +635,11 @@ export class EvaluationsService implements IEvaluationRepository {
                 puntajeParcial: 0,
                 orden: idx,
               };
+
+              // Incluir imagenUrl si está presente
+              if (opt.imageUrl) {
+                opcion.imagenUrl = opt.imageUrl;
+              }
 
               // Si la opción tiene id válido, incluirlo para actualización
               if (optionWithId.id !== undefined) {
