@@ -95,9 +95,11 @@
                 <div class="certificate-html-view" :style="{ backgroundImage: `url(${certificateBg})` }">
                   <div class="certificate-content">
                     
-                    <!-- LOGO DINAMICO -->
-                    <div class="cert-logo-container">
-                        <img :src="logoSrc" class="cert-logo-img" alt="Logo" />
+                    <!-- LOGO DINAMICO + CONFIANZA -->
+                    <div class="cert-logos-row">
+                        <img :src="logoSrc" class="cert-logo-img" alt="Logo Principal" />
+                        <div class="cert-logo-spacer"></div>
+                        <img :src="logoConfianza" class="cert-logo-img logo-confianza" alt="Logo Confianza" />
                     </div>
 
                     <!-- 1. Main Title -->
@@ -131,7 +133,7 @@
                     <!-- 7. Details -->
                     <div class="cert-details">
                       <p>Con una intensidad de {{ certificate.durationHours || 20 }} horas</p>
-                      <p>Resolucion: 0000000000</p>
+                      <p class="text-uppercase">{{ resolutionText }}</p>
                     </div>
 
                     <div class="cert-push-bottom"></div>
@@ -555,15 +557,16 @@
       </q-card>
     </q-dialog>
 
-    <div class="cert-version-debug">v2026.01.03.1715 - Image Fix</div>
+    <div class="cert-version-debug">v2026.01.06 - FINAL LAYOUT CHECK</div>
   </q-page>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import certificateBg from '../../../assets/certificado_svg.svg';
-import logoAndar from '../../../assets/andar.png';
-import logoSaroto from '../../../assets/saroto.jpeg';
+import logoAndar from '../../../assets/andar.svg';
+import logoSaroto from '../../../assets/ceasaroto.svg';
+import logoConfianza from '../../../assets/confianza.svg';
 import { useRoute, useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 import type { Certificate, CertificateVerificationHistory } from '../../../domain/certificate/models';
@@ -613,6 +616,21 @@ const logoSrc = computed(() => {
       return logoSaroto;
   }
   return logoAndar;
+});
+
+// RESOLUCION DINAMICA
+const resolutionText = computed(() => {
+  if (!certificate.value) return 'Resolución N° 1500-67-10/1811 de 28 de junio de 2024, secretaria de educacion villavicencio';
+  
+  const title = (certificate.value.courseName || '').toLowerCase().trim();
+  const contieneSustancias = title.includes('sustancias');
+  const contienePeligrosas = title.includes('peligrosas');
+
+  if (contieneSustancias && contienePeligrosas) {
+      return 'Resolucion N° 1585 de 05 de junio de 2025, secretaria de educacion soacha';
+  }
+  
+  return 'Resolución N° 1500-67-10/1811 de 28 de junio de 2024, secretaria de educacion villavicencio';
 });
 
 // Funciones
@@ -1218,17 +1236,45 @@ body.body--dark code {
 }
 
 /* Logo Styles */
+.cert-logos-row {
+    position: absolute;
+    top: 40px;   /* Adjusted to match PDF Y=30 (High Position for Confianza) */
+    right: 33px; /* Match PDF rightAnchorX 767 */
+    display: flex;
+    justify-content: flex-end;
+    align-items: flex-start; /* Permite alinear independientemente verticalmente */
+    width: auto;
+    margin: 0;
+    padding: 0;
+    z-index: 10;
+}
+
+.cert-logo-spacer {
+    width: 0px; 
+    margin-right: -27px; /* Negative margin to match backend -20px gap * 1.33 */
+}
+
 .cert-logo-container {
     display: flex;
     justify-content: center;
-    margin-bottom: 5px; /* Adjust spacing as needed */
+    margin-bottom: 5px; 
     z-index: 10;
 }
 
 .cert-logo-img {
-    width: 120px;
+    width: 168px; /* 126px * 1.33 */
     height: auto;
     object-fit: contain;
+    position: relative; 
+    z-index: 11;
+    margin-top: 13px; /* Empujar hacia abajo para igualar Y=40 (antiguo) mientras Confianza está en Y=30 */
+}
+
+.logo-confianza {
+    width: 277px; /* 208px * 1.33 */
+    position: relative;
+    z-index: 12;
+    /* Sin margen superior, se queda arriba (Y=30) */
 }
 
 /* Version Indicator */
