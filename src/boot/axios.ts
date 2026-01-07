@@ -1,5 +1,6 @@
 import { defineBoot } from '#q-app/wrappers';
 import axios, { type AxiosInstance } from 'axios';
+import { useRouter } from 'vue-router';
 
 declare module 'vue' {
   interface ComponentCustomProperties {
@@ -154,8 +155,8 @@ api.interceptors.response.use(
     if (error?.response?.status === 401) {
       // Lista de endpoints públicos que pueden devolver 401 legítimamente
       const publicEndpoints = [
-        '/auth/login', 
-        '/auth/public/register', 
+        '/auth/login',
+        '/auth/public/register',
         '/auth/register/photo',
         '/public/', // Importante: endpoints públicos no deben forzar logout
       ];
@@ -185,7 +186,13 @@ api.interceptors.response.use(
 
       localStorage.removeItem('auth_token');
       localStorage.removeItem('auth_profile');
-      window.location.href = '/auth/login';
+      // Usar hash routing para evitar peticiones HTTP directas en producción
+      // Esto es compatible con vueRouterMode: 'hash' configurado en quasar.config.ts
+      if (window.location.hash) {
+        await useRouter().push('/auth/login');
+      } else {
+        await useRouter().push('/auth/login');
+      }
       return Promise.reject(new Error('Sesión expirada. Por favor, inicia sesión de nuevo.'));
     }
 

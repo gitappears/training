@@ -7,6 +7,7 @@ import {
 } from 'vue-router';
 import routes from './routes';
 import type { UserRole } from '../shared/composables/useRole';
+import { isTokenExpired } from '../shared/utils/token-validator';
 
 /*
  * If not building with SSR mode, you can
@@ -89,6 +90,24 @@ export default defineRouter(function (/* { store, ssrContext } */) {
     const token = localStorage.getItem('auth_token');
     const requiresAuth = to.matched.some((record) => record.meta.requiresAuth);
     const requiredRoles = to.meta.roles as UserRole[] | undefined;
+
+    // Validar token si existe
+    if (token) {
+      // Verificar si el token ha expirado
+      if (isTokenExpired(token)) {
+        // Token expirado: limpiar datos y redirigir a login
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('auth_profile');
+        
+        // Si está intentando acceder a una ruta protegida, redirigir a login
+        if (requiresAuth) {
+          next({ name: 'login', query: { redirect: to.fullPath, expired: 'true' } });
+          return;
+        }
+        // Si no requiere auth pero hay token expirado, limpiar y continuar
+        // (permite acceso a rutas públicas)
+      }
+    }
 
     // Verificar autenticación
     if (requiresAuth && !token) {
