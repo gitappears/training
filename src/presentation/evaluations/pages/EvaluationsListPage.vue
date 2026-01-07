@@ -321,11 +321,13 @@ import type {
   EvaluationStatistics,
   EvaluationStatus,
 } from '../../../domain/evaluation/models';
+import { useAuthStore } from '../../../stores/auth.store';
 import EmptyState from '../../../shared/components/EmptyState.vue';
 import FiltersPanel from '../../../shared/components/FiltersPanel.vue';
 
 const router = useRouter();
 const $q = useQuasar();
+const authStore = useAuthStore();
 
 // Estado
 const loading = ref(false);
@@ -584,8 +586,19 @@ function formatDate(dateString: string): string {
   }
 }
 
-function startEvaluation(id: string) {
-  void router.push(`/evaluations/${id}`);
+async function startEvaluation(id: string) {
+  const evaluation = evaluations.value.find((e) => e.id === id);
+  
+  // Si la evaluación está aprobada, navegar directamente a la página de resultados
+  // La página de evaluación se encargará de obtener el inscripcionId y los intentos
+  if (evaluation && evaluation.status === 'passed') {
+    // Navegar a la página de evaluación con parámetro para ver resultados
+    // La página se encargará de obtener el último intento completado
+    void router.push(`/evaluations/${id}?viewResults=true`);
+  } else {
+    // Para evaluaciones no aprobadas, navegar normalmente
+    void router.push(`/evaluations/${id}`);
+  }
 }
 
 // Lifecycle

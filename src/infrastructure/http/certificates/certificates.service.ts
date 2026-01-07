@@ -3,6 +3,7 @@
 
 import { api } from '../../../boot/axios';
 import type { AxiosError } from 'axios';
+import { useAuthStore } from '../../../stores/auth.store';
 import type {
   ICertificateRepository,
   CreateCertificateDto,
@@ -355,6 +356,56 @@ export class CertificatesService implements ICertificateRepository {
       const axiosError = error as AxiosError<{ message?: string }>;
       throw new Error(
         axiosError.response?.data?.message ?? `Error al descargar el certificado con ID ${id}`,
+      );
+    }
+  }
+
+  /**
+   * Buscar certificado por inscripción ID
+   * @param inscripcionId ID de la inscripción
+   * @returns Certificado encontrado o null si no existe
+   */
+  async findByInscripcion(inscripcionId: number): Promise<Certificate | null> {
+    try {
+      // Obtener el personaId del usuario actual
+      const authStore = useAuthStore();
+      const profile = authStore.profile as { personaId?: number; persona?: { id?: number } } | null;
+      const personaId = profile?.personaId || profile?.persona?.id;
+
+      if (!personaId) {
+        throw new Error('No se pudo obtener el ID del usuario');
+      }
+
+      // Buscar certificados del usuario usando el endpoint de estudiante
+      // y filtrar por inscripcionId
+      const estudianteId = Number.parseInt(personaId.toString(), 10);
+      const response = await api.post<BackendPaginatedResponse>(
+        `${this.baseUrl}/estudiante/${estudianteId}`,
+        {
+          page: 1,
+          limit: 100,
+          sortField: 'fechaEmision',
+          sortOrder: 'DESC',
+        },
+      );
+
+      if (!response.data || !Array.isArray(response.data.data)) {
+        return null;
+      }
+
+      // Buscar el certificado que tenga inscripcion.id === inscripcionId
+      for (const item of response.data.data) {
+        if (item.inscripcion?.id === inscripcionId) {
+          return mapBackendToDomain(item);
+        }
+      }
+
+      return null;
+    } catch (error) {
+      const axiosError = error as AxiosError<{ message?: string }>;
+      console.error('Error al buscar certificado por inscripción:', error);
+      throw new Error(
+        axiosError.response?.data?.message ?? `Error al buscar el certificado para la inscripción ${inscripcionId}`,
       );
     }
   }

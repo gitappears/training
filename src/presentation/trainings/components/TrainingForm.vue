@@ -750,6 +750,9 @@
                     map-options
                     :rules="[(val) => !!val || 'Seleccione un tipo']"
                     :dense="false"
+                    @update:model-value="(val) => {
+                      pregunta.tipoPreguntaId = typeof val === 'number' ? val : parseInt(val);
+                    }"
                   >
                     <template #prepend>
                       <q-icon name="category" />
@@ -766,19 +769,6 @@
                     :dense="false"
                     rows="2"
                   />
-
-                  <q-input
-                    v-if="pregunta.tipoPreguntaId === 3"
-                    v-model="pregunta.imagenUrl"
-                    filled
-                    label="URL de la imagen"
-                    hint="URL de la imagen para preguntas de tipo imagen"
-                    :dense="false"
-                  >
-                    <template #prepend>
-                      <q-icon name="image" />
-                    </template>
-                  </q-input>
 
                 <div class="row q-col-gutter-md">
                   <div class="col-12 col-md-6">
@@ -829,30 +819,153 @@
                     class="q-mb-sm"
                   >
                     <q-card flat bordered class="q-pa-sm">
-                      <div class="row items-center q-gutter-sm">
-                        <div class="col">
-                          <q-input
-                            v-model="opcion.texto"
-                            filled
-                            dense
-                            label="Texto de la opción *"
-                            :rules="[(val) => !!val || 'El texto es obligatorio']"
-                          />
+                      <div class="column q-gutter-sm">
+                        <div class="row items-center q-gutter-sm">
+                          <div class="col">
+                            <q-input
+                              v-model="opcion.texto"
+                              filled
+                              dense
+                              label="Texto de la opción *"
+                              :rules="[(val) => !!val || 'El texto es obligatorio']"
+                            />
+                          </div>
+                          <div class="col-auto">
+                            <q-checkbox v-model="opcion.esCorrecta" label="Correcta" color="positive" />
+                          </div>
+                          <div class="col-auto">
+                            <q-btn
+                              v-if="pregunta.opciones.length > 1"
+                              flat
+                              dense
+                              round
+                              color="negative"
+                              icon="close"
+                              size="sm"
+                              @click="removeOption(preguntaIndex, opcionIndex)"
+                            />
+                          </div>
                         </div>
-                        <div class="col-auto">
-                        <q-checkbox v-model="opcion.esCorrecta" label="Correcta" color="positive" />
-                        </div>
-                        <div class="col-auto">
-                          <q-btn
-                            v-if="pregunta.opciones.length > 1"
-                            flat
-                            dense
-                            round
-                            color="negative"
-                            icon="close"
-                            size="sm"
-                            @click="removeOption(preguntaIndex, opcionIndex)"
+                        <!-- Campo de carga de imagen para opciones cuando el tipo es imagen -->
+                        <div v-if="pregunta.tipoPreguntaId === 3" class="column q-gutter-sm">
+                          <!-- Debug: mostrar información de la opción -->
+                          <!-- <div class="text-caption text-grey-6 q-mb-xs">
+                            Debug: imagenUrl = {{ opcion.imagenUrl }}, 
+                            hasOptionImage = {{ hasOptionImage(preguntaIndex, opcionIndex) }},
+                            url = {{ getOptionImageUrl(preguntaIndex, opcionIndex) }}
+                          </div> -->
+                          
+                          <!-- Input de archivo oculto para poder activarlo programáticamente -->
+                          <q-file
+                            :ref="(el) => setImageFileInputRef(preguntaIndex, opcionIndex, el)"
+                            :model-value="getOptionImageFile(preguntaIndex, opcionIndex)"
+                            accept="image/*"
+                            @update:model-value="(file) => handleOptionImageSelected(preguntaIndex, opcionIndex, file)"
+                            style="display: none;"
+                            class="hidden-file-input"
                           />
+                          
+                          <!-- Si ya hay imagen subida, mostrar miniatura -->
+                          <div
+                            v-if="opcion.imagenUrl && String(opcion.imagenUrl).trim() !== ''"
+                            class="option-image-wrapper q-mt-sm"
+                          >
+                            <div class="row items-center q-gutter-sm">
+                              <div class="option-image-thumbnail-container" style="width: 200px; height: 110px; min-width: 200px; min-height: 110px; max-width: 200px; max-height: 110px;">
+                                <img
+                                  :src="buildFullUrl(opcion.imagenUrl)"
+                                  :alt="opcion.texto || 'Imagen de opción'"
+                                  class="option-image-thumbnail"
+                                  loading="lazy"
+                                  style="width: 100%; height: 100%; max-width: 200px; max-height: 110px; object-fit: cover; border-radius:5px;"
+                                />
+                              </div>
+                              <div class="col">
+                                <div class="text-caption text-grey-7 q-mb-xs">Imagen de la opción</div>
+                                <div class="row q-gutter-xs">
+                                  <q-btn
+                                    flat
+                                    dense
+                                    size="sm"
+                                    color="primary"
+                                    icon="image"
+                                    label="Cambiar"
+                                    @click="triggerImageFileInput(preguntaIndex, opcionIndex)"
+                                  />
+                                  <q-btn
+                                    flat
+                                    dense
+                                    size="sm"
+                                    color="negative"
+                                    icon="delete"
+                                    label="Eliminar"
+                                    @click="clearOptionImage(preguntaIndex, opcionIndex)"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <!-- Si no hay imagen pero hay archivo seleccionado, mostrar preview -->
+                          <div
+                            v-else-if="getOptionImageFile(preguntaIndex, opcionIndex) && isImageFile(getOptionImageFile(preguntaIndex, opcionIndex)!)"
+                            class="option-image-wrapper q-mt-sm"
+                          >
+                            <div class="row items-center q-gutter-sm">
+                              <div class="option-image-thumbnail-container" style="width: 80px; height: 60px; min-width: 80px; min-height: 60px; max-width: 80px; max-height: 60px;">
+                                <img
+                                  :src="getFilePreviewUrl(getOptionImageFile(preguntaIndex, opcionIndex)!)"
+                                  alt="Vista previa de imagen"
+                                  class="option-image-thumbnail"
+                                  style="width: 100%; height: 100%; max-width: 80px; max-height: 60px; object-fit: cover;"
+                                />
+                              </div>
+                              <div class="col">
+                                <div class="text-caption text-grey-7 q-mb-xs">Imagen seleccionada</div>
+                                <div class="row q-gutter-xs items-center">
+                                  <q-btn
+                                    v-if="!isUploadingOptionImage(preguntaIndex, opcionIndex)"
+                                    flat
+                                    dense
+                                    size="sm"
+                                    color="primary"
+                                    icon="cloud_upload"
+                                    label="Subir"
+                                    @click="uploadOptionImage(preguntaIndex, opcionIndex)"
+                                  />
+                                  <q-btn
+                                    flat
+                                    dense
+                                    size="sm"
+                                    color="negative"
+                                    icon="close"
+                                    label="Cancelar"
+                                    @click="clearOptionImage(preguntaIndex, opcionIndex)"
+                                  />
+                                  <q-linear-progress
+                                    v-if="isUploadingOptionImage(preguntaIndex, opcionIndex)"
+                                    :value="getOptionUploadProgress(preguntaIndex, opcionIndex)"
+                                    color="primary"
+                                    class="q-mt-xs"
+                                    style="width: 200px;"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <!-- Si no hay imagen ni archivo seleccionado, mostrar botón para seleccionar -->
+                          <div v-else>
+                            <q-btn
+                              flat
+                              dense
+                              color="primary"
+                              icon="image"
+                              label="Seleccionar imagen (opcional)"
+                              size="sm"
+                              @click="triggerImageFileInput(preguntaIndex, opcionIndex)"
+                            />
+                          </div>
                         </div>
                       </div>
                     </q-card>
@@ -1046,15 +1159,12 @@
         </q-card-section>
         <q-separator />
         <q-card-section v-if="selectedPdf" class="pdf-modal-content q-pa-none">
-          <div class="pdf-viewer-container">
-            <PDFViewer
-              :src="selectedPdf.url"
-              :title="selectedPdf.name"
-              :allow-download="true"
-              :allow-retry="true"
-              class="pdf-viewer-component"
-            />
-          </div>
+          <iframe
+            :src="buildFullUrl(selectedPdf.url)"
+            class="pdf-iframe"
+            frameborder="0"
+            :title="selectedPdf.name || 'Visualizador de PDF'"
+          />
         </q-card-section>
       </q-card>
     </q-dialog>
@@ -1089,7 +1199,6 @@
 import { reactive, ref, onMounted, computed, watch } from 'vue';
 import { useQuasar } from 'quasar';
 import type { Material } from '../../../shared/components/MaterialViewer.vue';
-import PDFViewer from '../../../shared/components/PDFViewer.vue';
 import { materialsService } from '../../../infrastructure/http/materials/materials.service';
 import { useMaterialUrl } from '../../../shared/composables/useMaterialUrl';
 import { TRAINING_TYPE_OPTIONS } from '../../../shared/constants/training-types';
@@ -1099,6 +1208,7 @@ import { useAuthStore } from '../../../stores/auth.store';
 export interface EvaluationOption {
   id?: number; // ID de la opción (para edición)
   texto: string;
+  imagenUrl?: string; // URL de la imagen para opciones de preguntas tipo imagen
   esCorrecta: boolean;
   puntajeParcial?: number;
   orden?: number;
@@ -1215,6 +1325,11 @@ const uploadProgress = ref(0);
 // Estados para modal de PDF
 const showPdfModal = ref(false);
 const selectedPdf = ref<Material | null>(null);
+
+// Estados para manejar imágenes de opciones de respuesta
+const optionImageFiles = ref<Map<string, File | null>>(new Map());
+const optionUploading = ref<Map<string, boolean>>(new Map());
+const optionUploadProgress = ref<Map<string, number>>(new Map());
 
 // Materiales combinados (para compatibilidad con el emit)
 const materials = computed(() => [...videos.value, ...files.value]);
@@ -1640,7 +1755,7 @@ function viewImage(imageUrl: string): void {
 }
 
 /**
- * Abre un PDF en un modal para visualización completa con PDFViewer
+ * Abre un PDF en un modal para visualización completa con iframe
  */
 function openPdfModal(file: Material): void {
   selectedPdf.value = file;
@@ -1966,6 +2081,12 @@ function removeOption(preguntaIndex: number, opcionIndex: number): void {
   const pregunta = form.evaluationInline.preguntas[preguntaIndex];
   if (!pregunta) return;
   if (pregunta.opciones.length > 1) {
+    // Limpiar estados de imagen de la opción antes de eliminar
+    const optionKey = getOptionKey(preguntaIndex, opcionIndex);
+    optionImageFiles.value.delete(optionKey);
+    optionUploading.value.delete(optionKey);
+    optionUploadProgress.value.delete(optionKey);
+    
     pregunta.opciones.splice(opcionIndex, 1);
     // Reordenar
     pregunta.opciones.forEach((o, i) => {
@@ -1977,6 +2098,251 @@ function removeOption(preguntaIndex: number, opcionIndex: number): void {
       message: 'Cada pregunta debe tener al menos una opción',
       position: 'top',
       timeout: 3000,
+    });
+  }
+}
+
+// Funciones para manejar imágenes de opciones de respuesta
+function getOptionKey(preguntaIndex: number, opcionIndex: number): string {
+  return `p${preguntaIndex}_o${opcionIndex}`;
+}
+
+function getOptionImageFile(preguntaIndex: number, opcionIndex: number): File | null {
+  const key = getOptionKey(preguntaIndex, opcionIndex);
+  return optionImageFiles.value.get(key) || null;
+}
+
+async function handleOptionImageSelected(preguntaIndex: number, opcionIndex: number, file: File | null): Promise<void> {
+  const key = getOptionKey(preguntaIndex, opcionIndex);
+  
+  if (!file) {
+    optionImageFiles.value.delete(key);
+    return;
+  }
+  
+  // Validar que sea una imagen
+  if (!isImageFile(file)) {
+    $q.notify({
+      type: 'negative',
+      message: 'El archivo seleccionado no es una imagen',
+      position: 'top',
+    });
+    optionImageFiles.value.delete(key);
+    return;
+  }
+  
+  // Validar tamaño (10MB máximo, igual que otros archivos)
+  if (file.size > 10 * 1024 * 1024) {
+    $q.notify({
+      type: 'negative',
+      message: 'El archivo excede el tamaño máximo de 10MB',
+      position: 'top',
+    });
+    optionImageFiles.value.delete(key);
+    return;
+  }
+  
+  // Guardar el archivo temporalmente
+  optionImageFiles.value.set(key, file);
+  
+  // Subir automáticamente la imagen
+  try {
+    await uploadOptionImage(preguntaIndex, opcionIndex);
+  } catch (error) {
+    console.error('Error al subir imagen automáticamente:', error);
+    // El error ya se maneja en uploadOptionImage
+  }
+}
+
+async function uploadOptionImage(preguntaIndex: number, opcionIndex: number): Promise<void> {
+  const key = getOptionKey(preguntaIndex, opcionIndex);
+  const file = optionImageFiles.value.get(key);
+  
+  if (!file || !form.evaluationInline) {
+    return;
+  }
+  
+  const pregunta = form.evaluationInline.preguntas[preguntaIndex];
+  if (!pregunta) return;
+  
+  const opcion = pregunta.opciones[opcionIndex];
+  if (!opcion) return;
+  
+  optionUploading.value.set(key, true);
+  optionUploadProgress.value.set(key, 0);
+  
+  try {
+    const response = await materialsService.uploadFile(file, (progress) => {
+      optionUploadProgress.value.set(key, progress);
+    });
+    
+    // Guardar la URL relativa en la opción
+    // La URL viene como ruta relativa desde el backend (ej: /storage/materials/1234567890-abc123.jpg)
+    // Usar Vue.set o asignación directa para asegurar reactividad
+    if (form.evaluationInline) {
+      const pregunta = form.evaluationInline.preguntas[preguntaIndex];
+      if (pregunta && pregunta.opciones[opcionIndex]) {
+        // Asignar directamente a la opción en el array para asegurar reactividad
+        pregunta.opciones[opcionIndex].imagenUrl = response.url;
+        opcion.imagenUrl = response.url; // También actualizar la referencia local
+      }
+    }
+    
+    console.log('✅ Imagen subida exitosamente:', {
+      preguntaIndex,
+      opcionIndex,
+      url: response.url,
+      opcionImagenUrl: opcion.imagenUrl,
+      urlCompleta: buildFullUrl(response.url),
+      preguntaTipo: pregunta?.tipoPreguntaId,
+    });
+    
+    // Limpiar el archivo temporal después de subir
+    optionImageFiles.value.delete(key);
+    optionUploadProgress.value.set(key, 0);
+    
+    $q.notify({
+      type: 'positive',
+      message: 'Imagen subida exitosamente',
+      position: 'top',
+    });
+  } catch (error) {
+    console.error('❌ Error al subir imagen de opción:', error);
+    $q.notify({
+      type: 'negative',
+      message: 'Error al subir la imagen. Por favor, intente nuevamente.',
+      position: 'top',
+    });
+    throw error; // Re-lanzar el error para que se maneje en onSubmit
+  } finally {
+    optionUploading.value.set(key, false);
+  }
+}
+
+function clearOptionImage(preguntaIndex: number, opcionIndex: number): void {
+  const key = getOptionKey(preguntaIndex, opcionIndex);
+  optionImageFiles.value.delete(key);
+  optionUploadProgress.value.set(key, 0);
+  
+  if (form.evaluationInline) {
+    const pregunta = form.evaluationInline.preguntas[preguntaIndex];
+    if (pregunta && pregunta.opciones[opcionIndex]) {
+      delete pregunta.opciones[opcionIndex].imagenUrl;
+    }
+  }
+}
+
+function previewOptionImage(preguntaIndex: number, opcionIndex: number): void {
+  const file = getOptionImageFile(preguntaIndex, opcionIndex);
+  if (file && isImageFile(file)) {
+    const url = getFilePreviewUrl(file);
+    window.open(url, '_blank');
+  } else if (form.evaluationInline) {
+    const pregunta = form.evaluationInline.preguntas[preguntaIndex];
+    if (pregunta && pregunta.opciones[opcionIndex]?.imagenUrl) {
+      window.open(buildFullUrl(pregunta.opciones[opcionIndex].imagenUrl!), '_blank');
+    }
+  }
+}
+
+function isUploadingOptionImage(preguntaIndex: number, opcionIndex: number): boolean {
+  const key = getOptionKey(preguntaIndex, opcionIndex);
+  return optionUploading.value.get(key) || false;
+}
+
+function getOptionUploadProgress(preguntaIndex: number, opcionIndex: number): number {
+  const key = getOptionKey(preguntaIndex, opcionIndex);
+  return optionUploadProgress.value.get(key) || 0;
+}
+
+/**
+ * Verifica si una opción tiene una imagen válida
+ */
+function hasOptionImage(preguntaIndex: number, opcionIndex: number): boolean {
+  if (!form.evaluationInline) {
+    return false;
+  }
+  const pregunta = form.evaluationInline.preguntas[preguntaIndex];
+  if (!pregunta || !pregunta.opciones || !pregunta.opciones[opcionIndex]) {
+    return false;
+  }
+  const opcion = pregunta.opciones[opcionIndex];
+  const hasImage = !!(opcion.imagenUrl && String(opcion.imagenUrl).trim() !== '');
+  if (hasImage) {
+    console.log('✅ hasOptionImage: true', {
+      preguntaIndex,
+      opcionIndex,
+      texto: opcion.texto,
+      imagenUrl: opcion.imagenUrl,
+    });
+  }
+  return hasImage;
+}
+
+/**
+ * Obtiene la URL completa de la imagen de una opción
+ */
+function getOptionImageUrl(preguntaIndex: number, opcionIndex: number): string {
+  if (!form.evaluationInline) return '';
+  const pregunta = form.evaluationInline.preguntas[preguntaIndex];
+  if (!pregunta || !pregunta.opciones || !pregunta.opciones[opcionIndex]) return '';
+  const opcion = pregunta.opciones[opcionIndex];
+  if (!opcion.imagenUrl || String(opcion.imagenUrl).trim() === '') return '';
+  const fullUrl = buildFullUrl(String(opcion.imagenUrl).trim());
+  console.log('🔗 getOptionImageUrl:', {
+    preguntaIndex,
+    opcionIndex,
+    imagenUrl: opcion.imagenUrl,
+    fullUrl,
+  });
+  return fullUrl;
+}
+
+// Referencias a los inputs de archivo para poder activarlos programáticamente
+const imageFileInputRefs = ref<Map<string, any>>(new Map());
+
+function setImageFileInputRef(preguntaIndex: number, opcionIndex: number, el: any): void {
+  if (el) {
+    const key = getOptionKey(preguntaIndex, opcionIndex);
+    imageFileInputRefs.value.set(key, el);
+  }
+}
+
+function triggerImageFileInput(preguntaIndex: number, opcionIndex: number): void {
+  const key = getOptionKey(preguntaIndex, opcionIndex);
+  const inputRef = imageFileInputRefs.value.get(key);
+  
+  if (!inputRef) {
+    console.warn('No se encontró la referencia al input de archivo para la opción:', { preguntaIndex, opcionIndex, key });
+    return;
+  }
+  
+  // Intentar acceder al elemento del input de diferentes formas
+  let fileInput: HTMLInputElement | null = null;
+  
+  // Si es un componente Quasar q-file
+  if (inputRef.$el) {
+    fileInput = inputRef.$el.querySelector('input[type="file"]') as HTMLInputElement;
+  } 
+  // Si es directamente un elemento HTML
+  else if (inputRef instanceof HTMLElement) {
+    fileInput = inputRef.querySelector('input[type="file"]') as HTMLInputElement;
+  }
+  // Si es un objeto con querySelector
+  else if (inputRef && typeof inputRef === 'object' && 'querySelector' in inputRef) {
+    fileInput = (inputRef as any).querySelector('input[type="file"]');
+  }
+  
+  if (fileInput) {
+    // Limpiar el valor anterior para permitir seleccionar el mismo archivo
+    fileInput.value = '';
+    fileInput.click();
+  } else {
+    console.error('No se pudo encontrar el input de archivo para la opción:', { 
+      preguntaIndex, 
+      opcionIndex, 
+      key,
+      inputRef 
     });
   }
 }
@@ -2123,23 +2489,58 @@ function initializeFormWithData() {
       puntajeTotal: props.initialEvaluationInline.puntajeTotal || 100,
       minimoAprobacion: props.initialEvaluationInline.minimoAprobacion || 70,
       orden: props.initialEvaluationInline.orden || 0,
-      preguntas: props.initialEvaluationInline.preguntas.map((p) => ({
-        ...(p.id !== undefined && { id: p.id }),
-        tipoPreguntaId: p.tipoPreguntaId,
-        enunciado: p.enunciado || '',
-        ...(p.imagenUrl !== undefined && { imagenUrl: p.imagenUrl }),
-        ...(p.porcentaje !== undefined && { porcentaje: p.porcentaje }),
-        puntaje: p.puntaje || 0, // Se recalculará automáticamente
-        orden: p.orden ?? 0,
-        requerida: p.requerida ?? true,
-        opciones: p.opciones.map((o) => ({
-          ...(o.id !== undefined && { id: o.id }),
-          texto: o.texto || '',
-          esCorrecta: Boolean(o.esCorrecta), // Asegurar que sea booleano
-          puntajeParcial: o.puntajeParcial || 0,
-          orden: o.orden ?? 0,
-        })),
-      })),
+      preguntas: props.initialEvaluationInline.preguntas.map((p) => {
+        const pregunta = {
+          ...(p.id !== undefined && { id: p.id }),
+          tipoPreguntaId: typeof p.tipoPreguntaId === 'number' ? p.tipoPreguntaId : parseInt(String(p.tipoPreguntaId || 1)),
+          enunciado: p.enunciado || '',
+          ...(p.imagenUrl !== undefined && { imagenUrl: p.imagenUrl }),
+          ...(p.porcentaje !== undefined && { porcentaje: p.porcentaje }),
+          puntaje: p.puntaje || 0, // Se recalculará automáticamente
+          orden: p.orden ?? 0,
+          requerida: p.requerida ?? true,
+          opciones: p.opciones.map((o, oIdx) => {
+            const opcion: {
+              id?: number;
+              texto: string;
+              imagenUrl?: string;
+              esCorrecta: boolean;
+              puntajeParcial: number;
+              orden: number;
+            } = {
+              ...(o.id !== undefined && { id: o.id }),
+              texto: o.texto || '',
+              esCorrecta: Boolean(o.esCorrecta), // Asegurar que sea booleano
+              puntajeParcial: o.puntajeParcial || 0,
+              orden: o.orden ?? 0,
+            };
+            // Asegurar que imagenUrl se asigne correctamente si existe
+            if (o.imagenUrl !== undefined && o.imagenUrl !== null && String(o.imagenUrl).trim() !== '') {
+              opcion.imagenUrl = String(o.imagenUrl).trim();
+              console.log('✅ Imagen asignada en formulario para opción:', {
+                preguntaIndex: p.id || 'nueva',
+                preguntaTipo: p.tipoPreguntaId,
+                opcionIndex: oIdx,
+                texto: o.texto,
+                imagenUrl: opcion.imagenUrl,
+                imagenUrlOriginal: o.imagenUrl,
+                urlCompleta: buildFullUrl(opcion.imagenUrl),
+              });
+            } else {
+              console.log('⚠️ No hay imagenUrl para opción:', {
+                preguntaIndex: p.id || 'nueva',
+                preguntaTipo: p.tipoPreguntaId,
+                opcionIndex: oIdx,
+                texto: o.texto,
+                imagenUrl: o.imagenUrl,
+                tipoImagenUrl: typeof o.imagenUrl,
+              });
+            }
+            return opcion;
+          }),
+        };
+        return pregunta;
+      }),
     };
     // Calcular puntajes después de cargar datos iniciales
     calculateQuestionScores();
@@ -2288,7 +2689,7 @@ watch(
   { deep: true }
 );
 
-function onSubmit() {
+async function onSubmit() {
   // Prevenir doble submit
   if (isSubmitting.value) {
     return;
@@ -2313,6 +2714,53 @@ function onSubmit() {
       timeout: 3000,
     });
     return;
+  }
+
+  // Subir automáticamente todas las imágenes pendientes antes de enviar
+  if (form.evaluationInline && form.evaluationInline.preguntas) {
+    const pendingUploads: Promise<void>[] = [];
+    
+    for (let preguntaIndex = 0; preguntaIndex < form.evaluationInline.preguntas.length; preguntaIndex++) {
+      const pregunta = form.evaluationInline.preguntas[preguntaIndex];
+      if (pregunta && pregunta.tipoPreguntaId === 3 && pregunta.opciones) {
+        // Es pregunta tipo imagen, verificar si hay imágenes pendientes
+        for (let opcionIndex = 0; opcionIndex < pregunta.opciones.length; opcionIndex++) {
+          const opcion = pregunta.opciones[opcionIndex];
+          if (opcion) {
+            const key = getOptionKey(preguntaIndex, opcionIndex);
+            const file = optionImageFiles.value.get(key);
+            
+            // Si hay un archivo seleccionado pero no subido, subirlo
+            if (file && !opcion.imagenUrl) {
+              pendingUploads.push(uploadOptionImage(preguntaIndex, opcionIndex));
+            }
+          }
+        }
+      }
+    }
+    
+    // Esperar a que todas las imágenes se suban
+    if (pendingUploads.length > 0) {
+      isSubmitting.value = true;
+      try {
+        await Promise.all(pendingUploads);
+        $q.notify({
+          type: 'info',
+          message: `${pendingUploads.length} imagen(es) subida(s) exitosamente`,
+          position: 'top',
+          timeout: 2000,
+        });
+      } catch (error) {
+        console.error('Error al subir imágenes pendientes:', error);
+        $q.notify({
+          type: 'negative',
+          message: 'Error al subir algunas imágenes. Por favor, intente nuevamente.',
+          position: 'top',
+        });
+        isSubmitting.value = false;
+        return;
+      }
+    }
   }
 
     // Validar que todas las preguntas tengan enunciado y al menos una opción correcta
@@ -2378,6 +2826,22 @@ function onSubmit() {
   isSubmitting.value = true;
   
   try {
+    // Verificar que las imágenes se hayan guardado correctamente antes de enviar
+    if (form.evaluationInline) {
+      console.log('📤 Enviando formulario con evaluación inline:', {
+        preguntas: form.evaluationInline.preguntas.map((p, idx) => ({
+          index: idx,
+          tipo: p.tipoPreguntaId,
+          opciones: p.opciones.map((o, oIdx) => ({
+            index: oIdx,
+            texto: o.texto,
+            imagenUrl: o.imagenUrl,
+            tieneImagen: !!o.imagenUrl,
+          })),
+        })),
+      });
+    }
+    
     emit('submit', { ...form }, materials.value);
   } catch (error) {
     // Si hay error en el emit, resetear el estado
@@ -2599,7 +3063,49 @@ function generateId(): string {
         width: 100%;
         border-radius: 8px;
         transition: transform 0.2s ease;
+        cursor: pointer;
       }
+    }
+    
+    // Estilos para imágenes de opciones de respuesta (similar a materiales)
+    // Estilos para miniaturas de imágenes de opciones de respuesta
+    .option-image-wrapper {
+      padding: 8px;
+      background-color: rgba(0, 0, 0, 0.02);
+      border-radius: 8px;
+      border: 1px solid rgba(0, 0, 0, 0.1);
+    }
+    
+    .option-image-thumbnail-container {
+      width: 200px !important;
+      min-width: 200px !important;
+      height: 110px !important;
+      min-height: 110px !important;
+      max-width: 200px !important;
+      max-height: 110px !important;
+      overflow: hidden;
+      border-radius: 6px;
+      background-color: #f5f5f5;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid rgba(0, 0, 0, 0.1);
+      flex-shrink: 0;
+    }
+    
+    .option-image-thumbnail {
+      width: 100% !important;
+      height: 100% !important;
+      max-width: 200px !important;
+      max-height: 110px !important;
+      object-fit: cover;
+      display: block;
+    }
+    
+    .option-image-info {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
     }
     
     .pdf-preview {
@@ -2788,19 +3294,12 @@ body.body--dark {
     min-height: 0;
     position: relative;
     
-    .pdf-viewer-container {
+    .pdf-iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
       flex: 1;
-      overflow: auto;
       min-height: 0;
-      display: flex;
-      flex-direction: column;
-      position: relative;
-      
-      .pdf-viewer-component {
-        flex: 1;
-        min-height: 650px;
-        width: 100%;
-      }
     }
   }
 }
@@ -2831,6 +3330,11 @@ body.body--dark {
   }
 }
 
+// Ocultar input de archivo para opciones de imagen
+.hidden-file-input {
+  display: none !important;
+}
+
 // Utilidad para opacidad
 .opacity-60 {
   opacity: 0.6;
@@ -2838,7 +3342,7 @@ body.body--dark {
 
 // Estilos para la vista previa de imagen de portada
 .cover-image-preview-container {
-  width: 100%;
+  width: 50%;
   
   .cover-image-preview {
     width: 100%;

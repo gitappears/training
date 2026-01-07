@@ -65,12 +65,6 @@
           >
             {{ trainingModalityLabel }}
           </q-chip>
-          <span class="q-mx-sm">·</span>
-          <q-icon name="schedule" size="16px" class="q-mr-xs" />
-          <span>{{ training.durationHours || 0 }} horas</span>
-          <span class="q-mx-sm">·</span>
-          <q-icon name="category" size="16px" class="q-mr-xs" />
-          <span>{{ training.area }}</span>
         </div>
         <div class="hero-instructor row items-center q-mt-md">
           <q-avatar size="48px" color="white" text-color="primary" class="q-mr-sm">
@@ -466,23 +460,11 @@
                 <q-separator class="q-mb-md" />
 
                 <div class="sidebar-info q-mb-md">
-                  <div class="info-row q-mb-sm">
-                    <q-icon name="schedule" size="18px" color="grey-6" class="q-mr-sm" />
-                    <span class="text-body2 text-grey-7">
-                      <strong>Duración:</strong> {{ training.durationHours || 0 }} horas
-                    </span>
-                  </div>
-                  <div class="info-row q-mb-sm">
-                    <q-icon name="category" size="18px" color="grey-6" class="q-mr-sm" />
-                    <span class="text-body2 text-grey-7">
-                      <strong>Área:</strong> {{ training.area }}
-                    </span>
-                  </div>
                   <div class="info-row">
                     <q-icon name="people" size="18px" color="grey-6" class="q-mr-sm" />
                     <span class="text-body2 text-grey-7">
                       <strong>Capacidad:</strong>
-                      {{ training.capacity ? `${training.studentsCount}/${training.capacity}` : 'Ilimitada' }}
+                      {{ training.capacity ? `${enrolledStudentsCount}/${training.capacity}` : `${enrolledStudentsCount} inscritos` }}
                     </span>
                   </div>
                 </div>
@@ -1294,6 +1276,19 @@ const modalityColor = computed(() =>
 const modalityIcon = computed(() =>
   training.value ? modalityIcons[training.value.modality] || 'school' : 'school',
 );
+/**
+ * Calcula el número de estudiantes inscritos
+ * Prioriza enrolledStudents.length (más preciso) sobre training.studentsCount
+ */
+const enrolledStudentsCount = computed(() => {
+  // Si los estudiantes ya se cargaron (incluso si la lista está vacía), usar su longitud
+  // Esto asegura que usamos el valor real en lugar del valor desactualizado del training
+  if (!loadingStudents.value) {
+    return enrolledStudents.value.length;
+  }
+  // Mientras se cargan, usar el valor del training como fallback temporal
+  return training.value?.studentsCount || 0;
+});
 
 const studentColumns: QTableColumn<StudentWithDocument>[] = [
   {
