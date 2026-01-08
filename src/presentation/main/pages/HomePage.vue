@@ -660,7 +660,7 @@ async function loadDashboardData() {
         columnClass: 'col-12 col-sm-6 col-md-3',
         visible: true,
         ...(stats.kpis.activeCourses.variation !== undefined && {
-          variation: stats.kpis.activeCourses.variation,
+        variation: stats.kpis.activeCourses.variation,
         }),
       },
       {
@@ -674,7 +674,7 @@ async function loadDashboardData() {
         columnClass: 'col-12 col-sm-6 col-md-3',
         visible: true,
         ...(stats.kpis.enrolledUsers.variation !== undefined && {
-          variation: stats.kpis.enrolledUsers.variation,
+        variation: stats.kpis.enrolledUsers.variation,
         }),
       },
       {
@@ -712,7 +712,7 @@ async function loadDashboardData() {
         columnClass: 'col-12 col-sm-6 col-md-3',
         visible: false,
         ...(stats.kpis.certificatesIssued.variation !== undefined && {
-          variation: stats.kpis.certificatesIssued.variation,
+        variation: stats.kpis.certificatesIssued.variation,
         }),
       },
       {
@@ -740,12 +740,12 @@ async function loadDashboardData() {
     // Actualizar notificaciones (Mapeo de backend a frontend)
     notifications.value = stats.notifications.map(
       (n: { id: string; message: string; time: string; type: string }) => ({
-        id: n.id,
-        title: n.message, // Backend envía 'message'
-        time: n.time,
-        icon: 'warning', // Backend envía 'type', mapeamos a icono
-        color: n.type === 'warning' ? 'warning' : 'primary',
-        read: false,
+      id: n.id,
+      title: n.message, // Backend envía 'message'
+      time: n.time,
+      icon: 'warning', // Backend envía 'type', mapeamos a icono
+      color: n.type === 'warning' ? 'warning' : 'primary',
+      read: false,
       }),
     );
 
@@ -759,13 +759,13 @@ async function loadDashboardData() {
         icon: string;
         color: string;
       }) => ({
-        id: a.id,
-        title: a.title,
-        when: a.time, // Backend envía 'time', frontend espera 'when'
-        description: a.description,
-        meta: '', // Backend no envía meta por ahora
-        icon: a.icon,
-        color: a.color,
+      id: a.id,
+      title: a.title,
+      when: a.time, // Backend envía 'time', frontend espera 'when'
+      description: a.description,
+      meta: '', // Backend no envía meta por ahora
+      icon: a.icon,
+      color: a.color,
       }),
     );
 

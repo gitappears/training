@@ -25,7 +25,11 @@
                 <div class="text-subtitle2 q-mb-sm text-weight-medium text-center">
                   Foto de Perfil (Opcional)
                 </div>
-                <div class="photo-upload-area" @click="triggerFileInput">
+                <div
+                  class="photo-upload-area"
+                  :class="{ 'no-click': photoFile }"
+                  @click="!photoFile && triggerFileInput()"
+                >
                   <input
                     ref="fileInputRef"
                     type="file"
@@ -37,7 +41,7 @@
                   <div v-if="!photoFile" class="photo-upload-content">
                     <q-icon name="camera_alt" size="64px" color="grey-6" class="q-mb-md" />
                     <div class="text-body2 text-grey-7 q-mb-xs">Sube tu foto aquí</div>
-                    <div class="text-caption text-grey-6">(máx: 5MB)</div>
+                    <div class="text-caption text-grey-6">(máx: 1MB)</div>
                     <q-btn
                       color="primary"
                       label="Subir Foto"
@@ -52,6 +56,7 @@
                       :src="photoFilePreview"
                       class="photo-preview-image"
                       fit="cover"
+                      style="width: 250px; height: 250px; border-radius: 8px"
                     />
                     <div class="photo-preview-overlay">
                       <q-btn
@@ -60,7 +65,7 @@
                         text-color="primary"
                         icon="edit"
                         size="sm"
-                        @click.stop="triggerFileInput"
+                        @click.stop="openImageEditor"
                       />
                       <q-btn
                         round
@@ -140,20 +145,15 @@
               </q-input>
             </div>
             <div class="col-12" v-if="isNIT">
-              <q-input
-                v-model="form.nombres"
-                label="Nombre de Contacto"
-                outlined
-                :disable="loading"
-                :hint="isNIT ? 'Persona de contacto de la empresa' : ''"
-              >
-                <template #prepend>
-                  <q-icon name="person" />
+              <q-banner>
+                <template #avatar>
+                  <q-icon name="info" />
                 </template>
-              </q-input>
+                <div class="text-body2 text-grey-7">Datos de contacto principal de la empresa</div>
+              </q-banner>
             </div>
 
-            <div class="col-12 col-sm-6" v-if="!isNIT">
+            <div class="col-12 col-sm-6">
               <q-input
                 v-model="form.nombres"
                 label="Nombres *"
@@ -163,7 +163,7 @@
                 hint="Ej: Juan David"
               />
             </div>
-            <div class="col-12 col-sm-6" v-if="!isNIT">
+            <div class="col-12 col-sm-6">
               <q-input
                 v-model="form.apellidos"
                 label="Apellidos *"
@@ -316,16 +316,21 @@
                 v-model="form.username"
                 label="Usuario *"
                 outlined
-                :disable="loading"
+                disable
                 :rules="[
                   (val) => !!val || 'Requerido',
                   (val) => val.length >= 3 || 'Mínimo 3 caracteres',
                   (val) => !/\s/.test(val) || 'El usuario no puede contener espacios',
                 ]"
-                hint="Ej: juan_david_123"
+                hint="Se genera automáticamente basado en el número de documento"
               >
                 <template #prepend>
                   <q-icon name="person" />
+                </template>
+                <template #append>
+                  <q-icon name="auto_awesome" color="primary" size="20px">
+                    <q-tooltip>Usuario generado automáticamente</q-tooltip>
+                  </q-icon>
                 </template>
               </q-input>
             </div>
@@ -465,13 +470,25 @@
       }
     "
   />
+
+  <!-- Dialog de Edición de Imagen -->
+  <ImageEditorDialog
+    v-model="showImageEditor"
+    :image-src="editorImageSrc"
+    :on-crop="handleCrop"
+    :get-original-file="getOriginalFile"
+    :create-cropped-file="createCroppedFile"
+    :target-size="TARGET_SIZE"
+  />
 </template>
 
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import { useQuasar } from 'quasar';
 import PoliciesModal from '../../../shared/components/PoliciesModal.vue';
+import ImageEditorDialog from '../../../shared/components/ImageEditorDialog.vue';
 import { useRegisterForm } from '../composables/useRegisterForm';
+import { useImageEditor } from '../../../shared/composables/useImageEditor';
 
 const $q = useQuasar();
 const step = ref(1);
@@ -520,6 +537,26 @@ function removePhoto() {
     fileInputRef.value.value = '';
   }
 }
+
+// Editor de imagen usando el composable
+const {
+  showImageEditor,
+  editorImageSrc,
+  openImageEditor: openEditor,
+  getOriginalFile,
+  createCroppedFile,
+  TARGET_SIZE,
+} = useImageEditor();
+
+function openImageEditor() {
+  if (photoFilePreview.value && photoFile.value) {
+    openEditor(photoFilePreview.value, photoFile.value);
+  }
+}
+
+function handleCrop(croppedFile: File) {
+  handleFileUpload(croppedFile);
+}
 </script>
 
 <style scoped lang="scss">
@@ -562,6 +599,19 @@ function removePhoto() {
 
   &:active {
     transform: scale(0.98);
+  }
+
+  &.no-click {
+    cursor: default;
+
+    &:hover {
+      border-color: #cbd5e0;
+      background-color: #f7fafc;
+    }
+
+    &:active {
+      transform: none;
+    }
   }
 }
 
