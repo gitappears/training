@@ -80,13 +80,31 @@ export function useRegisterForm() {
     { immediate: true },
   );
 
-  // Watcher para limpiar espacios del username mientras se escribe
+  /**
+   * Genera un username automático basado en el número de documento
+   * Si no hay documento, genera uno aleatorio
+   */
+  function generateUsername(): string {
+    if (form.value.numeroDocumento && form.value.numeroDocumento.trim()) {
+      // Usar el número de documento como username
+      return form.value.numeroDocumento.trim();
+    }
+    // Generar username aleatorio si no hay documento
+    const randomSuffix = Math.floor(Math.random() * 10000);
+    return `user_${randomSuffix}`;
+  }
+
+  // Watcher para generar username automáticamente cuando cambia el número de documento
   watch(
-    () => form.value.username,
+    () => form.value.numeroDocumento,
     (newValue) => {
-      if (newValue && /\s/.test(newValue)) {
-        // Eliminar todos los espacios del username
-        form.value.username = newValue.replace(/\s/g, '');
+      if (newValue && newValue.trim()) {
+        // Autoasignar el número de documento como username
+        form.value.username = newValue.trim();
+      } else if (!newValue || !newValue.trim()) {
+        // Si se borra el documento, generar un username aleatorio
+        const randomSuffix = Math.floor(Math.random() * 10000);
+        form.value.username = `user_${randomSuffix}`;
       }
     },
   );

@@ -220,7 +220,7 @@
               accept="image/*"
               :disable="loading || uploadingPhoto"
               :loading="uploadingPhoto"
-              @update:model-value="handleFileUpload"
+              @update:model-value="handleFileSelected"
             >
               <template v-slot:prepend>
                 <q-icon name="camera_alt" />
@@ -249,6 +249,16 @@
         </q-card>
       </div>
     </div>
+
+    <!-- Dialog de Edición de Imagen -->
+    <ImageEditorDialog
+      v-model="showImageEditor"
+      :image-src="editorImageSrc"
+      :on-crop="handleCrop"
+      :get-original-file="getOriginalFile"
+      :create-cropped-file="createCroppedFile"
+      :target-size="TARGET_SIZE"
+    />
   </q-page>
 </template>
 
@@ -256,6 +266,8 @@
 import { onMounted } from 'vue';
 import { useProfileForm } from '../composables/useProfileForm';
 import { useAuthStore } from '../../../stores/auth.store';
+import ImageEditorDialog from '../../../shared/components/ImageEditorDialog.vue';
+import { useImageEditor } from '../../../shared/composables/useImageEditor';
 
 const authStore = useAuthStore();
 
@@ -280,6 +292,31 @@ const {
   selectAvatar,
   validateCurrentPassword,
 } = useProfileForm();
+
+// Editor de imagen usando el composable
+const {
+  showImageEditor,
+  editorImageSrc,
+  openImageEditor: openEditor,
+  getOriginalFile,
+  createCroppedFile,
+  TARGET_SIZE,
+} = useImageEditor();
+
+function handleFileSelected(file: File | null) {
+  if (!file) return;
+
+  // Abrir el editor de imagen en lugar de subir directamente
+  const preview = URL.createObjectURL(file);
+  openEditor(preview, file);
+}
+
+function handleCrop(croppedFile: File) {
+  // Subir el archivo recortado
+  void handleFileUpload(croppedFile);
+  // Limpiar el input de archivo
+  photoToUpload.value = null;
+}
 
 onMounted(async () => {
   if (!authStore.profile) {

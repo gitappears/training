@@ -1,7 +1,7 @@
 <template>
-  <q-page class="q-pa-lg">
-    <q-card class="q-pa-xl">
-      <div class="text-center q-mb-lg">
+  <q-page>
+    <q-card>
+      <div class="text-center">
         <div class="text-h4 q-mb-xs">Crear Cuenta</div>
         <div class="text-body2 text-grey-7">
           Completa el formulario para registrarte en el sistema
