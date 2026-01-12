@@ -13,34 +13,17 @@ export function useRoles() {
 
   /**
    * Mapea los roles del backend a opciones para selects en UserCreatePage
-   * Convierte los códigos del backend a los valores del frontend
-   * Solo incluye roles que se pueden usar para crear usuarios
+   * Usa directamente los códigos del backend como valores
+   * Usa todos los roles activos retornados por el backend
    */
   const roleOptions = computed(() => {
     return roles.value
-      .filter((role) => {
-        // Solo incluir roles que se pueden usar para crear usuarios
-        return ['ADMIN', 'CLIENTE', 'ALUMNO', 'OPERADOR'].includes(role.codigo);
-      })
-      .map((role) => {
-        // Mapear códigos del backend a valores del frontend
-        let frontendValue: 'admin' | 'institutional' | 'driver' = 'driver';
-        
-        if (role.codigo === 'ADMIN') {
-          frontendValue = 'admin';
-        } else if (role.codigo === 'CLIENTE') {
-          frontendValue = 'institutional';
-        } else if (role.codigo === 'ALUMNO' || role.codigo === 'OPERADOR') {
-          frontendValue = 'driver';
-        }
-
-        return {
-          label: role.nombre,
-          value: frontendValue,
-          codigo: role.codigo, // Mantener el código original para referencia
-          id: role.id,
-        };
-      });
+      .filter((role) => role.activo) // Solo incluir roles activos
+      .map((role) => ({
+        label: role.nombre,
+        value: role.codigo, // Usar directamente el código del backend
+        id: role.id,
+      }));
   });
 
   /**
@@ -57,7 +40,7 @@ export function useRoles() {
   async function loadRoles() {
     loading.value = true;
     error.value = null;
-    
+
     try {
       const getRolesUseCase = RoleUseCasesFactory.getGetRolesUseCase(rolesService);
       const loadedRoles = await getRolesUseCase.execute();
@@ -83,4 +66,3 @@ export function useRoles() {
     loadRoles,
   };
 }
-

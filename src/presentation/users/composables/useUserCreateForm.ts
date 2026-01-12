@@ -5,10 +5,14 @@ import type { QForm } from 'quasar';
 import { PeopleUseCasesFactory } from '../../../application/people/people.use-cases.factory';
 import { peopleService } from '../../../infrastructure/http/people/people.service';
 import { authService } from '../../../infrastructure/http/auth/auth.service';
-import { empresasService, type Empresa } from '../../../infrastructure/http/empresas/empresas.service';
+import {
+  empresasService,
+  type Empresa,
+} from '../../../infrastructure/http/empresas/empresas.service';
 import { useRoles } from './useRoles';
 import { useAuthStore } from '../../../stores/auth.store';
-import type { UserRole, PersonType } from '../../../domain/user/models';
+import type { PersonType } from '../../../domain/user/models';
+import type { RegisterDto } from '../../../application/auth/auth.repository.port';
 
 /**
  * Composable para manejar el formulario de creación de usuarios
@@ -32,7 +36,7 @@ export function useUserCreateForm() {
     email: string;
     phone: string;
     personType: PersonType | null;
-    role: UserRole | null;
+    role: string | null; // Usar códigos del backend directamente (ADMIN, CLIENTE, ALUMNO, INSTRUCTOR, OPERADOR)
     companyName: string;
     company: string;
     isExternal: boolean;
@@ -82,23 +86,23 @@ export function useUserCreateForm() {
     const profile = authStore.profile;
     const persona = profile?.persona;
     const empresa = persona?.empresa;
-    
+
     console.log('🔍 currentUserEmpresaName - Profile completo:', JSON.stringify(profile, null, 2));
     console.log('🔍 currentUserEmpresaName - persona:', JSON.stringify(persona, null, 2));
     console.log('🔍 currentUserEmpresaName - empresa:', JSON.stringify(empresa, null, 2));
     console.log('🔍 currentUserEmpresaName - empresaId:', persona?.empresaId);
-    
+
     if (empresa?.razonSocial) {
       console.log('✅ Nombre de empresa encontrado:', empresa.razonSocial);
       return empresa.razonSocial;
     }
-    
+
     // Si no hay empresa pero hay empresaId, intentar recargar el perfil
     if (persona?.empresaId && !empresa) {
       console.log('⚠️ Hay empresaId pero no hay datos de empresa, recargando perfil...');
       void authStore.fetchProfile();
     }
-    
+
     console.log('⚠️ No se encontró nombre de empresa');
     return '';
   });
@@ -128,29 +132,34 @@ export function useUserCreateForm() {
     // Si el usuario es CLIENTE, configurar valores automáticos
     if (isCliente.value) {
       console.log('👤 Usuario CLIENTE detectado');
-      
+
       // Verificar si el perfil tiene empresa
       const tieneEmpresa = !!authStore.profile?.persona?.empresa;
-      const tieneEmpresaId = authStore.profile?.persona?.empresaId !== undefined && authStore.profile?.persona?.empresaId !== null;
-      
+      const tieneEmpresaId =
+        authStore.profile?.persona?.empresaId !== undefined &&
+        authStore.profile?.persona?.empresaId !== null;
+
       console.log('🔍 Estado del perfil antes de recargar:');
       console.log('  - tieneEmpresa:', tieneEmpresa);
       console.log('  - tieneEmpresaId:', tieneEmpresaId);
       console.log('  - empresaId valor:', authStore.profile?.persona?.empresaId);
-      
+
       // Si no tiene empresa (aunque tenga empresaId o no), forzar recarga desde backend
       if (!tieneEmpresa) {
         console.log('🔄 Perfil sin empresa, forzando recarga desde backend...');
         await authStore.fetchProfile();
-        
+
         // Esperar un momento para que el perfil se actualice reactivamente
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise((resolve) => setTimeout(resolve, 100));
       }
-      
+
       console.log('🏢 currentUserEmpresaId después de recargar:', currentUserEmpresaId.value);
       console.log('🏢 currentUserEmpresaName después de recargar:', currentUserEmpresaName.value);
-      console.log('📋 Profile completo después de recargar:', JSON.stringify(authStore.profile, null, 2));
-      
+      console.log(
+        '📋 Profile completo después de recargar:',
+        JSON.stringify(authStore.profile, null, 2),
+      );
+
       // Asignar automáticamente su empresa
       if (currentUserEmpresaId.value) {
         form.value.empresaId = currentUserEmpresaId.value;
@@ -163,13 +172,16 @@ export function useUserCreateForm() {
       } else {
         console.log('⚠️ No se pudo obtener el nombre de la empresa después de recargar');
         console.log('🔍 Profile persona:', JSON.stringify(authStore.profile?.persona, null, 2));
-        console.log('🔍 Profile persona.empresa:', JSON.stringify(authStore.profile?.persona?.empresa, null, 2));
+        console.log(
+          '🔍 Profile persona.empresa:',
+          JSON.stringify(authStore.profile?.persona?.empresa, null, 2),
+        );
         console.log('🔍 Profile persona.empresaId:', authStore.profile?.persona?.empresaId);
       }
       // Establecer tipo de persona como natural
       form.value.personType = 'natural';
-      // Establecer rol como driver (que mapea a ALUMNO en el backend)
-      form.value.role = 'driver';
+      // Establecer rol como ALUMNO (código del backend)
+      form.value.role = 'ALUMNO';
     }
   });
 
@@ -189,7 +201,7 @@ export function useUserCreateForm() {
   ];
 
   // Cargar roles desde el backend
-  const { roleOptions } = useRoles();
+  const { roleOptions, roles } = useRoles();
 
   // Funciones
   function isValidEmail(val: string): boolean | string {
@@ -208,8 +220,8 @@ export function useUserCreateForm() {
       if (newValue === 'NIT' && isAdmin.value) {
         // Establecer automáticamente tipo de persona como jurídica
         form.value.personType = 'juridica';
-        // Establecer automáticamente rol como cliente institucional
-        form.value.role = 'institutional';
+        // Establecer automáticamente rol como CLIENTE (código del backend)
+        form.value.role = 'CLIENTE';
       }
     },
     { immediate: true },
@@ -257,31 +269,6 @@ export function useUserCreateForm() {
     }
   }
 
-  // Función para generar username automáticamente
-  function generateUsername(nombres: string, apellidos: string, document: string): string {
-    // Tomar el primer nombre y primer apellido, convertir a minúsculas y quitar acentos
-    const firstName =
-      nombres
-        .trim()
-        .split(' ')[0]
-        ?.toLowerCase()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '') || '';
-    const lastName =
-      apellidos
-        .trim()
-        .split(' ')[0]
-        ?.toLowerCase()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '') || '';
-
-    // Combinar nombre.apellido y agregar últimos 4 dígitos del documento
-    const baseUsername = lastName ? `${firstName}.${lastName}` : firstName;
-    const docSuffix = document.slice(-4);
-
-    return `${baseUsername}.${docSuffix}`;
-  }
-
   // Función para generar contraseña temporal
   function generateTemporaryPassword(): string {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
@@ -291,23 +278,6 @@ export function useUserCreateForm() {
       password += chars.charAt(Math.floor(Math.random() * chars.length));
     }
     return `TEMP_${password}`;
-  }
-
-  // Función para separar nombres y apellidos
-  function splitName(fullName: string): { nombres: string; apellidos: string } {
-    const parts = fullName
-      .trim()
-      .split(' ')
-      .filter((p) => p.length > 0);
-    if (parts.length === 0) {
-      return { nombres: '', apellidos: '' };
-    }
-    if (parts.length === 1) {
-      return { nombres: parts[0] || '', apellidos: '' };
-    }
-    const nombres = parts[0] || '';
-    const apellidos = parts.slice(1).join(' ');
-    return { nombres, apellidos };
   }
 
   async function handleSubmit() {
@@ -326,11 +296,16 @@ export function useUserCreateForm() {
         // Para otros tipos, ambos son requeridos
         const nombres = form.value.nombres.trim();
         const apellidos = form.value.apellidos.trim();
-        const username = generateUsername(nombres, apellidos, form.value.document);
+        const username = form.value.document;
         const password = generateTemporaryPassword();
 
-        // Si es conductor externo, usar el servicio de personas
-        if (form.value.role === 'driver' && form.value.isExternal) {
+        // Si es conductor externo (ALUMNO, OPERADOR o INSTRUCTOR), usar el servicio de personas
+        if (
+          (form.value.role === 'ALUMNO' ||
+            form.value.role === 'OPERADOR' ||
+            form.value.role === 'INSTRUCTOR') &&
+          form.value.isExternal
+        ) {
           const createExternalDriverUseCase =
             PeopleUseCasesFactory.getCreateExternalDriverUseCase(peopleService);
           const driverData: {
@@ -357,7 +332,7 @@ export function useUserCreateForm() {
             message: 'Conductor externo creado exitosamente. Debe ser habilitado después del pago.',
             position: 'top',
           });
-        } else if (form.value.role === 'admin') {
+        } else if (form.value.role === 'ADMIN') {
           // Crear administrador usando el endpoint de admin
           const adminData: {
             numeroDocumento: string;
@@ -396,34 +371,11 @@ export function useUserCreateForm() {
             timeout: 10000,
           });
         } else {
-          // Para otros roles (driver, institutional), usar el endpoint de registro
-          // Mapear roles del frontend al backend
-          let tipoRegistro: 'ALUMNO' | 'INSTRUCTOR' | 'CLIENTE' = 'ALUMNO';
+          // Para otros roles, usar el endpoint de registro
+          // Usar directamente el código del backend como tipoRegistro
+          const tipoRegistro = form.value.role as RegisterDto['tipoRegistro'];
 
-          if (form.value.role === 'driver') {
-            tipoRegistro = 'ALUMNO';
-          } else if (form.value.role === 'institutional') {
-            // Asignar como CLIENTE para clientes institucionales
-            tipoRegistro = 'CLIENTE';
-          }
-
-          const registerData: {
-            numeroDocumento: string;
-            tipoDocumento: string;
-            nombres: string;
-            apellidos: string;
-            email: string;
-            username: string;
-            password: string;
-            tipoRegistro: 'ALUMNO' | 'INSTRUCTOR' | 'CLIENTE';
-            telefono?: string;
-            razonSocial?: string;
-            codigoEstudiante?: string;
-            habilitado?: boolean;
-            aceptaTerminos?: boolean;
-            aceptaPoliticaDatos?: boolean;
-            empresaId?: number;
-          } = {
+          const registerData: RegisterDto = {
             numeroDocumento: form.value.document,
             tipoDocumento: form.value.documentType || 'CC',
             nombres,
@@ -448,7 +400,12 @@ export function useUserCreateForm() {
             console.log('👤 CLIENTE - empresaId asignado:', registerData.empresaId);
             console.log('📦 Datos de registro completos:', JSON.stringify(registerData, null, 2));
           } else {
-            console.log('⚠️ No se pudo asignar empresaId - isCliente:', isCliente.value, 'currentUserEmpresaId:', currentUserEmpresaId.value);
+            console.log(
+              '⚠️ No se pudo asignar empresaId - isCliente:',
+              isCliente.value,
+              'currentUserEmpresaId:',
+              currentUserEmpresaId.value,
+            );
           }
 
           if (form.value.phone) {
@@ -507,13 +464,11 @@ export function useUserCreateForm() {
     return labels[type ?? ''] ?? type ?? '';
   }
 
-  function getRoleLabel(role: UserRole | null): string {
-    const labels: Record<string, string> = {
-      admin: 'Administrador',
-      institutional: 'Cliente Institucional',
-      driver: 'Conductor',
-    };
-    return labels[role ?? ''] ?? role ?? '';
+  function getRoleLabel(role: string | null): string {
+    if (!role) return '';
+    // Buscar el rol en la lista de roles cargados del backend
+    const roleData = roles.value.find((r) => r.codigo === role);
+    return roleData?.nombre ?? role;
   }
 
   function goBack() {
@@ -554,4 +509,3 @@ export function useUserCreateForm() {
     goBack,
   };
 }
-

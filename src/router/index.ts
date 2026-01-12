@@ -110,8 +110,12 @@ export default defineRouter(function (/* { store, ssrContext } */) {
     }
 
     // Verificar autenticación
-    if (requiresAuth && !token) {
+    // Permitir acceso a terms-acceptance sin token si viene del login (fromLogin=true)
+    const isTermsAcceptanceFromLogin = to.name === 'terms-acceptance' && to.query.fromLogin === 'true';
+    
+    if (requiresAuth && !token && !isTermsAcceptanceFromLogin) {
       // Redirigir a login si la ruta requiere autenticación y no hay token
+      // (excepto si es terms-acceptance viniendo del login)
       next({ name: 'login', query: { redirect: to.fullPath } });
       return;
     }

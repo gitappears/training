@@ -32,6 +32,14 @@ export function useAuth() {
       void router.push(redirect);
     } catch (error: any) {
       console.error('Login error:', error);
+      console.log('🔍 Error details:', {
+        code: error?.code,
+        message: error?.message,
+        requiereAceptacionTerminos: error?.requiereAceptacionTerminos,
+        response: error?.response,
+        responseData: error?.response?.data,
+      });
+      
       let errorMessage = 'Error al iniciar sesión';
       let errorData = null;
 
@@ -51,15 +59,62 @@ export function useAuth() {
 
       // Verificar si el error es TERMS_NOT_ACCEPTED
       // Buscar en el string del mensaje o en el código de error específico del backend
-      if (
+      // También verificar en el error original de axios si está disponible
+      const axiosError = error as { response?: { data?: { error?: string; requiereAceptacionTerminos?: boolean } } };
+      const isTermsNotAccepted =
+        error?.code === 'TERMS_NOT_ACCEPTED' ||
+        error?.requiereAceptacionTerminos === true ||
         errorMessage.includes('TERMS_NOT_ACCEPTED') ||
-        (errorData && errorData.error === 'TERMS_NOT_ACCEPTED')
-      ) {
+        errorMessage.includes('términos y condiciones') ||
+        errorMessage.includes('Debe aceptar los términos') ||
+        (errorData && errorData.error === 'TERMS_NOT_ACCEPTED') ||
+        (errorData && errorData.requiereAceptacionTerminos === true) ||
+        (axiosError?.response?.data?.error === 'TERMS_NOT_ACCEPTED') ||
+        (axiosError?.response?.data?.requiereAceptacionTerminos === true);
+
+      console.log('🔍 isTermsNotAccepted:', isTermsNotAccepted, {
+        code: error?.code,
+        requiereAceptacionTerminos: error?.requiereAceptacionTerminos,
+        errorMessage,
+        errorDataError: errorData?.error,
+        errorDataRequiere: errorData?.requiereAceptacionTerminos,
+        axiosErrorData: axiosError?.response?.data,
+      });
+
+      if (isTermsNotAccepted) {
+        console.log('✅ Redirigiendo a términos y condiciones...');
+        // Guardar las credenciales temporalmente para reintentar login después de aceptar términos
+        // Usar sessionStorage para que se limpie al cerrar la sesión del navegador
+        sessionStorage.setItem('pendingLogin', JSON.stringify(credentials));
+        console.log('💾 Credenciales guardadas en sessionStorage');
+        
         // Redirigir a la página de aceptación de términos
-        const redirect = (route.query.redirect as string) || '/';
-        void router.push({
+        // Limpiar el redirect para evitar redirecciones anidadas
+        // Si ya estamos en login o terms-acceptance, usar '/' como redirect
+        const currentPath = route.path;
+        const currentQuery = route.query;
+        let redirect = '/';
+        
+        // Solo usar el redirect si no viene de una ruta de términos o login
+        if (currentQuery.redirect && typeof currentQuery.redirect === 'string') {
+          const redirectPath = currentQuery.redirect;
+          // Si el redirect no es una ruta de términos o login, usarlo
+          if (!redirectPath.includes('terms-acceptance') && !redirectPath.includes('login')) {
+            redirect = redirectPath;
+          }
+        }
+        
+        const targetRoute = {
           name: 'terms-acceptance',
-          query: { redirect },
+          query: { redirect, fromLogin: 'true' },
+        };
+        console.log('🔀 Navegando a:', targetRoute);
+        
+        // Usar replace para evitar que el usuario pueda volver atrás al login
+        void router.replace(targetRoute).catch((err) => {
+          console.error('❌ Error al redirigir:', err);
+          // Si falla, intentar con push
+          void router.push(targetRoute);
         });
         return;
       }

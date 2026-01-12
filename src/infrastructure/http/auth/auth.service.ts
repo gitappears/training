@@ -38,16 +38,24 @@ export class AuthService implements IAuthRepository {
         (axiosError.response?.data?.error === 'TERMS_NOT_ACCEPTED' ||
           axiosError.response?.data?.requiereAceptacionTerminos === true)
       ) {
-        console.log('🔍 TERMS_NOT_ACCEPTED detected, throwing specific error');
-        const error = new Error('TERMS_NOT_ACCEPTED') as Error & {
+        console.log('🔍 TERMS_NOT_ACCEPTED detected in auth.service, throwing specific error');
+        const termsError = new Error('TERMS_NOT_ACCEPTED') as Error & {
           code: string;
           requiereAceptacionTerminos: boolean;
           response?: typeof axiosError.response;
+          message: string;
         };
-        error.code = 'TERMS_NOT_ACCEPTED';
-        error.requiereAceptacionTerminos = true;
-        error.response = axiosError.response;
-        throw error;
+        termsError.code = 'TERMS_NOT_ACCEPTED';
+        termsError.requiereAceptacionTerminos = true;
+        termsError.message = 'TERMS_NOT_ACCEPTED';
+        termsError.response = axiosError.response;
+        console.log('🔍 Error object created:', {
+          code: termsError.code,
+          requiereAceptacionTerminos: termsError.requiereAceptacionTerminos,
+          message: termsError.message,
+          hasResponse: !!termsError.response,
+        });
+        throw termsError;
       }
 
       // Manejo específico para credenciales incorrectas (401)
