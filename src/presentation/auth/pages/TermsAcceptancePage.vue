@@ -25,10 +25,21 @@
           <div v-else-if="documents.length === 0" class="text-center q-pa-xl">
             <q-icon name="check_circle" size="64px" color="positive" class="q-mb-md" />
             <div class="text-h6 q-mb-sm">No hay documentos pendientes de aceptar</div>
-            <q-btn color="primary" label="Continuar" @click="handleContinue" />
+            <q-btn
+              color="primary"
+              label="Continuar"
+              @click="handleContinue"
+              :loading="redirecting"
+            />
           </div>
 
-          <div v-else class="q-gutter-md">
+          <!-- Loader de redirección -->
+          <q-inner-loading :showing="redirecting" color="primary">
+            <q-spinner size="50px" color="primary" />
+            <div class="text-body1 q-mt-md">Redirigiendo al dashboard...</div>
+          </q-inner-loading>
+
+          <div class="q-gutter-md">
             <q-card
               v-for="document in documents"
               :key="document.id"
@@ -118,12 +129,19 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue';
+import { onMounted, ref } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
+import { useQuasar } from 'quasar';
 import { useTerms } from '../../../shared/composables';
+import { useAuthStore } from '../../../stores/auth.store';
+import type { LoginDto } from '../../../application/auth/auth.repository.port';
 
 const router = useRouter();
 const route = useRoute();
+const $q = useQuasar();
+const authStore = useAuthStore();
+
+const redirecting = ref(false);
 
 const {
   documents,
@@ -141,16 +159,99 @@ const {
 
 async function handleAccept() {
   try {
-    await acceptTerms();
+    const fromLogin = route.query.fromLogin === 'true';
+
+    // Si venimos del login, usar el endpoint público con credenciales
+    if (fromLogin) {
+      const pendingLoginStr = sessionStorage.getItem('pendingLogin');
+      if (pendingLoginStr) {
+        try {
+          const pendingLogin: LoginDto = JSON.parse(pendingLoginStr);
+
+          // Aceptar términos usando el endpoint público con credenciales
+          await acceptTerms(undefined, true, pendingLogin);
+
+          // Después de aceptar términos, intentar hacer login
+          try {
+            await authStore.login(pendingLogin);
+
+            // Limpiar las credenciales guardadas
+            sessionStorage.removeItem('pendingLogin');
+
+            $q.notify({
+              type: 'positive',
+              message: 'Términos aceptados e inicio de sesión exitoso',
+              position: 'top',
+            });
+
+            // Mostrar loader de redirección
+            redirecting.value = true;
+
+            // Redirigir a la ruta original o al home
+            const redirect = (route.query.redirect as string) || '/';
+            await router.push(redirect);
+            return;
+          } catch (loginError) {
+            console.error('Error al intentar login después de aceptar términos:', loginError);
+            $q.notify({
+              type: 'warning',
+              message: 'Términos aceptados. Por favor, inicia sesión nuevamente.',
+              position: 'top',
+            });
+            // Limpiar las credenciales y redirigir al login
+            sessionStorage.removeItem('pendingLogin');
+            void router.push({ name: 'login' });
+            return;
+          }
+        } catch (err) {
+          console.error('Error en el flujo de aceptación de términos:', err);
+          $q.notify({
+            type: 'negative',
+            message: 'Error al procesar la aceptación de términos. Por favor, intente nuevamente.',
+            position: 'top',
+          });
+          return;
+        }
+      }
+    }
+
+    // Si no venimos del login, aceptar términos normalmente (con autenticación)
+    await acceptTerms(undefined, false);
   } catch (err) {
     // El error ya se maneja en el composable useTerms
+    console.error('Error al aceptar términos:', err);
   }
 }
 
-function handleContinue() {
+async function handleContinue() {
+  // Si no hay documentos, verificar si hay credenciales pendientes
+  const fromLogin = route.query.fromLogin === 'true';
+  if (fromLogin) {
+    const pendingLoginStr = sessionStorage.getItem('pendingLogin');
+    if (pendingLoginStr) {
+      // Intentar hacer login automáticamente
+      const pendingLogin: LoginDto = JSON.parse(pendingLoginStr);
+      sessionStorage.removeItem('pendingLogin');
+
+      try {
+        await authStore.login(pendingLogin);
+
+        // Mostrar loader de redirección
+        redirecting.value = true;
+
+        const redirect = (route.query.redirect as string) || '/';
+        await router.push(redirect);
+      } catch {
+        void router.push({ name: 'login' });
+      }
+      return;
+    }
+  }
+
   // Si no hay documentos, redirigir directamente
+  redirecting.value = true;
   const redirect = (route.query.redirect as string) || '/';
-  void router.push(redirect);
+  await router.push(redirect);
 }
 
 onMounted(() => {

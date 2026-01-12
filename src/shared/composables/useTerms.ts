@@ -50,8 +50,15 @@ export function useTerms() {
 
   /**
    * Acepta los términos y políticas seleccionados
+   * @param documentIds - IDs de documentos a aceptar (opcional, usa acceptedDocuments por defecto)
+   * @param skipRedirect - Si es true, no redirige automáticamente (útil cuando se maneja el redirect manualmente)
+   * @param credentials - Credenciales opcionales para aceptar términos sin autenticación (cuando viene del login)
    */
-  async function acceptTerms(documentIds?: number[]) {
+  async function acceptTerms(
+    documentIds?: number[],
+    skipRedirect: boolean = false,
+    credentials?: { username: string; password: string },
+  ) {
     const idsToAccept = documentIds || acceptedDocuments.value;
     
     if (idsToAccept.length === 0) {
@@ -64,17 +71,29 @@ export function useTerms() {
 
     submitting.value = true;
     try {
-      const acceptTermsUseCase = TermsUseCasesFactory.getAcceptTermsUseCase(termsService);
-      await acceptTermsUseCase.execute(idsToAccept);
+      // Si se proporcionan credenciales, usar el endpoint público
+      if (credentials) {
+        await termsService.acceptTermsWithCredentials(
+          credentials.username,
+          credentials.password,
+          idsToAccept,
+        );
+      } else {
+        // Usar el endpoint normal con autenticación
+        const acceptTermsUseCase = TermsUseCasesFactory.getAcceptTermsUseCase(termsService);
+        await acceptTermsUseCase.execute(idsToAccept);
+      }
 
       $q.notify({
         type: 'positive',
         message: 'Términos y políticas aceptados exitosamente',
       });
 
-      // Redirigir a la ruta original o al home
-      const redirect = (route.query.redirect as string) || '/';
-      void router.push(redirect);
+      // Redirigir a la ruta original o al home solo si no se solicita saltar el redirect
+      if (!skipRedirect) {
+        const redirect = (route.query.redirect as string) || '/';
+        void router.push(redirect);
+      }
     } catch (err) {
       console.error('Error accepting terms:', err);
       const errorMessage = err instanceof Error ? err.message : 'Error al aceptar los términos y políticas';

@@ -17,7 +17,7 @@ export interface RegisterDto {
   fotoUrl?: string | undefined;
   username: string;
   password: string;
-  tipoRegistro: 'ALUMNO' | 'INSTRUCTOR' | 'CLIENTE';
+  tipoRegistro: 'ALUMNO' | 'INSTRUCTOR' | 'CLIENTE' | 'OPERADOR';
   codigoEstudiante?: string | undefined;
   especialidad?: string | undefined;
   biografia?: string | undefined;

@@ -36,8 +36,9 @@ const routes: RouteRecordRaw[] = [
         path: 'terms-acceptance',
         name: 'terms-acceptance',
         component: () => import('../presentation/auth/pages/TermsAcceptancePage.vue'),
+        // No requiere autenticación porque puede venir del login cuando el usuario no ha aceptado términos
         meta: {
-          requiresAuth: true,
+          requiresAuth: false,
         },
       },
     ],

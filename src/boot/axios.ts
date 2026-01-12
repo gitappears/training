@@ -104,17 +104,32 @@ api.interceptors.request.use(
       '/auth/register/photo',
       '/auth/refresh',
       '/public/', // Permitir endpoints públicos generales (ej: verificación de certificados)
+      '/terms/active-documents', // Endpoint público para obtener documentos activos
+      '/terms/public/accept', // Endpoint público para aceptar términos con credenciales
     ];
 
     // Verificar si el endpoint es público
-    const isPublicEndpoint =
-      config.url && publicEndpoints.some((endpoint) => config.url?.includes(endpoint));
+    // La URL puede incluir la baseURL completa, así que verificamos la parte de la ruta
+    const urlPath = config.url || '';
+    const isPublicEndpoint = publicEndpoints.some((endpoint) => {
+      // Verificar si la URL contiene el endpoint (funciona con baseURL completa o solo ruta)
+      return urlPath.includes(endpoint);
+    });
 
     // Solo agregar token si no es un endpoint público
     if (!isPublicEndpoint) {
       const token = localStorage.getItem('auth_token');
       if (token && config.headers) {
         config.headers.Authorization = `Bearer ${token}`;
+      }
+    } else {
+      // Asegurarse de que los endpoints públicos NO tengan token
+      if (config.headers) {
+        delete config.headers.Authorization;
+      }
+      if (import.meta.env.DEV) {
+        // Log en desarrollo para verificar que los endpoints públicos no reciben token
+        console.log(`[HTTP] Endpoint público detectado: ${urlPath}, token removido si existía`);
       }
     }
 
@@ -159,6 +174,8 @@ api.interceptors.response.use(
         '/auth/public/register',
         '/auth/register/photo',
         '/public/', // Importante: endpoints públicos no deben forzar logout
+        '/terms/active-documents',
+        '/terms/public/accept',
       ];
 
       const isPublicEndpoint =
@@ -172,6 +189,17 @@ api.interceptors.response.use(
         window.location.pathname.includes('/register') ||
         window.location.href.includes('/verify') // Permitir acceso a verificación pública (Cualquier modo)
       ) {
+        // Verificar si es TERMS_NOT_ACCEPTED y preservar todas las propiedades del error
+        const isTermsNotAccepted =
+          error?.response?.data?.error === 'TERMS_NOT_ACCEPTED' ||
+          error?.response?.data?.requiereAceptacionTerminos === true;
+        
+        if (isTermsNotAccepted && axios.isAxiosError(error)) {
+          // Preservar el error original de axios con todas sus propiedades
+          // El auth.service.ts lo detectará y lanzará el error con las propiedades necesarias
+          return Promise.reject(error);
+        }
+        
         // Asegurar que el error rechazado sea una instancia de Error
         const errorToReject =
           error instanceof Error

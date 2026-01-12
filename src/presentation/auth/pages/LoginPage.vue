@@ -92,7 +92,25 @@ const form = ref<LoginDto>({
 });
 
 async function handleSubmit() {
-  await login(form.value);
+  try {
+    await login(form.value);
+  } catch (error: unknown) {
+    // Si el error es TERMS_NOT_ACCEPTED, las credenciales ya se guardaron
+    // y la redirección se maneja en useAuth
+    // El error ya se muestra en useAuth, no necesitamos hacer nada más aquí
+    const errorObj = error as {
+      code?: string;
+      message?: string;
+      requiereAceptacionTerminos?: boolean;
+    };
+    if (
+      errorObj?.code !== 'TERMS_NOT_ACCEPTED' &&
+      errorObj?.message !== 'TERMS_NOT_ACCEPTED' &&
+      !errorObj?.requiereAceptacionTerminos
+    ) {
+      // El error ya se muestra en useAuth, no necesitamos hacer nada más
+    }
+  }
 }
 </script>
 
@@ -297,11 +315,18 @@ async function handleSubmit() {
   color: rgba(255, 255, 255, 0.95) !important;
 }
 
+// Estilos para modo claro - checkbox y label
 .body--light :deep(.q-checkbox) {
-  color: rgba(0, 0, 0, 0.87);
+  color: rgba(0, 0, 0, 0.87) !important;
 }
 
 .body--light :deep(.q-checkbox__label) {
+  color: rgba(0, 0, 0, 0.87) !important;
+}
+
+// Selector adicional más específico para asegurar visibilidad en modo claro
+.login-card.body--light :deep(.q-checkbox__label),
+.body--light .login-card :deep(.q-checkbox__label) {
   color: rgba(0, 0, 0, 0.87) !important;
 }
 
