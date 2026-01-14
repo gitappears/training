@@ -356,7 +356,7 @@
 
               <q-tab-panel name="reviews">
                 <div class="reviews-section">
-                  <div class="row items-center q-gutter-md q-mb-lg">
+                  <div v-if="training.reviews && training.reviews.length > 0" class="row items-center q-gutter-md q-mb-lg">
                     <div class="rating-summary">
                       <div class="text-h3 text-weight-bold">{{ training.averageRating.toFixed(1) }}</div>
                       <q-rating
@@ -372,8 +372,8 @@
                       </div>
                     </div>
                   </div>
-                  <q-separator class="q-mb-lg" />
-                  <div v-if="training.reviews.length === 0" class="empty-state">
+                  <q-separator v-if="training.reviews && training.reviews.length > 0" class="q-mb-lg" />
+                  <div v-if="!training.reviews || training.reviews.length === 0" class="empty-state">
                     <q-icon name="star" size="48px" color="grey-5" class="q-mb-sm" />
                     <div class="text-body1 text-grey-6">No hay reseñas disponibles</div>
                   </div>
@@ -398,7 +398,7 @@
                             <span class="text-caption text-grey-6">{{ formatDate(review.createdAt) }}</span>
                           </div>
                         </div>
-                        <div class="text-body1 text-grey-8">{{ review.comment }}</div>
+                        <div class="text-body1 text-grey-8">{{ review.comment || 'Sin comentario' }}</div>
                       </q-card-section>
                     </q-card>
                   </div>
@@ -441,7 +441,7 @@
               </q-card-section>
               <q-card-section>
                 <div class="text-h6 q-mb-sm text-weight-medium">{{ training.title }}</div>
-                <div class="row items-center q-gutter-xs q-mb-md">
+                <div v-if="training.averageRating > 0 && training.reviews && training.reviews.length > 0" class="row items-center q-gutter-xs q-mb-md">
                   <q-rating
                     :model-value="training.averageRating"
                     max="5"
@@ -453,7 +453,7 @@
                     {{ training.averageRating.toFixed(1) }}
                   </span>
                   <span class="text-caption text-grey-6 q-ml-xs">
-                    ({{ training.studentsCount }} {{ training.studentsCount === 1 ? 'alumno' : 'alumnos' }})
+                    ({{ training.reviews.length }} {{ training.reviews.length === 1 ? 'reseña' : 'reseñas' }})
                   </span>
                 </div>
 
@@ -543,6 +543,39 @@
                   class="full-width"
                   @click="handleEditTraining"
                 />
+
+                <!-- Sección de Reseñas en el Sidebar -->
+                <q-separator class="q-my-md" />
+                <div class="sidebar-reviews-section">
+                  <div class="text-subtitle2 q-mb-sm text-weight-medium">Reseñas</div>
+                  <div v-if="displayReviews.length === 0" class="text-caption text-grey-6 text-center q-py-sm">
+                    No hay reseñas disponibles
+                  </div>
+                  <div v-else class="sidebar-reviews-list">
+                    <div
+                      v-for="review in displayReviews.slice(0, 3)"
+                      :key="review.id"
+                      class="sidebar-review-item q-mb-sm"
+                    >
+                      <div class="row items-center q-gutter-xs q-mb-xs">
+                        <q-rating
+                          :model-value="review.rating"
+                          max="5"
+                          size="14px"
+                          color="amber"
+                          readonly
+                        />
+                        <span class="text-caption text-grey-6">{{ formatDate(review.createdAt) }}</span>
+                      </div>
+                      <div class="text-caption text-grey-7 ellipsis-2-lines">
+                        {{ review.comment || 'Sin comentario' }}
+                      </div>
+                    </div>
+                    <div v-if="displayReviews.length > 3" class="text-caption text-grey-6 text-center q-mt-sm">
+                      Y {{ displayReviews.length - 3 }} reseña{{ displayReviews.length - 3 !== 1 ? 's' : '' }} más
+                    </div>
+                  </div>
+                </div>
               </q-card-section>
             </q-card>
           </div>
@@ -560,7 +593,7 @@ import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 import type { QTableColumn } from 'quasar';
-import type { Training, TrainingStudent, TrainingAttachment } from '../../../domain/training/models';
+import type { Training, TrainingStudent, TrainingAttachment, TrainingReview } from '../../../domain/training/models';
 import { TrainingUseCasesFactory } from '../../../application/training/training.use-cases.factory';
 import { trainingsService } from '../../../infrastructure/http/trainings/trainings.service';
 // import { materialsService } from '../../../infrastructure/http/materials/materials.service';
@@ -1290,6 +1323,16 @@ const enrolledStudentsCount = computed(() => {
   return training.value?.studentsCount || 0;
 });
 
+/**
+ * Computed que devuelve las reseñas a mostrar desde la base de datos
+ */
+const displayReviews = computed<TrainingReview[]>(() => {
+  if (!training.value) return [];
+  
+  // Mostrar solo reseñas reales de la base de datos
+  return training.value.reviews || [];
+});
+
 const studentColumns: QTableColumn<StudentWithDocument>[] = [
   {
     name: 'name',
@@ -1735,5 +1778,38 @@ body.body--dark .sidebar-watermark {
 
 .resources-container {
   width: 100%;
+}
+
+// Sidebar Reviews Section
+.sidebar-reviews-section {
+  padding: 8px 0;
+}
+
+.sidebar-reviews-list {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.sidebar-review-item {
+  padding: 8px;
+  border-radius: 8px;
+  border-left: 3px solid rgba(79, 70, 229, 0.3);
+  transition: background-color 0.2s ease;
+}
+
+body.body--light .sidebar-review-item {
+  background: #f8fafc;
+}
+
+body.body--dark .sidebar-review-item {
+  background: rgba(15, 23, 42, 0.5);
+}
+
+.sidebar-review-item:hover {
+  background: rgba(79, 70, 229, 0.1);
+}
+
+body.body--dark .sidebar-review-item:hover {
+  background: rgba(79, 70, 229, 0.2);
 }
 </style>

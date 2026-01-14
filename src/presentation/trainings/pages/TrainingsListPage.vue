@@ -140,8 +140,8 @@
 
             <!-- Metadata Row -->
             <div class="row items-center justify-between q-mb-sm">
-              <!-- Rating -->
-              <div class="row items-center q-gutter-xs">
+              <!-- Rating (solo mostrar si hay reseñas) -->
+              <div v-if="training.averageRating > 0 && training.reviews && training.reviews.length > 0" class="row items-center q-gutter-xs">
                 <q-icon name="star" color="amber" size="16px" />
                 <span class="text-caption text-weight-medium">
                   {{ training.averageRating.toFixed(1) }}

@@ -188,7 +188,7 @@
             </template>
           </q-select>
         </div>
-     
+
         <div class="col-12 col-md-4">
           <q-input
             v-model="form.startDate"
@@ -850,11 +850,11 @@
                         <div v-if="pregunta.tipoPreguntaId === 3" class="column q-gutter-sm">
                           <!-- Debug: mostrar información de la opción -->
                           <!-- <div class="text-caption text-grey-6 q-mb-xs">
-                            Debug: imagenUrl = {{ opcion.imagenUrl }}, 
+                            Debug: imagenUrl = {{ opcion.imagenUrl }},
                             hasOptionImage = {{ hasOptionImage(preguntaIndex, opcionIndex) }},
                             url = {{ getOptionImageUrl(preguntaIndex, opcionIndex) }}
                           </div> -->
-                          
+
                           <!-- Input de archivo oculto para poder activarlo programáticamente -->
                           <q-file
                             :ref="(el) => setImageFileInputRef(preguntaIndex, opcionIndex, el)"
@@ -864,20 +864,20 @@
                             style="display: none;"
                             class="hidden-file-input"
                           />
-                          
+
                           <!-- Si ya hay imagen subida, mostrar miniatura -->
                           <div
                             v-if="opcion.imagenUrl && String(opcion.imagenUrl).trim() !== ''"
                             class="option-image-wrapper q-mt-sm"
                           >
                             <div class="row items-center q-gutter-sm">
-                              <div class="option-image-thumbnail-container" style="width: 200px; height: 110px; min-width: 200px; min-height: 110px; max-width: 200px; max-height: 110px;">
+                              <div class="option-image-thumbnail-container" style="width: 200px; height: 200px; min-width: 200px; min-height: 200px; max-width: 200px; max-height: 200px;">
                                 <img
                                   :src="buildFullUrl(opcion.imagenUrl)"
                                   :alt="opcion.texto || 'Imagen de opción'"
                                   class="option-image-thumbnail"
                                   loading="lazy"
-                                  style="width: 100%; height: 100%; max-width: 200px; max-height: 110px; object-fit: cover; border-radius:5px;"
+                                  style="width: 100%; height: 100%; max-width: 200px; max-height: 200px; object-fit: cover; border-radius:5px;"
                                 />
                               </div>
                               <div class="col">
@@ -905,7 +905,7 @@
                               </div>
                             </div>
                           </div>
-                          
+
                           <!-- Si no hay imagen pero hay archivo seleccionado, mostrar preview -->
                           <div
                             v-else-if="getOptionImageFile(preguntaIndex, opcionIndex) && isImageFile(getOptionImageFile(preguntaIndex, opcionIndex)!)"
@@ -953,7 +953,7 @@
                               </div>
                             </div>
                           </div>
-                          
+
                           <!-- Si no hay imagen ni archivo seleccionado, mostrar botón para seleccionar -->
                           <div v-else>
                             <q-btn
@@ -1411,12 +1411,12 @@ const getCoverImageUrl = computed(() => {
   if (coverImagePreview.value) {
     return coverImagePreview.value;
   }
-  
+
   // Si hay URL en el formulario, construir URL completa usando buildFullUrl
   if (form.coverImageUrl) {
     return buildFullUrl(form.coverImageUrl);
   }
-  
+
   return '';
 });
 
@@ -1432,7 +1432,7 @@ function calculateQuestionScores() {
   }
 
   const preguntas = form.evaluationInline.preguntas;
-  
+
   // Separar preguntas con porcentaje específico y sin porcentaje
   const preguntasConPorcentaje = preguntas.filter(
     (p) => p.porcentaje !== undefined && p.porcentaje !== null && p.porcentaje > 0
@@ -1440,13 +1440,13 @@ function calculateQuestionScores() {
   const preguntasSinPorcentaje = preguntas.filter(
     (p) => !p.porcentaje || p.porcentaje === null || p.porcentaje === 0
   );
-  
+
   // Calcular suma de porcentajes especificados
   const sumaPorcentajesEspecificados = preguntasConPorcentaje.reduce(
     (sum, p) => sum + (p.porcentaje || 0),
     0
   );
-  
+
   // Validar que no se exceda el 100%
   if (sumaPorcentajesEspecificados > 100) {
     $q.notify({
@@ -1467,15 +1467,15 @@ function calculateQuestionScores() {
     calculateQuestionScores();
     return;
   }
-  
+
   // Calcular porcentaje restante a distribuir
   const porcentajeRestante = 100 - sumaPorcentajesEspecificados;
-  
+
   // Distribuir porcentaje restante entre preguntas sin porcentaje específico
   const porcentajePorPregunta = preguntasSinPorcentaje.length > 0
     ? porcentajeRestante / preguntasSinPorcentaje.length
     : 0;
-  
+
   // Actualizar puntajes de todas las preguntas
   preguntas.forEach((pregunta) => {
     if (pregunta.porcentaje !== undefined && pregunta.porcentaje !== null && pregunta.porcentaje > 0) {
@@ -1490,7 +1490,7 @@ function calculateQuestionScores() {
       }
     }
   });
-  
+
   // Actualizar puntajeTotal en el formulario
   if (form.evaluationInline) {
     form.evaluationInline.puntajeTotal = 100;
@@ -1575,13 +1575,13 @@ function getVideoEmbedUrl(url: string): string | null {
   // YouTube
   if (urlLower.includes('youtube.com') || urlLower.includes('youtu.be')) {
     let videoId = '';
-    
+
     // Formato: https://www.youtube.com/watch?v=VIDEO_ID
     const watchMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/);
     if (watchMatch && watchMatch[1]) {
       videoId = watchMatch[1];
     }
-    
+
     // Formato: https://www.youtube.com/embed/VIDEO_ID
     const embedMatch = url.match(/youtube\.com\/embed\/([^&\n?#]+)/);
     if (embedMatch && embedMatch[1]) {
@@ -1767,7 +1767,7 @@ function openPdfModal(file: Material): void {
  */
 async function handleCoverImageSelected(file: File | null): Promise<void> {
   coverImageError.value = '';
-  
+
   if (!file) {
     // Si se elimina el archivo, limpiar preview si es un blob
     if (coverImagePreview.value && coverImagePreview.value.startsWith('blob:')) {
@@ -1820,12 +1820,12 @@ async function uploadCoverImage(file: File): Promise<void> {
 
     // Construir URL completa para visualización
     const fullUrl = buildFullUrl(response.url);
-    
+
     // Revocar el blob URL anterior
     if (coverImagePreview.value && coverImagePreview.value.startsWith('blob:')) {
       URL.revokeObjectURL(coverImagePreview.value);
     }
-    
+
     // Actualizar preview con la URL del servidor
     coverImagePreview.value = fullUrl;
 
@@ -1837,10 +1837,10 @@ async function uploadCoverImage(file: File): Promise<void> {
     });
   } catch (error) {
     console.error('Error al subir imagen de portada:', error);
-    coverImageError.value = error instanceof Error 
-      ? error.message 
+    coverImageError.value = error instanceof Error
+      ? error.message
       : 'Error al subir la imagen. Por favor, intente nuevamente';
-    
+
     // Limpiar preview y archivo en caso de error
     if (coverImagePreview.value && coverImagePreview.value.startsWith('blob:')) {
       URL.revokeObjectURL(coverImagePreview.value);
@@ -1869,12 +1869,12 @@ function removeCoverImage(): void {
   if (coverImagePreview.value && coverImagePreview.value.startsWith('blob:')) {
     URL.revokeObjectURL(coverImagePreview.value);
   }
-  
+
   coverImagePreview.value = undefined;
   coverImageFile.value = null;
   form.coverImageUrl = '';
   coverImageError.value = '';
-  
+
   $q.notify({
     type: 'info',
     message: 'Imagen de portada eliminada',
@@ -1946,7 +1946,7 @@ async function uploadAndSaveFile(): Promise<void> {
     interface MaterialWithRelativeUrl extends Material {
       _relativeUrl?: string;
     }
-    
+
     const fileMaterial: MaterialWithRelativeUrl = {
       id: generateId(),
       name: newFile.name,
@@ -2086,7 +2086,7 @@ function removeOption(preguntaIndex: number, opcionIndex: number): void {
     optionImageFiles.value.delete(optionKey);
     optionUploading.value.delete(optionKey);
     optionUploadProgress.value.delete(optionKey);
-    
+
     pregunta.opciones.splice(opcionIndex, 1);
     // Reordenar
     pregunta.opciones.forEach((o, i) => {
@@ -2114,12 +2114,12 @@ function getOptionImageFile(preguntaIndex: number, opcionIndex: number): File | 
 
 async function handleOptionImageSelected(preguntaIndex: number, opcionIndex: number, file: File | null): Promise<void> {
   const key = getOptionKey(preguntaIndex, opcionIndex);
-  
+
   if (!file) {
     optionImageFiles.value.delete(key);
     return;
   }
-  
+
   // Validar que sea una imagen
   if (!isImageFile(file)) {
     $q.notify({
@@ -2130,7 +2130,7 @@ async function handleOptionImageSelected(preguntaIndex: number, opcionIndex: num
     optionImageFiles.value.delete(key);
     return;
   }
-  
+
   // Validar tamaño (10MB máximo, igual que otros archivos)
   if (file.size > 10 * 1024 * 1024) {
     $q.notify({
@@ -2141,10 +2141,10 @@ async function handleOptionImageSelected(preguntaIndex: number, opcionIndex: num
     optionImageFiles.value.delete(key);
     return;
   }
-  
+
   // Guardar el archivo temporalmente
   optionImageFiles.value.set(key, file);
-  
+
   // Subir automáticamente la imagen
   try {
     await uploadOptionImage(preguntaIndex, opcionIndex);
@@ -2157,25 +2157,25 @@ async function handleOptionImageSelected(preguntaIndex: number, opcionIndex: num
 async function uploadOptionImage(preguntaIndex: number, opcionIndex: number): Promise<void> {
   const key = getOptionKey(preguntaIndex, opcionIndex);
   const file = optionImageFiles.value.get(key);
-  
+
   if (!file || !form.evaluationInline) {
     return;
   }
-  
+
   const pregunta = form.evaluationInline.preguntas[preguntaIndex];
   if (!pregunta) return;
-  
+
   const opcion = pregunta.opciones[opcionIndex];
   if (!opcion) return;
-  
+
   optionUploading.value.set(key, true);
   optionUploadProgress.value.set(key, 0);
-  
+
   try {
     const response = await materialsService.uploadFile(file, (progress) => {
       optionUploadProgress.value.set(key, progress);
     });
-    
+
     // Guardar la URL relativa en la opción
     // La URL viene como ruta relativa desde el backend (ej: /storage/materials/1234567890-abc123.jpg)
     // Usar Vue.set o asignación directa para asegurar reactividad
@@ -2187,7 +2187,7 @@ async function uploadOptionImage(preguntaIndex: number, opcionIndex: number): Pr
         opcion.imagenUrl = response.url; // También actualizar la referencia local
       }
     }
-    
+
     console.log('✅ Imagen subida exitosamente:', {
       preguntaIndex,
       opcionIndex,
@@ -2196,11 +2196,11 @@ async function uploadOptionImage(preguntaIndex: number, opcionIndex: number): Pr
       urlCompleta: buildFullUrl(response.url),
       preguntaTipo: pregunta?.tipoPreguntaId,
     });
-    
+
     // Limpiar el archivo temporal después de subir
     optionImageFiles.value.delete(key);
     optionUploadProgress.value.set(key, 0);
-    
+
     $q.notify({
       type: 'positive',
       message: 'Imagen subida exitosamente',
@@ -2223,7 +2223,7 @@ function clearOptionImage(preguntaIndex: number, opcionIndex: number): void {
   const key = getOptionKey(preguntaIndex, opcionIndex);
   optionImageFiles.value.delete(key);
   optionUploadProgress.value.set(key, 0);
-  
+
   if (form.evaluationInline) {
     const pregunta = form.evaluationInline.preguntas[preguntaIndex];
     if (pregunta && pregunta.opciones[opcionIndex]) {
@@ -2311,19 +2311,19 @@ function setImageFileInputRef(preguntaIndex: number, opcionIndex: number, el: an
 function triggerImageFileInput(preguntaIndex: number, opcionIndex: number): void {
   const key = getOptionKey(preguntaIndex, opcionIndex);
   const inputRef = imageFileInputRefs.value.get(key);
-  
+
   if (!inputRef) {
     console.warn('No se encontró la referencia al input de archivo para la opción:', { preguntaIndex, opcionIndex, key });
     return;
   }
-  
+
   // Intentar acceder al elemento del input de diferentes formas
   let fileInput: HTMLInputElement | null = null;
-  
+
   // Si es un componente Quasar q-file
   if (inputRef.$el) {
     fileInput = inputRef.$el.querySelector('input[type="file"]') as HTMLInputElement;
-  } 
+  }
   // Si es directamente un elemento HTML
   else if (inputRef instanceof HTMLElement) {
     fileInput = inputRef.querySelector('input[type="file"]') as HTMLInputElement;
@@ -2332,17 +2332,17 @@ function triggerImageFileInput(preguntaIndex: number, opcionIndex: number): void
   else if (inputRef && typeof inputRef === 'object' && 'querySelector' in inputRef) {
     fileInput = (inputRef as any).querySelector('input[type="file"]');
   }
-  
+
   if (fileInput) {
     // Limpiar el valor anterior para permitir seleccionar el mismo archivo
     fileInput.value = '';
     fileInput.click();
   } else {
-    console.error('No se pudo encontrar el input de archivo para la opción:', { 
-      preguntaIndex, 
-      opcionIndex, 
+    console.error('No se pudo encontrar el input de archivo para la opción:', {
+      preguntaIndex,
+      opcionIndex,
       key,
-      inputRef 
+      inputRef
     });
   }
 }
@@ -2402,7 +2402,7 @@ function reset() {
   form.targetAudience = 'Conductores';
   form.startDate = '';
   form.endDate = '';
-  
+
   // Limpiar imagen de portada
   if (coverImagePreview.value && coverImagePreview.value.startsWith('blob:')) {
     URL.revokeObjectURL(coverImagePreview.value);
@@ -2719,7 +2719,7 @@ async function onSubmit() {
   // Subir automáticamente todas las imágenes pendientes antes de enviar
   if (form.evaluationInline && form.evaluationInline.preguntas) {
     const pendingUploads: Promise<void>[] = [];
-    
+
     for (let preguntaIndex = 0; preguntaIndex < form.evaluationInline.preguntas.length; preguntaIndex++) {
       const pregunta = form.evaluationInline.preguntas[preguntaIndex];
       if (pregunta && pregunta.tipoPreguntaId === 3 && pregunta.opciones) {
@@ -2729,7 +2729,7 @@ async function onSubmit() {
           if (opcion) {
             const key = getOptionKey(preguntaIndex, opcionIndex);
             const file = optionImageFiles.value.get(key);
-            
+
             // Si hay un archivo seleccionado pero no subido, subirlo
             if (file && !opcion.imagenUrl) {
               pendingUploads.push(uploadOptionImage(preguntaIndex, opcionIndex));
@@ -2738,7 +2738,7 @@ async function onSubmit() {
         }
       }
     }
-    
+
     // Esperar a que todas las imágenes se suban
     if (pendingUploads.length > 0) {
       isSubmitting.value = true;
@@ -2824,7 +2824,7 @@ async function onSubmit() {
 
   // Marcar como submitting antes de emitir
   isSubmitting.value = true;
-  
+
   try {
     // Verificar que las imágenes se hayan guardado correctamente antes de enviar
     if (form.evaluationInline) {
@@ -2841,7 +2841,7 @@ async function onSubmit() {
         })),
       });
     }
-    
+
     emit('submit', { ...form }, materials.value);
   } catch (error) {
     // Si hay error en el emit, resetear el estado
@@ -3023,7 +3023,7 @@ function generateId(): string {
   .material-preview-container {
     width: 120px;
     min-width: 120px;
-    
+
     .video-preview {
       width: 100%;
       height: 0;
@@ -3032,7 +3032,7 @@ function generateId(): string {
       border-radius: 8px;
       overflow: hidden;
       background-color: rgba(0, 0, 0, 0.1);
-      
+
       .video-iframe {
         position: absolute;
         top: 0;
@@ -3042,7 +3042,7 @@ function generateId(): string {
         border-radius: 8px;
       }
     }
-    
+
     .image-preview {
       width: 100%;
       border-radius: 8px;
@@ -3050,15 +3050,15 @@ function generateId(): string {
       background-color: rgba(0, 0, 0, 0.05);
       cursor: pointer;
       transition: all 0.2s ease;
-      
+
       &:hover {
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-        
+
         .image-thumbnail {
           transform: scale(1.05);
         }
       }
-      
+
       .image-thumbnail {
         width: 100%;
         border-radius: 8px;
@@ -3066,7 +3066,7 @@ function generateId(): string {
         cursor: pointer;
       }
     }
-    
+
     // Estilos para imágenes de opciones de respuesta (similar a materiales)
     // Estilos para miniaturas de imágenes de opciones de respuesta
     .option-image-wrapper {
@@ -3075,14 +3075,14 @@ function generateId(): string {
       border-radius: 8px;
       border: 1px solid rgba(0, 0, 0, 0.1);
     }
-    
+
     .option-image-thumbnail-container {
       width: 200px !important;
       min-width: 200px !important;
-      height: 110px !important;
-      min-height: 110px !important;
+      height: 200px !important;
+      min-height: 200px !important;
       max-width: 200px !important;
-      max-height: 110px !important;
+      max-height: 200px !important;
       overflow: hidden;
       border-radius: 6px;
       background-color: #f5f5f5;
@@ -3092,22 +3092,22 @@ function generateId(): string {
       border: 2px solid rgba(0, 0, 0, 0.1);
       flex-shrink: 0;
     }
-    
+
     .option-image-thumbnail {
       width: 100% !important;
       height: 100% !important;
       max-width: 200px !important;
-      max-height: 110px !important;
+      max-height: 200px !important;
       object-fit: cover;
       display: block;
     }
-    
+
     .option-image-info {
       display: flex;
       flex-direction: column;
       justify-content: center;
     }
-    
+
     .pdf-preview {
       width: 100%;
       height: 0;
@@ -3122,21 +3122,21 @@ function generateId(): string {
       display: flex;
       align-items: center;
       justify-content: center;
-      
+
       &:hover {
         box-shadow: 0 6px 20px rgba(244, 67, 54, 0.3);
         transform: translateY(-2px);
         border-color: rgba(244, 67, 54, 0.4);
-        
+
         .pdf-overlay {
           opacity: 1;
         }
-        
+
         .pdf-preview-content {
           opacity: 0.3;
         }
       }
-      
+
       .pdf-preview-content {
         position: absolute;
         top: 0;
@@ -3150,7 +3150,7 @@ function generateId(): string {
         transition: opacity 0.3s ease;
         z-index: 1;
       }
-      
+
       .pdf-overlay {
         position: absolute;
         top: 0;
@@ -3166,7 +3166,7 @@ function generateId(): string {
         transition: opacity 0.3s ease;
         border-radius: 8px;
         z-index: 2;
-        
+
         .pdf-overlay-content {
           display: flex;
           flex-direction: column;
@@ -3176,7 +3176,7 @@ function generateId(): string {
         }
       }
     }
-    
+
     .file-icon-container {
       width: 100%;
       display: flex;
@@ -3278,14 +3278,14 @@ body.body--dark {
   max-height: 900px;
   display: flex;
   flex-direction: column;
-  
+
   .pdf-modal-header {
     flex-shrink: 0;
     padding: 16px 24px;
     background-color: rgba(0, 0, 0, 0.02);
     border-bottom: 1px solid rgba(0, 0, 0, 0.1);
   }
-  
+
   .pdf-modal-content {
     flex: 1;
     overflow: hidden;
@@ -3293,7 +3293,7 @@ body.body--dark {
     flex-direction: column;
     min-height: 0;
     position: relative;
-    
+
     .pdf-iframe {
       width: 100%;
       height: 100%;
@@ -3319,11 +3319,11 @@ body.body--dark {
       background-color: rgba(255, 255, 255, 0.05);
     }
   }
-  
+
   .pdf-preview {
     background: linear-gradient(135deg, rgba(244, 67, 54, 0.15) 0%, rgba(244, 67, 54, 0.08) 100%);
     border-color: rgba(244, 67, 54, 0.3);
-    
+
     &:hover {
       border-color: rgba(244, 67, 54, 0.5);
     }
@@ -3343,7 +3343,7 @@ body.body--dark {
 // Estilos para la vista previa de imagen de portada
 .cover-image-preview-container {
   width: 50%;
-  
+
   .cover-image-preview {
     width: 100%;
     height: 0;
@@ -3353,13 +3353,13 @@ body.body--dark {
     overflow: hidden;
     background-color: rgba(0, 0, 0, 0.05);
     border: 2px solid rgba(0, 0, 0, 0.1);
-    
+
     .cover-image-thumbnail {
       width: 100%;
       border-radius: 8px;
       cursor: pointer;
       transition: transform 0.2s ease;
-      
+
       &:hover {
         transform: scale(1.02);
       }
