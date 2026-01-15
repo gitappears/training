@@ -86,7 +86,7 @@
     </div>
 
     <!-- Filters Panel -->
-    <FiltersPanel :active-filters-count="activeFiltersCount" @clear="clearAllFilters">
+    <FiltersPanel :active-filters-count="activeFiltersCount" @clear="clearAllFilters" class="q-mb-lg">
       <div class="col-12 col-md-3">
         <q-input
           v-model="filters.search"

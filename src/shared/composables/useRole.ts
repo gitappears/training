@@ -87,10 +87,10 @@ export function useRole() {
 
   /**
    * Verifica si el usuario puede gestionar usuarios
-   * Solo ADMIN
+   * ADMIN y CLIENTE pueden gestionar usuarios
    */
   const canManageUsers = computed(() => {
-    return hasRole('ADMIN');
+    return hasRole('ADMIN', 'CLIENTE');
   });
 
   /**
@@ -159,10 +159,10 @@ export function useRole() {
 
   /**
    * Verifica si el usuario puede activar/desactivar capacitaciones
-   * Solo ADMIN y CLIENTE pueden activar/desactivar
+   * Solo ADMIN puede activar/desactivar
    */
   const canActivateTrainings = computed(() => {
-    return hasRole('ADMIN', 'CLIENTE');
+    return hasRole('ADMIN');
   });
 
   /**

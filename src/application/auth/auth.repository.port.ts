@@ -17,10 +17,14 @@ export interface RegisterDto {
   fotoUrl?: string | undefined;
   username: string;
   password: string;
-  tipoRegistro: 'ALUMNO' | 'INSTRUCTOR' | 'OPERADOR';
+  tipoRegistro: 'ALUMNO' | 'INSTRUCTOR' | 'CLIENTE' | 'OPERADOR';
   codigoEstudiante?: string | undefined;
   especialidad?: string | undefined;
   biografia?: string | undefined;
+  habilitado?: boolean | undefined;
+  aceptaTerminos?: boolean | undefined;
+  aceptaPoliticaDatos?: boolean | undefined;
+  empresaId?: number | undefined;
 }
 
 export interface RegisterResponse {
@@ -50,7 +54,39 @@ export interface UserProfile {
     fechaNacimiento?: string;
     genero?: string;
     biografia?: string;
+    empresaId?: number; // ID de la empresa a la que pertenece
+    empresa?: {
+      id: number;
+      razonSocial: string;
+      numeroDocumento: string;
+    };
   };
+}
+
+export interface CreateAdminDto {
+  numeroDocumento: string;
+  tipoDocumento?: string;
+  nombres: string;
+  apellidos: string;
+  email: string;
+  telefono?: string;
+  fechaNacimiento?: string;
+  genero?: string;
+  direccion?: string;
+  username: string;
+  password: string;
+  habilitado?: boolean;
+  aceptaTerminos?: boolean;
+  aceptaPoliticaDatos?: boolean;
+}
+
+export interface CreateAdminResponse {
+  id: number;
+  username: string;
+  email: string;
+  nombres: string;
+  apellidos: string;
+  rol: string;
 }
 
 export interface IAuthRepository {
@@ -63,6 +99,11 @@ export interface IAuthRepository {
    * Registrar un nuevo usuario
    */
   register(dto: RegisterDto): Promise<RegisterResponse>;
+
+  /**
+   * Crear un nuevo administrador (solo para administradores)
+   */
+  createAdmin(dto: CreateAdminDto): Promise<CreateAdminResponse>;
 
   /**
    * Obtener perfil del usuario autenticado

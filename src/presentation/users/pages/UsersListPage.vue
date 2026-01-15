@@ -168,6 +168,13 @@
         <div class="row q-gutter-sm">
           <q-btn
             flat
+            color="primary"
+            icon="school"
+            label="Asignar Cursos"
+            @click="openBulkAssignDialog"
+          />
+          <q-btn
+            flat
             color="positive"
             icon="check_circle"
             label="Habilitar"
@@ -194,10 +201,12 @@
       :pagination="pagination"
       :selected-users="selectedUsers"
       :has-active-filters="hasActiveFilters"
+      :accepting-terms="acceptingTerms"
       @request="onRequest"
       @view-user="viewUser"
       @edit-user="handleEditUser"
       @toggle-status="handleToggleUserStatus"
+      @accept-terms="handleAcceptTerms"
       @export-csv="handleExportToCSV"
       @export-excel="handleExportToExcel"
       @clear-filters="clearAllFilters"
@@ -206,6 +215,13 @@
 
     <!-- Edit User Dialog -->
     <UserEditDialog v-model="editDialogOpen" :user="userToEdit" @success="handleEditSuccess" />
+
+    <!-- Bulk Assign Courses Dialog -->
+    <BulkAssignCoursesDialog
+      v-model="bulkAssignDialogOpen"
+      :selected-users="selectedUsers"
+      @success="handleBulkAssignSuccess"
+    />
   </q-page>
 </template>
 
@@ -215,6 +231,7 @@ import { useUserList, useUserRoles } from '../composables';
 import FiltersPanel from '../../../shared/components/FiltersPanel.vue';
 import UsersTable from '../components/UsersTable.vue';
 import UserEditDialog from '../components/UserEditDialog.vue';
+import BulkAssignCoursesDialog from '../components/BulkAssignCoursesDialog.vue';
 import type { User } from '../../../domain/user/models';
 
 const {
@@ -227,6 +244,7 @@ const {
   columns,
   activeFiltersCount,
   hasActiveFilters,
+  acceptingTerms,
   loadUsers,
   onRequest,
   clearAllFilters,
@@ -234,6 +252,7 @@ const {
   handleToggleUserStatus,
   handleBulkEnable,
   handleBulkDisable,
+  handleAcceptTerms,
   viewUser,
   createUser,
   handleExportToCSV,
@@ -244,6 +263,7 @@ const { roleOptions, statusOptions, personTypeOptions } = useUserRoles();
 
 const editDialogOpen = ref(false);
 const userToEdit = ref<User | null>(null);
+const bulkAssignDialogOpen = ref(false);
 
 function handleEditUser(user: User) {
   userToEdit.value = user;
@@ -253,6 +273,16 @@ function handleEditUser(user: User) {
 function handleEditSuccess() {
   editDialogOpen.value = false;
   userToEdit.value = null;
+  void loadUsers();
+}
+
+function openBulkAssignDialog() {
+  bulkAssignDialogOpen.value = true;
+}
+
+function handleBulkAssignSuccess() {
+  bulkAssignDialogOpen.value = false;
+  clearSelection();
   void loadUsers();
 }
 

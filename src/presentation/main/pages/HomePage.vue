@@ -17,14 +17,7 @@
           label="Personalizar"
           @click="showCustomizeDialog = true"
         />
-        <q-btn
-          flat
-          dense
-          icon="refresh"
-          color="primary"
-          label="Actualizar"
-          @click="refreshData"
-        />
+        <q-btn flat dense icon="refresh" color="primary" label="Actualizar" @click="refreshData" />
         <q-btn
           color="primary"
           unelevated
@@ -41,67 +34,65 @@
       <q-card-section class="q-pa-md">
         <div class="text-subtitle2 q-mb-md text-weight-medium">Acceso Rápido</div>
         <div class="row q-col-gutter-md">
-          <div class="col-6 col-sm-4 col-md-2">
-            <q-btn
-              flat
-              class="quick-action-btn full-width"
-              @click="navigateTo('/trainings')"
-            >
+          <div
+            v-if="canViewTrainings"
+            class="col-6 col-sm-4 col-md-2"
+          >
+            <q-btn flat class="quick-action-btn full-width" @click="navigateTo('/trainings')">
               <div class="column items-center q-gutter-xs">
                 <q-icon name="school" size="32px" color="primary" />
                 <div class="text-caption">Cursos</div>
               </div>
             </q-btn>
           </div>
-          <div class="col-6 col-sm-4 col-md-2">
-            <q-btn
-              flat
-              class="quick-action-btn full-width"
-              @click="navigateTo('/users')"
-            >
+          <div
+            v-if="canManageUsers"
+            class="col-6 col-sm-4 col-md-2"
+          >
+            <q-btn flat class="quick-action-btn full-width" @click="navigateTo('/users')">
               <div class="column items-center q-gutter-xs">
                 <q-icon name="people" size="32px" color="primary" />
                 <div class="text-caption">Usuarios</div>
               </div>
             </q-btn>
           </div>
-          <div class="col-6 col-sm-4 col-md-2">
-            <q-btn
-              flat
-              class="quick-action-btn full-width"
-              @click="navigateTo('/evaluations')"
-            >
+          <div
+            v-if="canViewEvaluations"
+            class="col-6 col-sm-4 col-md-2"
+          >
+            <q-btn flat class="quick-action-btn full-width" @click="navigateTo('/evaluations')">
               <div class="column items-center q-gutter-xs">
                 <q-icon name="quiz" size="32px" color="primary" />
                 <div class="text-caption">Evaluaciones</div>
               </div>
             </q-btn>
           </div>
-          <div class="col-6 col-sm-4 col-md-2">
-            <q-btn
-              flat
-              class="quick-action-btn full-width"
-              @click="navigateTo('/certificates')"
-            >
+          <div
+            v-if="canViewCertificates"
+            class="col-6 col-sm-4 col-md-2"
+          >
+            <q-btn flat class="quick-action-btn full-width" @click="navigateTo('/certificates')">
               <div class="column items-center q-gutter-xs">
                 <q-icon name="verified" size="32px" color="primary" />
                 <div class="text-caption">Certificados</div>
               </div>
             </q-btn>
           </div>
-          <div class="col-6 col-sm-4 col-md-2">
-            <q-btn
-              flat
-              class="quick-action-btn full-width"
-              @click="navigateTo('/reports')"
-            >
+          <div
+            v-if="canViewReports"
+            class="col-6 col-sm-4 col-md-2"
+          >
+            <q-btn flat class="quick-action-btn full-width" @click="navigateTo('/reports')">
               <div class="column items-center q-gutter-xs">
                 <q-icon name="insights" size="32px" color="primary" />
                 <div class="text-caption">Reportes</div>
               </div>
             </q-btn>
           </div>
-          <div class="col-6 col-sm-4 col-md-2">
+          <div
+            v-if="canManageTrainings"
+            class="col-6 col-sm-4 col-md-2"
+          >
             <q-btn
               flat
               class="quick-action-btn full-width"
@@ -119,11 +110,7 @@
 
     <!-- Enhanced KPIs con widgets personalizables -->
     <div class="row q-col-gutter-md q-mb-lg">
-      <div
-        v-for="widget in visibleWidgets"
-        :key="widget.id"
-        :class="widget.columnClass"
-      >
+      <div v-for="widget in visibleWidgets" :key="widget.id" :class="widget.columnClass">
         <q-card
           flat
           bordered
@@ -133,20 +120,18 @@
           <q-card-section class="q-pa-md">
             <div class="row items-center justify-between q-mb-sm">
               <div class="row items-center q-gutter-sm">
-                <q-avatar :size="widget.iconSize" :color="widget.color" text-color="white" :icon="widget.icon" />
+                <q-avatar
+                  :size="widget.iconSize"
+                  :color="widget.color"
+                  text-color="white"
+                  :icon="widget.icon"
+                />
                 <div class="col">
                   <div class="text-caption text-grey-6">{{ widget.label }}</div>
                   <div class="text-h5 text-weight-bold">{{ widget.value }}</div>
                 </div>
               </div>
-              <q-btn
-                flat
-                dense
-                round
-                size="sm"
-                icon="more_vert"
-                @click.stop
-              >
+              <q-btn flat dense round size="sm" icon="more_vert" @click.stop>
                 <q-menu>
                   <q-list>
                     <q-item clickable v-close-popup @click="toggleWidget(widget.id)">
@@ -161,7 +146,11 @@
                 </q-menu>
               </q-btn>
             </div>
-            <div v-if="widget.variation !== undefined" class="text-caption" :class="widget.variation >= 0 ? 'text-positive' : 'text-negative'">
+            <div
+              v-if="widget.variation !== undefined"
+              class="text-caption"
+              :class="widget.variation >= 0 ? 'text-positive' : 'text-negative'"
+            >
               <q-icon
                 :name="widget.variation >= 0 ? 'arrow_upward' : 'arrow_downward'"
                 size="14px"
@@ -193,7 +182,14 @@
           <q-card-section>
             <div class="row items-center justify-between q-mb-md">
               <div class="text-subtitle1 text-weight-medium">Próximas Capacitaciones</div>
-              <q-btn flat dense icon="event" label="Ver calendario" no-caps @click="navigateTo('/calendar')" />
+              <q-btn
+                flat
+                dense
+                icon="event"
+                label="Ver calendario"
+                no-caps
+                @click="navigateTo('/calendar')"
+              />
             </div>
             <q-separator class="q-mb-md" />
 
@@ -219,7 +215,9 @@
                   </q-item-label>
                 </q-item-section>
                 <q-item-section side top>
-                  <q-badge :color="training.statusColor" outline>{{ training.statusLabel }}</q-badge>
+                  <q-badge :color="training.statusColor" outline>{{
+                    training.statusLabel
+                  }}</q-badge>
                 </q-item-section>
               </q-item>
             </q-list>
@@ -245,17 +243,15 @@
             <q-separator class="q-mb-md" />
 
             <div class="column q-gutter-md">
-              <div
-                v-for="area in areaProgress"
-                :key="area.id"
-                class="area-progress-item"
-              >
+              <div v-for="area in areaProgress" :key="area.id" class="area-progress-item">
                 <div class="row items-center justify-between q-mb-xs">
                   <div class="row items-center q-gutter-sm">
                     <q-icon :name="area.icon" :color="area.color" size="20px" />
                     <div class="text-body2 text-weight-medium">{{ area.name }}</div>
                   </div>
-                  <div class="text-caption text-grey-7">{{ area.completed }} / {{ area.total }}</div>
+                  <div class="text-caption text-grey-7">
+                    {{ area.completed }} / {{ area.total }}
+                  </div>
                 </div>
                 <q-linear-progress
                   :value="area.completion"
@@ -270,9 +266,7 @@
                   </div>
                 </q-linear-progress>
                 <div class="row items-center justify-between q-mt-xs">
-                  <div class="text-caption text-grey-6">
-                    {{ area.remaining }} restantes
-                  </div>
+                  <div class="text-caption text-grey-6">{{ area.remaining }} restantes</div>
                   <q-btn
                     flat
                     dense
@@ -298,11 +292,7 @@
             <div class="text-subtitle1 q-mb-md text-weight-medium">Tendencia de Finalización</div>
             <div class="trend-chart">
               <div class="row items-end q-gutter-xs" style="height: 200px">
-                <div
-                  v-for="(month, index) in completionTrend"
-                  :key="index"
-                  class="col trend-bar"
-                >
+                <div v-for="(month, index) in completionTrend" :key="index" class="col trend-bar">
                   <div
                     class="bar"
                     :style="{
@@ -339,22 +329,14 @@
                 clickable
               >
                 <q-item-section avatar>
-                  <q-icon
-                    :name="notification.icon"
-                    :color="notification.color"
-                    size="24px"
-                  />
+                  <q-icon :name="notification.icon" :color="notification.color" size="24px" />
                 </q-item-section>
                 <q-item-section>
                   <q-item-label class="text-weight-medium">{{ notification.title }}</q-item-label>
                   <q-item-label caption>{{ notification.time }}</q-item-label>
                 </q-item-section>
                 <q-item-section side>
-                  <q-badge
-                    v-if="!notification.read"
-                    color="primary"
-                    rounded
-                  />
+                  <q-badge v-if="!notification.read" color="primary" rounded />
                 </q-item-section>
               </q-item>
             </q-list>
@@ -395,17 +377,9 @@
         <q-card-section class="q-pt-none">
           <div class="text-subtitle2 q-mb-md">Selecciona los widgets a mostrar:</div>
           <q-list>
-            <q-item
-              v-for="widget in allWidgets"
-              :key="widget.id"
-              tag="label"
-              v-ripple
-            >
+            <q-item v-for="widget in allWidgets" :key="widget.id" tag="label" v-ripple>
               <q-item-section avatar>
-                <q-checkbox
-                  v-model="widget.visible"
-                  :color="widget.color"
-                />
+                <q-checkbox v-model="widget.visible" :color="widget.color" />
               </q-item-section>
               <q-item-section>
                 <q-item-label>{{ widget.label }}</q-item-label>
@@ -419,17 +393,8 @@
         </q-card-section>
 
         <q-card-actions align="right">
-          <q-btn
-            flat
-            label="Cancelar"
-            color="grey-7"
-            @click="showCustomizeDialog = false"
-          />
-          <q-btn
-            color="primary"
-            label="Guardar"
-            @click="saveWidgetPreferences"
-          />
+          <q-btn flat label="Cancelar" color="grey-7" @click="showCustomizeDialog = false" />
+          <q-btn color="primary" label="Guardar" @click="saveWidgetPreferences" />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -437,15 +402,26 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
+import { dashboardService } from '../../../infrastructure/http/dashboard';
+import { useRole } from '../../../shared/composables/useRole';
 
 const router = useRouter();
 const $q = useQuasar();
+const {
+  canViewTrainings,
+  canManageTrainings,
+  canManageUsers,
+  canViewEvaluations,
+  canViewCertificates,
+  canViewReports,
+} = useRole();
 
 // Estado
 const showCustomizeDialog = ref(false);
+const loading = ref(false);
 
 interface Widget {
   id: string;
@@ -461,6 +437,25 @@ interface Widget {
   progress?: number;
   target?: string;
   dragging?: boolean;
+}
+
+interface Notification {
+  id: string;
+  title: string;
+  time: string;
+  icon: string;
+  color: string;
+  read: boolean;
+}
+
+interface RecentActivity {
+  id: string;
+  title: string;
+  when: string;
+  description: string;
+  meta: string;
+  icon: string;
+  color: string;
 }
 
 const allWidgets = ref<Widget[]>([
@@ -634,78 +629,8 @@ const completionTrend = ref([
   { label: 'Dic', value: 84 },
 ]);
 
-const notifications = ref([
-  {
-    id: 1,
-    title: 'Nuevo certificado emitido',
-    time: 'Hace 5 minutos',
-    icon: 'verified',
-    color: 'positive',
-    read: false,
-  },
-  {
-    id: 2,
-    title: 'Evaluación pendiente de revisión',
-    time: 'Hace 1 hora',
-    icon: 'quiz',
-    color: 'warning',
-    read: false,
-  },
-  {
-    id: 3,
-    title: 'Curso próximo a iniciar',
-    time: 'Hace 2 horas',
-    icon: 'event',
-    color: 'info',
-    read: true,
-  },
-  {
-    id: 4,
-    title: 'Usuario nuevo registrado',
-    time: 'Hace 3 horas',
-    icon: 'person_add',
-    color: 'primary',
-    read: true,
-  },
-  {
-    id: 5,
-    title: 'Reporte mensual disponible',
-    time: 'Ayer',
-    icon: 'insights',
-    color: 'purple',
-    read: true,
-  },
-]);
-
-const recentActivity = ref([
-  {
-    id: 1,
-    title: 'Nuevo curso publicado',
-    when: 'Hace 2 horas',
-    description: 'Se publicó el curso "Seguridad de la información nivel básico".',
-    meta: 'Área responsable: Tecnología',
-    icon: 'campaign',
-    color: 'primary',
-  },
-  {
-    id: 2,
-    title: 'Sesión completada',
-    when: 'Hoy · 10:30',
-    description: '32 usuarios completaron el curso "Introducción a la compañía".',
-    meta: 'Tasa de finalización: 89%',
-    icon: 'check_circle',
-    color: 'positive',
-  },
-  {
-    id: 3,
-    title: 'Encuesta de satisfacción cerrada',
-    when: 'Ayer',
-    description: 'Encuesta del curso "Atención al cliente" cerrada con nota media 4.7/5.',
-    meta: 'Respuestas recibidas: 58',
-    icon: 'star',
-    color: 'amber-7',
-  },
-]);
+const notifications = ref<Notification[]>([]);
+const recentActivity = ref<RecentActivity[]>([]);
 
 // Funciones
 function navigateTo(path: string) {
@@ -716,7 +641,150 @@ function createTraining() {
   void router.push('/trainings/create');
 }
 
+// Función para cargar datos del dashboard
+async function loadDashboardData() {
+  loading.value = true;
+  try {
+    const stats = await dashboardService.getStats();
+
+    // Actualizar widgets con datos reales
+    allWidgets.value = [
+      {
+        id: 'activeCourses',
+        label: 'Cursos Activos',
+        description: 'Total de cursos disponibles actualmente',
+        value: stats.kpis.activeCourses.value,
+        icon: 'play_circle',
+        color: 'primary',
+        iconSize: '48px',
+        columnClass: 'col-12 col-sm-6 col-md-3',
+        visible: true,
+        ...(stats.kpis.activeCourses.variation !== undefined && {
+        variation: stats.kpis.activeCourses.variation,
+        }),
+      },
+      {
+        id: 'enrolledUsers',
+        label: 'Usuarios Inscritos',
+        description: 'Total de usuarios registrados en cursos',
+        value: stats.kpis.enrolledUsers.value,
+        icon: 'people',
+        color: 'positive',
+        iconSize: '48px',
+        columnClass: 'col-12 col-sm-6 col-md-3',
+        visible: true,
+        ...(stats.kpis.enrolledUsers.variation !== undefined && {
+        variation: stats.kpis.enrolledUsers.variation,
+        }),
+      },
+      {
+        id: 'completionRate',
+        label: 'Tasa de Finalización',
+        description: 'Porcentaje de cursos completados',
+        value: `${stats.kpis.completionRate.value}%`,
+        icon: 'check_circle',
+        color: 'amber',
+        iconSize: '48px',
+        columnClass: 'col-12 col-sm-6 col-md-3',
+        visible: true,
+        progress: stats.kpis.completionRate.value / 100,
+        target: `${stats.kpis.completionRate.target}%`,
+      },
+      {
+        id: 'avgSatisfaction',
+        label: 'Satisfacción Promedio',
+        description: 'Calificación promedio de los cursos',
+        value: `${stats.kpis.avgSatisfaction.value}/5`,
+        icon: 'star',
+        color: 'purple',
+        iconSize: '48px',
+        columnClass: 'col-12 col-sm-6 col-md-3',
+        visible: true,
+      },
+      {
+        id: 'certificatesIssued',
+        label: 'Certificados Emitidos',
+        description: 'Total de certificados generados este mes',
+        value: stats.kpis.certificatesIssued.value,
+        icon: 'verified',
+        color: 'teal',
+        iconSize: '48px',
+        columnClass: 'col-12 col-sm-6 col-md-3',
+        visible: false,
+        ...(stats.kpis.certificatesIssued.variation !== undefined && {
+        variation: stats.kpis.certificatesIssued.variation,
+        }),
+      },
+      {
+        id: 'evaluationsPending',
+        label: 'Evaluaciones Pendientes',
+        description: 'Evaluaciones que requieren atención',
+        value: stats.kpis.evaluationsPending.value,
+        icon: 'quiz',
+        color: 'orange',
+        iconSize: '48px',
+        columnClass: 'col-12 col-sm-6 col-md-3',
+        visible: false,
+      },
+    ];
+
+    // Actualizar próximas capacitaciones
+    upcomingTrainings.value = stats.upcomingTrainings;
+
+    // Actualizar progreso por área
+    areaProgress.value = stats.areaProgress;
+
+    // Actualizar tendencia de finalización
+    completionTrend.value = stats.completionTrend;
+
+    // Actualizar notificaciones (Mapeo de backend a frontend)
+    notifications.value = stats.notifications.map(
+      (n: { id: string; message: string; time: string; type: string }) => ({
+      id: n.id,
+      title: n.message, // Backend envía 'message'
+      time: n.time,
+      icon: 'warning', // Backend envía 'type', mapeamos a icono
+      color: n.type === 'warning' ? 'warning' : 'primary',
+      read: false,
+      }),
+    );
+
+    // Actualizar actividad reciente (Mapeo de backend a frontend)
+    recentActivity.value = stats.recentActivity.map(
+      (a: {
+        id: string;
+        title: string;
+        time: string;
+        description: string;
+        icon: string;
+        color: string;
+      }) => ({
+      id: a.id,
+      title: a.title,
+      when: a.time, // Backend envía 'time', frontend espera 'when'
+      description: a.description,
+      meta: '', // Backend no envía meta por ahora
+      icon: a.icon,
+      color: a.color,
+      }),
+    );
+
+    // Cargar preferencias guardadas
+    loadWidgetPreferences();
+  } catch (error) {
+    console.error('Error loading dashboard data:', error);
+    $q.notify({
+      type: 'negative',
+      message: 'Error al cargar datos del dashboard',
+      position: 'top',
+    });
+  } finally {
+    loading.value = false;
+  }
+}
+
 function refreshData() {
+  void loadDashboardData();
   $q.notify({
     type: 'positive',
     message: 'Datos actualizados exitosamente',
@@ -764,8 +832,10 @@ function loadWidgetPreferences() {
   }
 }
 
-// Cargar preferencias al montar
-loadWidgetPreferences();
+// Cargar datos al montar
+onMounted(() => {
+  void loadDashboardData();
+});
 </script>
 
 <style scoped lang="scss">
@@ -793,7 +863,9 @@ body.body--dark .quick-action-btn:hover {
 }
 
 .kpi-card {
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .kpi-card:hover {

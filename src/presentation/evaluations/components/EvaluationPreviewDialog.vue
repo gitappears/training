@@ -10,10 +10,7 @@
         <div class="row items-center justify-between">
           <div class="col">
             <div class="text-h5 text-weight-bold text-white q-mb-xs">
-              {{ evaluation.courseName }}
-            </div>
-            <div class="text-body2 text-white-7 line-clamp-1">
-              {{ evaluation.description || 'Sin descripción' }}
+              {{ evaluation.title || evaluation.courseName }}
             </div>
           </div>
           <q-btn
@@ -70,57 +67,7 @@
               </div>
             </div>
 
-            <!-- Información adicional compacta -->
-            <q-card flat bordered class="info-card-compact q-mb-md">
-              <q-card-section class="q-pa-md">
-                <div class="row q-col-gutter-md">
-                  <div class="col-12 col-sm-6">
-                    <div class="row items-center q-gutter-xs">
-                      <q-icon name="help_outline" size="20px" color="primary" />
-                      <div>
-                        <div class="text-caption text-grey-6">Total de Preguntas</div>
-                        <div class="text-body2 text-weight-medium">
-                          {{ evaluation.questionsCount }} pregunta{{ evaluation.questionsCount !== 1 ? 's' : '' }}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="col-12 col-sm-6">
-                    <div class="row items-center q-gutter-xs">
-                      <q-icon name="schedule" size="20px" color="primary" />
-                      <div>
-                        <div class="text-caption text-grey-6">Tiempo Límite</div>
-                        <div class="text-body2 text-weight-medium">
-                          {{ evaluation.durationMinutes }} minuto{{ evaluation.durationMinutes !== 1 ? 's' : '' }}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="col-12 col-sm-6">
-                    <div class="row items-center q-gutter-xs">
-                      <q-icon name="star" size="20px" color="primary" />
-                      <div>
-                        <div class="text-caption text-grey-6">Puntaje Mínimo</div>
-                        <div class="text-body2 text-weight-medium">
-                          {{ evaluation.minimumScore }}%
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div v-if="evaluation.attemptsRemaining !== undefined" class="col-12 col-sm-6">
-                    <div class="row items-center q-gutter-xs">
-                      <q-icon name="refresh" size="20px" color="primary" />
-                      <div>
-                        <div class="text-caption text-grey-6">Intentos Restantes</div>
-                        <div class="text-body2 text-weight-medium">
-                          {{ evaluation.attemptsRemaining }} intento{{ evaluation.attemptsRemaining !== 1 ? 's' : '' }}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </q-card-section>
-            </q-card>
+          
 
             <!-- Último intento (si existe) -->
             <q-card
@@ -152,6 +99,18 @@
                     :color="evaluation.lastAttempt.passed ? 'positive' : 'negative'"
                     :label="`${evaluation.lastAttempt.score}%`"
                   />
+                </div>
+              </q-card-section>
+            </q-card>
+
+            <!-- Descripción -->
+            <q-card v-if="evaluation.description" flat bordered class="description-card-compact q-mb-md">
+              <q-card-section class="q-pa-md">
+                <div class="text-subtitle2 text-weight-medium q-mb-xs">
+                  Descripción
+                </div>
+                <div class="text-body2 text-grey-8 line-height-relaxed">
+                  {{ evaluation.description }}
                 </div>
               </q-card-section>
             </q-card>
@@ -312,17 +271,20 @@ body.body--dark .evaluation-preview-dialog {
 
 .info-card-compact,
 .last-attempt-card-compact,
+.description-card-compact,
 .instructions-card-compact {
   transition: all 0.2s ease;
 }
 
 .info-card-compact:hover,
+.description-card-compact:hover,
 .instructions-card-compact:hover {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 body.body--dark {
   .info-card-compact:hover,
+  .description-card-compact:hover,
   .instructions-card-compact:hover {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   }

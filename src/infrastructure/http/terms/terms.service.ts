@@ -96,6 +96,65 @@ export class TermsService implements ITermsRepository {
       );
     }
   }
+
+  /**
+   * Acepta términos y condiciones con credenciales (endpoint público)
+   * Útil cuando el usuario no puede autenticarse porque no ha aceptado términos
+   */
+  async acceptTermsWithCredentials(
+    username: string,
+    password: string,
+    documentosIds: number[],
+  ): Promise<ITermsRepository['Aceptacion'][]> {
+    try {
+      const response = await api.post<BackendAceptacion[]>(
+        `${this.baseUrl}/public/accept`,
+        { username, password, documentosIds },
+      );
+
+      return response.data.map((aceptacion) => ({
+        id: aceptacion.id,
+        documentoLegalId: aceptacion.documentoLegalId,
+        version: aceptacion.version,
+        fechaAceptacion: new Date(aceptacion.fechaAceptacion),
+      }));
+    } catch (error) {
+      const axiosError = error as AxiosError<{ message?: string }>;
+      throw new Error(
+        axiosError.response?.data?.message ?? 'Error al aceptar términos y condiciones',
+      );
+    }
+  }
+
+  /**
+   * Acepta términos y condiciones en nombre de otro usuario (solo para administradores)
+   */
+  async acceptTermsForUser(userId: string, documentosIds: number[]): Promise<ITermsRepository['Aceptacion'][]> {
+    try {
+      // Convertir userId de string a número para el backend
+      const userIdNumber = Number.parseInt(userId, 10);
+      if (Number.isNaN(userIdNumber)) {
+        throw new Error('ID de usuario inválido');
+      }
+
+      const response = await api.post<BackendAceptacion[]>(
+        `${this.baseUrl}/accept-for-user/${userIdNumber}`,
+        { documentosIds },
+      );
+
+      return response.data.map((aceptacion) => ({
+        id: aceptacion.id,
+        documentoLegalId: aceptacion.documentoLegalId,
+        version: aceptacion.version,
+        fechaAceptacion: new Date(aceptacion.fechaAceptacion),
+      }));
+    } catch (error) {
+      const axiosError = error as AxiosError<{ message?: string }>;
+      throw new Error(
+        axiosError.response?.data?.message ?? 'Error al aceptar términos y condiciones para el usuario',
+      );
+    }
+  }
 }
 
 // Exportar instancia singleton

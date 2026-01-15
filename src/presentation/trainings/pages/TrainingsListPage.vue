@@ -57,7 +57,7 @@
           <!-- Image Section with Action Overlay -->
           <div class="relative-position">
             <q-img
-              :src="training.coverImageUrl || 'https://via.placeholder.com/800x450?text=Sin+imagen'"
+              :src="getTrainingCoverImageUrl(training.coverImageUrl)"
               :ratio="16 / 9"
               class="training-image"
             >
@@ -140,8 +140,8 @@
 
             <!-- Metadata Row -->
             <div class="row items-center justify-between q-mb-sm">
-              <!-- Rating -->
-              <div class="row items-center q-gutter-xs">
+              <!-- Rating (solo mostrar si hay reseñas) -->
+              <div v-if="training.averageRating > 0 && training.reviews && training.reviews.length > 0" class="row items-center q-gutter-xs">
                 <q-icon name="star" color="amber" size="16px" />
                 <span class="text-caption text-weight-medium">
                   {{ training.averageRating.toFixed(1) }}
@@ -151,9 +151,9 @@
                 </span>
               </div>
 
-              <!-- Duration & Modality -->
+              <!-- Modality -->
               <div class="text-caption text-grey-7">
-                {{ training.durationHours || 0 }}h · {{ getModalityLabel(training.modality) }}
+                {{ getModalityLabel(training.modality) }}
               </div>
             </div>
 
@@ -206,6 +206,7 @@ import type { Training } from '../../../domain/training/models';
 import { useTrainingEvaluation, type TrainingWithEvaluations } from '../../../shared/composables/useTrainingEvaluation';
 import { useRole } from '../../../shared/composables/useRole';
 import { useUserEnrolledTrainings } from '../../../shared/composables/useUserEnrolledTrainings';
+import { useMaterialUrl } from '../../../shared/composables/useMaterialUrl';
 
 const router = useRouter();
 const $q = useQuasar();
@@ -215,6 +216,9 @@ const { canManageTrainings, canActivateTrainings, isAlumno } = useRole();
 
 // Composable para gestionar inscripciones del usuario
 const { enrolledTrainingIds, loadEnrollments, loading: loadingEnrollments, isEnrolledIn } = useUserEnrolledTrainings();
+
+// Composable para construir URLs de materiales
+const { buildFullUrl } = useMaterialUrl();
 
 const trainings = ref<Training[]>([]);
 const loading = ref(false);
@@ -446,6 +450,16 @@ function isStatusActive(status?: string): boolean {
   
   const activeStatuses = ['published', 'publicada', 'en_curso', 'active'];
   return activeStatuses.includes(status.toLowerCase());
+}
+
+/**
+ * Obtiene la URL completa de la imagen de portada de una capacitación
+ */
+function getTrainingCoverImageUrl(coverImageUrl?: string | null): string {
+  if (!coverImageUrl) {
+    return 'https://www.webempresa.com/foro/wp-content/uploads/wpforo/attachments/3200/318277=80538-Sin_imagen_disponible.jpg';
+  }
+  return buildFullUrl(coverImageUrl);
 }
 
 function toggleStatus(training: Training): void {

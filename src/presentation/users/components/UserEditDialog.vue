@@ -45,21 +45,18 @@
                 </template>
               </q-input>
 
-              <!-- Role - Mostrar rol actual (no editable por ahora) -->
+              <!-- Role -->
               <q-select
                 v-model="formData.role"
                 outlined
                 label="Rol"
-                :options="[
-                  { label: 'ADMIN', value: 'ADMIN' },
-                  { label: 'CLIENTE', value: 'CLIENTE' },
-                  { label: 'INSTRUCTOR', value: 'INSTRUCTOR' },
-                  { label: 'ALUMNO', value: 'ALUMNO' },
-                  { label: 'OPERADOR', value: 'OPERADOR' },
-                  { label: 'CONDUCTOR', value: 'DRIVER' },
-                ]"
+                :options="roleOptionsForEdit"
+                option-label="label"
+                option-value="value"
                 emit-value
                 map-options
+                :loading="loading"
+                @update:model-value="onRoleChange"
               >
                 <template #prepend>
                   <q-icon name="badge" />
@@ -139,8 +136,9 @@
                   v-model="personalData.telefono"
                   outlined
                   label="Teléfono"
-                  mask="+## ### ### ####"
+                  mask="+### ### ### ####"
                   fill-mask
+                  hint="Formato: +57 300 123 4567 (código de país + 10 dígitos)"
                 >
                   <template #prepend>
                     <q-icon name="phone" />
@@ -186,6 +184,37 @@
                   </template>
                 </q-input>
               </div>
+
+              <!-- Select de Empresa (solo para ADMIN) -->
+              <div v-if="isAdmin" class="col-12 q-pt-md q-px-xs">
+                <q-select
+                  v-model="personalData.empresaId"
+                  outlined
+                  label="Empresa"
+                  :options="empresas"
+                  option-label="razonSocial"
+                  option-value="id"
+                  emit-value
+                  map-options
+                  :loading="loadingEmpresas"
+                  clearable
+                  hint="Seleccione la empresa a la que pertenece el usuario"
+                >
+                  <template #prepend>
+                    <q-icon name="business" />
+                  </template>
+                  <template #option="scope">
+                    <q-item v-bind="scope.itemProps">
+                      <q-item-section>
+                        <q-item-label>{{ scope.opt.razonSocial }}</q-item-label>
+                        <q-item-label caption>
+                          {{ scope.opt.numeroDocumento }} - {{ scope.opt.email || 'Sin email' }}
+                        </q-item-label>
+                      </q-item-section>
+                    </q-item>
+                  </template>
+                </q-select>
+              </div>
             </q-form>
           </q-tab-panel>
         </q-tab-panels>
@@ -212,6 +241,7 @@
 import { computed, toRef } from 'vue';
 import type { User } from '../../../domain/user/models';
 import { useUserEditDialog } from '../composables/useUserEditDialog';
+import { useRoles } from '../composables/useRoles';
 
 interface Props {
   modelValue: boolean;
@@ -230,8 +260,19 @@ const localOpen = computed({
   set: (value) => emit('update:modelValue', value),
 });
 
-const { activeTab, formData, personalData, genderOptions, loading, handleClose, handleSubmit } =
+const { activeTab, formData, personalData, genderOptions, empresas, loadingEmpresas, isAdmin, loading, handleClose, handleSubmit } =
   useUserEditDialog(toRef(props, 'user'));
+
+// Cargar roles desde el backend
+const { roleOptionsForEdit, roles } = useRoles();
+
+// Función para actualizar el roleId cuando cambia el rol seleccionado
+function onRoleChange(roleCode: string) {
+  const selectedRole = roles.value.find((r) => r.codigo === roleCode);
+  if (selectedRole && formData.value) {
+    formData.value.roleId = selectedRole.id;
+  }
+}
 
 async function onSubmit() {
   try {

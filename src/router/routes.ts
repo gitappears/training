@@ -36,8 +36,9 @@ const routes: RouteRecordRaw[] = [
         path: 'terms-acceptance',
         name: 'terms-acceptance',
         component: () => import('../presentation/auth/pages/TermsAcceptancePage.vue'),
+        // No requiere autenticación porque puede venir del login cuando el usuario no ha aceptado términos
         meta: {
-          requiresAuth: true,
+          requiresAuth: false,
         },
       },
     ],
@@ -83,26 +84,26 @@ const routes: RouteRecordRaw[] = [
         },
       },
 
-      // Usuarios (Gestión de usuarios según RF-01 a RF-07) - Solo ADMIN
+      // Usuarios (Gestión de usuarios según RF-01 a RF-07) - ADMIN y CLIENTE
       {
         path: 'users',
         component: () => import('../presentation/users/pages/UsersListPage.vue'),
         meta: {
-          roles: ['ADMIN'] as UserRole[],
+          roles: ['ADMIN', 'CLIENTE'] as UserRole[],
         },
       },
       {
         path: 'users/new',
         component: () => import('../presentation/users/pages/UserCreatePage.vue'),
         meta: {
-          roles: ['ADMIN'] as UserRole[],
+          roles: ['ADMIN', 'CLIENTE'] as UserRole[],
         },
       },
       {
         path: 'users/:id',
         component: () => import('../presentation/users/pages/UserDetailPage.vue'),
         meta: {
-          roles: ['ADMIN'] as UserRole[],
+          roles: ['ADMIN', 'CLIENTE'] as UserRole[],
         },
       },
 
@@ -178,6 +179,15 @@ const routes: RouteRecordRaw[] = [
         component: () => import('../presentation/people/pages/ExternalDriverCreatePage.vue'),
         meta: {
           roles: ['ADMIN', 'CLIENTE'] as UserRole[],
+        },
+      },
+
+      // Empresas
+      {
+        path: 'empresas',
+        component: () => import('../presentation/empresas/pages/EmpresasListPage.vue'),
+        meta: {
+          roles: ['ADMIN'] as UserRole[],
         },
       },
 

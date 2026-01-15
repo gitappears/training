@@ -32,6 +32,7 @@ export interface CreateQuestionDto {
   options: CreateQuestionOptionDto[];
   imageUrl?: string; // Para preguntas con imagen
   order: number;
+  score?: number; // Puntaje que otorga esta pregunta
 }
 
 export interface CreateQuestionOptionDto {

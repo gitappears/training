@@ -30,24 +30,111 @@ export function useAuth() {
       // Redirigir a la ruta original o al home
       const redirect = (route.query.redirect as string) || '/';
       void router.push(redirect);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Login error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Error al iniciar sesión';
+      console.log('🔍 Error details:', {
+        code: error?.code,
+        message: error?.message,
+        requiereAceptacionTerminos: error?.requiereAceptacionTerminos,
+        response: error?.response,
+        responseData: error?.response?.data,
+      });
       
+      let errorMessage = 'Error al iniciar sesión';
+      let errorData = null;
+
+      // Extraer mensaje y datos del error
+      if (error?.response?.data) {
+        errorData = error.response.data;
+        if (errorData.message) {
+          errorMessage = Array.isArray(errorData.message)
+            ? errorData.message.join(', ')
+            : errorData.message;
+        } else if (errorData.error) {
+          errorMessage = errorData.error;
+        }
+      } else if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+
       // Verificar si el error es TERMS_NOT_ACCEPTED
-      if (errorMessage.includes('TERMS_NOT_ACCEPTED') || errorMessage.includes('términos')) {
+      // Buscar en el string del mensaje o en el código de error específico del backend
+      // También verificar en el error original de axios si está disponible
+      const axiosError = error as { response?: { data?: { error?: string; requiereAceptacionTerminos?: boolean } } };
+      const isTermsNotAccepted =
+        error?.code === 'TERMS_NOT_ACCEPTED' ||
+        error?.requiereAceptacionTerminos === true ||
+        errorMessage.includes('TERMS_NOT_ACCEPTED') ||
+        errorMessage.includes('términos y condiciones') ||
+        errorMessage.includes('Debe aceptar los términos') ||
+        (errorData && errorData.error === 'TERMS_NOT_ACCEPTED') ||
+        (errorData && errorData.requiereAceptacionTerminos === true) ||
+        (axiosError?.response?.data?.error === 'TERMS_NOT_ACCEPTED') ||
+        (axiosError?.response?.data?.requiereAceptacionTerminos === true);
+
+      console.log('🔍 isTermsNotAccepted:', isTermsNotAccepted, {
+        code: error?.code,
+        requiereAceptacionTerminos: error?.requiereAceptacionTerminos,
+        errorMessage,
+        errorDataError: errorData?.error,
+        errorDataRequiere: errorData?.requiereAceptacionTerminos,
+        axiosErrorData: axiosError?.response?.data,
+      });
+
+      if (isTermsNotAccepted) {
+        console.log('✅ Redirigiendo a términos y condiciones...');
+        // Guardar las credenciales temporalmente para reintentar login después de aceptar términos
+        // Usar sessionStorage para que se limpie al cerrar la sesión del navegador
+        sessionStorage.setItem('pendingLogin', JSON.stringify(credentials));
+        console.log('💾 Credenciales guardadas en sessionStorage');
+        
         // Redirigir a la página de aceptación de términos
-        const redirect = (route.query.redirect as string) || '/';
-        void router.push({
+        // Limpiar el redirect para evitar redirecciones anidadas
+        // Si ya estamos en login o terms-acceptance, usar '/' como redirect
+        const currentPath = route.path;
+        const currentQuery = route.query;
+        let redirect = '/';
+        
+        // Solo usar el redirect si no viene de una ruta de términos o login
+        if (currentQuery.redirect && typeof currentQuery.redirect === 'string') {
+          const redirectPath = currentQuery.redirect;
+          // Si el redirect no es una ruta de términos o login, usarlo
+          if (!redirectPath.includes('terms-acceptance') && !redirectPath.includes('login')) {
+            redirect = redirectPath;
+          }
+        }
+        
+        const targetRoute = {
           name: 'terms-acceptance',
-          query: { redirect },
+          query: { redirect, fromLogin: 'true' },
+        };
+        console.log('🔀 Navegando a:', targetRoute);
+        
+        // Usar replace para evitar que el usuario pueda volver atrás al login
+        void router.replace(targetRoute).catch((err) => {
+          console.error('❌ Error al redirigir:', err);
+          // Si falla, intentar con push
+          void router.push(targetRoute);
         });
         return;
       }
       
+      // Manejar PASSWORD_CHANGE_REQUIRED si es necesario (generalmente lo maneja el backend via header o body, 
+      // pero si el login falla con este error, podemos redirigir aquí o mostrar un mensaje específico)
+      if (errorData && errorData.error === 'PASSWORD_CHANGE_REQUIRED') {
+         // Aquí podrías redirigir a cambio de contraseña, pero por ahora mostramos el mensaje
+         errorMessage = 'Debe cambiar su contraseña. Por favor contacte al administrador o use la opción de recuperación.';
+      }
+
       $q.notify({
         type: 'negative',
         message: errorMessage,
+        position: 'top',
+        icon: 'warning',
+        timeout: 6000,
+        actions: [
+          { label: 'Cerrar', color: 'white', handler: () => { /* dismiss */ } }
+        ]
       });
       
       throw error;

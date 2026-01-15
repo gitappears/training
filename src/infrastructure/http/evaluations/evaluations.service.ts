@@ -20,6 +20,7 @@ import type {
   QuestionType,
 } from '../../../domain/evaluation/models';
 import type { PaginatedResponse } from '../../../application/training/training.repository.port';
+import { mapBackendCodeToFrontend } from '../../../shared/constants/training-types';
 
 /**
  * Tipos para las respuestas del backend
@@ -27,11 +28,14 @@ import type { PaginatedResponse } from '../../../application/training/training.r
 interface BackendTipoPregunta {
   id: number;
   nombre: string;
+  codigo?: string;
 }
 
 interface BackendOpcionRespuesta {
   id: number;
   texto: string;
+  imagenUrl?: string;
+  imagen_url?: string; // Soporte para snake_case (formato de BD)
   esCorrecta: boolean;
   puntajeParcial?: number;
   orden: number;
@@ -52,6 +56,11 @@ interface BackendEvaluacion {
   id: number;
   capacitacion?: {
     id: number;
+    tipoCapacitacion?: {
+      id: number;
+      codigo?: string;
+      nombre?: string;
+    };
   };
   titulo: string;
   descripcion?: string;
@@ -79,10 +88,16 @@ interface BackendEvaluacion {
  * Mapea la respuesta del backend al modelo de dominio
  */
 function mapBackendToDomain(backendData: BackendEvaluacion): Evaluation {
+  // Mapear tipo de capacitación si está disponible
+  const courseType = backendData.capacitacion?.tipoCapacitacion?.codigo
+    ? mapBackendCodeToFrontend(backendData.capacitacion.tipoCapacitacion.codigo)
+    : undefined;
+
   const evaluation: Evaluation = {
     id: backendData.id?.toString() ?? '',
     courseId: backendData.capacitacion?.id?.toString() ?? '',
     courseName: '',
+    title: backendData.titulo ?? '',
     description: backendData.descripcion ?? '',
     questions: backendData.preguntas?.map((q: BackendPregunta) => {
       const question: {
@@ -97,6 +112,7 @@ function mapBackendToDomain(backendData: BackendEvaluacion): Evaluation {
         }>;
         order: number;
         imageUrl?: string;
+        score?: number;
       } = {
         id: q.id?.toString() ?? '',
         text: q.enunciado ?? '',
@@ -112,12 +128,39 @@ function mapBackendToDomain(backendData: BackendEvaluacion): Evaluation {
             text: opt.texto ?? '',
             isCorrect: opt.esCorrecta ?? false,
           };
+          // Manejar ambos formatos: imagenUrl (camelCase) o imagen_url (snake_case)
+          // TypeORM puede devolver los nombres de las columnas (snake_case) en lugar de las propiedades (camelCase)
+          // cuando se serializa a JSON, dependiendo de la configuración
+          const imagenUrl = opt.imagenUrl || opt.imagen_url;
+          if (imagenUrl && String(imagenUrl).trim() !== '') {
+            option.imageUrl = String(imagenUrl).trim();
+            console.log('✅ Imagen mapeada desde backend:', {
+              opcionId: opt.id,
+              texto: opt.texto,
+              imagenUrl: option.imageUrl,
+              formatoRecibido: opt.imagenUrl ? 'camelCase (imagenUrl)' : 'snake_case (imagen_url)',
+            });
+          } else {
+            // Log detallado para debugging
+            const optAny = opt as unknown as Record<string, unknown>;
+            console.log('⚠️ No hay imagen en opción del backend:', {
+              opcionId: opt.id,
+              texto: opt.texto,
+              tieneImagenUrl: !!opt.imagenUrl,
+              tieneImagen_url: !!opt.imagen_url,
+              todasLasPropiedades: Object.keys(optAny),
+            });
+          }
           return option;
         }) ?? [],
         order: q.orden ?? 0,
       };
       if (q.imagenUrl) {
         question.imageUrl = q.imagenUrl;
+      }
+      // Mapear el puntaje de la pregunta desde el backend
+      if (q.puntaje !== undefined && q.puntaje !== null) {
+        question.score = q.puntaje;
       }
       return question;
     }) ?? [],
@@ -127,6 +170,9 @@ function mapBackendToDomain(backendData: BackendEvaluacion): Evaluation {
     attemptsAllowed: backendData.intentosPermitidos ?? 2,
     status: 'pending',
     createdAt: backendData.fechaCreacion ?? new Date().toISOString(),
+    mostrarResultados: backendData.mostrarResultados ?? true,
+    mostrarRespuestasCorrectas: backendData.mostrarRespuestasCorrectas ?? false,
+    ...(courseType && { courseType }), // FAL-004: Tipo de capacitación para UI diferenciada
   };
   return evaluation;
 }
@@ -135,13 +181,33 @@ function mapBackendToDomain(backendData: BackendEvaluacion): Evaluation {
  * Mapea el tipo de pregunta del backend al tipo del dominio
  */
 function mapTipoPreguntaToQuestionType(tipoPregunta: BackendTipoPregunta): QuestionType {
+  // Priorizar el ID si está disponible (más confiable que el nombre)
+  if (tipoPregunta?.id) {
+    const idMap: Record<number, QuestionType> = {
+      1: 'single',
+      2: 'multiple',
+      3: 'image',
+      4: 'true_false',
+      5: 'yes_no',
+      6: 'open_text', // OPEN_TEXT
+    };
+    if (idMap[tipoPregunta.id]) {
+      return idMap[tipoPregunta.id];
+    }
+  }
+  
+  // Fallback: usar el código o nombre si el ID no está disponible
+  const codigo = tipoPregunta?.codigo?.toUpperCase() ?? '';
+  if (codigo === 'OPEN_TEXT') return 'open_text';
+  
   const nombre = tipoPregunta?.nombre?.toLowerCase() ?? '';
   if (nombre.includes('única') || nombre.includes('unica') || nombre.includes('single')) return 'single';
   if (nombre.includes('múltiple') || nombre.includes('multiple')) return 'multiple';
-  if (nombre.includes('imagen') || nombre.includes('image')) return 'image';
+  if (nombre.includes('imagen') || nombre.includes('image') || nombre.includes('selección de imagen') || nombre.includes('seleccion de imagen')) return 'image';
   if (nombre.includes('falso') || nombre.includes('verdadero') || nombre.includes('true') || nombre.includes('false')) return 'true_false';
   if (nombre.includes('sí') || nombre.includes('no') || nombre.includes('yes') || nombre.includes('no')) return 'yes_no';
-  return 'single';
+  if (nombre.includes('abierta') || nombre.includes('texto') || nombre.includes('open') || nombre.includes('text')) return 'open_text';
+  return 'single' as QuestionType;
 }
 
 /**
@@ -154,6 +220,7 @@ function mapQuestionTypeToTipoPreguntaId(type: QuestionType): number {
     image: 3, // Selección de imagen
     true_false: 4, // Falso o Verdadero
     yes_no: 5, // Sí o No
+    open_text: 6, // Respuesta abierta
   };
   return map[type] ?? 1;
 }
@@ -437,6 +504,9 @@ export class EvaluationsService implements IEvaluationRepository {
                 puntajeParcial: 0,
                 orden: optIdx,
               };
+              if (opt.imageUrl) {
+                option.imagenUrl = opt.imageUrl;
+              }
               return option;
             }),
           };
@@ -506,6 +576,15 @@ export class EvaluationsService implements IEvaluationRepository {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const questionWithId = q as any as QuestionWithId;
 
+          // Validar y convertir puntaje
+          let puntajeNum = 1; // Valor por defecto
+          if (q.score !== undefined && q.score !== null) {
+            const parsed = typeof q.score === 'string' ? parseFloat(q.score) : q.score;
+            if (!isNaN(parsed) && parsed >= 0) {
+              puntajeNum = parsed;
+            }
+          }
+
           const pregunta: {
             id?: number;
             tipoPreguntaId: number;
@@ -523,9 +602,9 @@ export class EvaluationsService implements IEvaluationRepository {
             }>;
           } = {
             tipoPreguntaId: mapQuestionTypeToTipoPreguntaId(q.type),
-            enunciado: q.text,
-            puntaje: 1,
-            orden: q.order,
+            enunciado: q.text || '',
+            puntaje: puntajeNum,
+            orden: q.order ?? 0,
             requerida: true,
             opciones: q.options.map((opt, idx) => {
               // Tipo extendido para permitir id opcional en actualización
@@ -533,31 +612,53 @@ export class EvaluationsService implements IEvaluationRepository {
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               const optionWithId = opt as any as OptionWithId;
 
+              // Asegurar que esCorrecta sea un booleano
+              let esCorrectaBool = false;
+              if (typeof opt.isCorrect === 'boolean') {
+                esCorrectaBool = opt.isCorrect;
+              } else if (typeof opt.isCorrect === 'string') {
+                esCorrectaBool = opt.isCorrect === 'true' || opt.isCorrect === '1';
+              } else if (opt.isCorrect !== undefined && opt.isCorrect !== null) {
+                esCorrectaBool = Boolean(opt.isCorrect);
+              }
+
               const opcion: {
                 id?: number;
                 texto: string;
+                imagenUrl?: string;
                 esCorrecta: boolean;
                 puntajeParcial?: number;
                 orden?: number;
               } = {
-                texto: opt.text,
-                esCorrecta: opt.isCorrect,
+                texto: opt.text || '',
+                esCorrecta: esCorrectaBool,
                 puntajeParcial: 0,
                 orden: idx,
               };
 
-              // Si la opción tiene id, incluirlo para actualización
+              // Incluir imagenUrl si está presente
+              if (opt.imageUrl) {
+                opcion.imagenUrl = opt.imageUrl;
+              }
+
+              // Si la opción tiene id válido, incluirlo para actualización
               if (optionWithId.id !== undefined) {
-                opcion.id = typeof optionWithId.id === 'string' ? parseInt(optionWithId.id) : optionWithId.id;
+                const optionIdNum = typeof optionWithId.id === 'string' ? parseInt(optionWithId.id) : optionWithId.id;
+                if (!isNaN(optionIdNum) && optionIdNum > 0) {
+                  opcion.id = optionIdNum;
+                }
               }
 
               return opcion;
             }),
           };
 
-          // Si la pregunta tiene id, incluirla para actualización
+          // Si la pregunta tiene id válido, incluirla para actualización
           if (questionWithId.id !== undefined) {
-            pregunta.id = typeof questionWithId.id === 'string' ? parseInt(questionWithId.id) : questionWithId.id;
+            const questionIdNum = typeof questionWithId.id === 'string' ? parseInt(questionWithId.id) : questionWithId.id;
+            if (!isNaN(questionIdNum) && questionIdNum > 0) {
+              pregunta.id = questionIdNum;
+            }
           }
 
           if (q.imageUrl) {

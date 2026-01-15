@@ -146,6 +146,13 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch } from 'vue';
 
+// Declarar tipo global para window si se usa CDN
+declare global {
+  interface Window {
+    pdfjsLib?: any;
+  }
+}
+
 interface Props {
   src: string;
   allowDownload?: boolean;
@@ -187,9 +194,9 @@ let pdfDoc: any = null;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let pdfjsLib: any = null;
 
-onMounted(() => {
-  loadPdfLibrary();
-  void loadPdf();
+onMounted(async () => {
+  await loadPdfLibrary();
+  await loadPdf();
 });
 
 onUnmounted(() => {
@@ -206,29 +213,57 @@ watch(zoom, () => {
   void renderPage();
 });
 
-function loadPdfLibrary() {
+async function loadPdfLibrary() {
   try {
-    // Intentar cargar pdfjs-dist si está disponible
-    // En producción, esto debería estar instalado: npm install pdfjs-dist
     if (typeof window !== 'undefined') {
-      // Mock para desarrollo - en producción usar librería real
-      pdfjsLib = {
-        getDocument: () => {
-          // Mock implementation
-          return {
-            promise: Promise.resolve({
-              numPages: 1,
-              getPage: () => ({
-                getViewport: () => ({ width: 800, height: 600 }),
-                render: () => Promise.resolve(),
-              }),
-            }),
+      // Intentar cargar pdfjs-dist dinámicamente
+      try {
+        // Primero intentar importar como módulo ES6
+        const pdfjsModule = await import('pdfjs-dist');
+        pdfjsLib = pdfjsModule.default || pdfjsModule;
+        
+        // Configurar el worker para PDF.js
+        if (pdfjsLib.GlobalWorkerOptions) {
+          // Usar el worker desde el CDN o desde node_modules
+          const workerUrl = new URL(
+            'pdfjs-dist/build/pdf.worker.min.mjs',
+            import.meta.url
+          ).toString();
+          pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl;
+        }
+      } catch (importError) {
+        console.warn('No se pudo cargar pdfjs-dist como módulo, intentando CDN...', importError);
+        
+        // Fallback: usar CDN de PDF.js
+        const script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.mjs';
+        script.type = 'module';
+        
+        await new Promise((resolve, reject) => {
+          script.onload = () => {
+            // @ts-ignore - pdfjsLib estará disponible globalmente desde el CDN
+            if (window.pdfjsLib) {
+              pdfjsLib = window.pdfjsLib;
+              if (pdfjsLib.GlobalWorkerOptions) {
+                pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.mjs';
+              }
+              resolve(true);
+            } else {
+              reject(new Error('PDF.js no se cargó correctamente desde el CDN'));
+            }
           };
-        },
-      };
+          script.onerror = reject;
+          document.head.appendChild(script);
+        });
+      }
+      
+      if (!pdfjsLib) {
+        throw new Error('No se pudo cargar PDF.js desde ninguna fuente');
+      }
     }
   } catch (err) {
     console.error('Error loading PDF.js library:', err);
+    throw err;
   }
 }
 
@@ -238,14 +273,30 @@ async function loadPdf() {
 
   try {
     if (!pdfjsLib) {
-      loadPdfLibrary();
+      await loadPdfLibrary();
     }
 
     if (!pdfjsLib) {
-      throw new Error('PDF.js library not available. Please install pdfjs-dist package.');
+      throw new Error('PDF.js library not available. Please install pdfjs-dist package: npm install pdfjs-dist');
     }
 
-    const loadingTask = pdfjsLib.getDocument(props.src);
+    // Construir la URL completa si es relativa
+    let pdfUrl = props.src;
+    if (!pdfUrl.startsWith('http://') && !pdfUrl.startsWith('https://') && !pdfUrl.startsWith('blob:')) {
+      // Si es una URL relativa, construir la URL completa
+      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+      pdfUrl = pdfUrl.startsWith('/') ? `${baseUrl}${pdfUrl}` : `${baseUrl}/${pdfUrl}`;
+    }
+
+    console.log('Cargando PDF desde:', pdfUrl);
+
+    // Configurar opciones para CORS si es necesario
+    const loadingTask = pdfjsLib.getDocument({
+      url: pdfUrl,
+      withCredentials: false,
+      httpHeaders: {},
+    });
+    
     pdfDoc = await loadingTask.promise;
     totalPages.value = pdfDoc.numPages;
     currentPage.value = 1;
@@ -260,6 +311,7 @@ async function loadPdf() {
     const errorObj = err instanceof Error ? err : new Error(String(err));
     emit('error', errorObj);
     console.error('Error loading PDF:', err);
+    console.error('PDF URL intentada:', props.src);
   }
 }
 

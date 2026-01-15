@@ -282,7 +282,7 @@
           <div v-else class="column q-gutter-md">
             <q-card
               v-for="course in assignedCourses"
-              :key="course.id"
+              :key="course.inscriptionId"
               flat
               bordered
               class="course-card"
@@ -322,7 +322,7 @@
               <div class="progress-chart">
                 <div
                   v-for="course in assignedCourses"
-                  :key="course.id"
+                  :key="course.inscriptionId"
                   class="progress-item q-mb-md"
                 >
                   <div class="row items-center justify-between q-mb-xs">
@@ -432,16 +432,33 @@
         </q-tab-panel>
       </q-tab-panels>
     </q-card>
+
+    <!-- Diálogo para asignar curso -->
+    <AssignCourseDialog
+      v-model:open="assignCourseDialogOpen"
+      :user-id="userId"
+      :persona-id="user.personaId"
+      :assigned-course-ids="assignedCourses.map((c) => c.id)"
+      @assigned="handleCourseAssigned"
+    />
+
+    <!-- Diálogo para editar usuario -->
+    <UserEditDialog v-model="editDialogOpen" :user="user" @success="handleEditSuccess" />
   </q-page>
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { useUserDetail } from '../composables';
 import EmptyState from '../../../shared/components/EmptyState.vue';
+import AssignCourseDialog from '../components/AssignCourseDialog.vue';
+import UserEditDialog from '../components/UserEditDialog.vue';
 
 const route = useRoute();
 const userId = route.params.id as string;
+
+const editDialogOpen = ref(false);
 
 const {
   loading,
@@ -451,18 +468,30 @@ const {
   certificates,
   activities,
   averageProgress,
+  assignCourseDialogOpen,
   formatDate,
   getDocumentTypeLabel,
   getCourseStatusColor,
   getRoleLabel,
   getRoleColor,
   handleToggleUserStatus,
-  editUser,
   assignCourse,
+  handleCourseAssigned,
   viewCertificate,
   downloadCertificate,
   goBack,
+  loadUser,
 } = useUserDetail(userId);
+
+function editUser() {
+  editDialogOpen.value = true;
+}
+
+async function handleEditSuccess() {
+  // Recargar la información del usuario después de editar
+  await loadUser();
+  editDialogOpen.value = false;
+}
 </script>
 
 <style scoped lang="scss">

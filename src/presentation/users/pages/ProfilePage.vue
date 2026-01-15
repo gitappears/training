@@ -14,7 +14,7 @@
       <!-- Edit Form -->
       <div class="col-12 col-md-8">
         <q-card v-if="localProfile">
-          <q-form @submit="onSubmit" class="q-gutter-md">
+          <q-form @submit.prevent="handleSubmit" class="q-gutter-md">
             <q-card-section>
               <div class="text-h6 q-mb-md">Información Personal</div>
               <div class="row q-col-gutter-md">
@@ -22,7 +22,7 @@
                 <div class="col-12 col-md-6">
                   <q-input
                     filled
-                    :model-value="localProfile.numeroDocumento"
+                    :model-value="localProfile?.persona?.numeroDocumento || ''"
                     label="No. Documento"
                     readonly
                     hint="No editable"
@@ -31,7 +31,7 @@
                 <div class="col-12 col-md-6">
                   <q-input
                     filled
-                    v-model="localProfile.username"
+                    :model-value="localProfile.username"
                     label="Usuario"
                     readonly
                     hint="No editable"
@@ -40,22 +40,50 @@
 
                 <!-- Editable fields -->
                 <div class="col-12 col-md-6">
-                  <q-input v-model="form.nombres" label="Nombres *" outlined :rules="[val => !!val || 'Requerido']" />
+                  <q-input
+                    v-model="form.nombres"
+                    label="Nombres *"
+                    outlined
+                    :rules="[(val) => !!val || 'Requerido']"
+                    :disable="loading"
+                  />
                 </div>
                 <div class="col-12 col-md-6">
-                  <q-input v-model="form.apellidos" label="Apellidos" outlined />
+                  <q-input v-model="form.apellidos" label="Apellidos" outlined :disable="loading" />
                 </div>
                 <div class="col-12 col-md-6">
-                  <q-input v-model="form.email" label="Email" type="email" outlined />
+                  <q-input
+                    v-model="form.email"
+                    label="Email"
+                    type="email"
+                    outlined
+                    :rules="[(val) => !val || /.+@.+\..+/.test(val) || 'Email inválido']"
+                    :disable="loading"
+                  />
                 </div>
                 <div class="col-12 col-md-6">
-                  <q-input v-model="form.telefono" label="Teléfono" outlined mask="##########" />
+                  <q-input
+                    v-model="form.telefono"
+                    label="Teléfono"
+                    outlined
+                    mask="+57 ### ### ####"
+                    fill-mask
+                    :disable="loading"
+                    hint="Formato: +57 300 123 4567"
+                  />
                 </div>
                 <div class="col-12">
-                  <q-input v-model="form.direccion" label="Dirección" outlined />
+                  <q-input v-model="form.direccion" label="Dirección" outlined :disable="loading" />
                 </div>
                 <div class="col-12 col-md-6">
-                  <q-input v-model="form.fechaNacimiento" label="Fecha de Nacimiento" outlined type="date" stack-label />
+                  <q-input
+                    v-model="form.fechaNacimiento"
+                    label="Fecha de Nacimiento"
+                    outlined
+                    type="date"
+                    stack-label
+                    :disable="loading"
+                  />
                 </div>
                 <div class="col-12 col-md-6">
                   <q-select
@@ -65,10 +93,18 @@
                     outlined
                     emit-value
                     map-options
+                    :disable="loading"
                   />
                 </div>
                 <div class="col-12">
-                  <q-input v-model="form.biografia" label="Biografía / Perfil Profesional" outlined type="textarea" rows="3" />
+                  <q-input
+                    v-model="form.biografia"
+                    label="Biografía / Perfil Profesional"
+                    outlined
+                    type="textarea"
+                    rows="3"
+                    :disable="loading"
+                  />
                 </div>
               </div>
             </q-card-section>
@@ -83,9 +119,19 @@
                   label="Contraseña Actual"
                   :type="isCurrentPasswordVisible ? 'text' : 'password'"
                   outlined
-                  :rules="[val => !form.newPassword || !!val || 'Requerido si cambia la contraseña']"
+                  :disable="loading || isValidatingPassword"
+                  :loading="isValidatingPassword"
+                  hint="Ingrese su contraseña actual para habilitar el cambio"
+                  @blur="validateCurrentPassword"
+                  @keyup.enter="validateCurrentPassword"
                 >
                   <template #append>
+                    <q-icon
+                      v-if="isCurrentPasswordValid"
+                      name="check_circle"
+                      color="positive"
+                      class="q-mr-xs"
+                    />
                     <q-icon
                       :name="isCurrentPasswordVisible ? 'visibility_off' : 'visibility'"
                       class="cursor-pointer"
@@ -98,9 +144,13 @@
                   label="Nueva Contraseña"
                   :type="isNewPasswordVisible ? 'text' : 'password'"
                   outlined
-                  :rules="[val => !val || val.length >= 8 || 'Mínimo 8 caracteres']"
+                  :rules="[(val) => !val || val.length >= 8 || 'Mínimo 8 caracteres']"
                   hint="Dejar en blanco para no cambiar"
+                  :disable="loading || !canChangePassword"
                 >
+                  <template #prepend>
+                    <q-icon v-if="!canChangePassword" name="lock" color="grey-6" class="q-mr-xs" />
+                  </template>
                   <template #append>
                     <q-icon
                       :name="isNewPasswordVisible ? 'visibility_off' : 'visibility'"
@@ -114,8 +164,12 @@
                   label="Confirmar Nueva Contraseña"
                   :type="isConfirmPasswordVisible ? 'text' : 'password'"
                   outlined
-                  :rules="[val => val === form.newPassword || 'Las contraseñas no coinciden']"
+                  :rules="[(val) => val === form.newPassword || 'Las contraseñas no coinciden']"
+                  :disable="loading || !canChangePassword"
                 >
+                  <template #prepend>
+                    <q-icon v-if="!canChangePassword" name="lock" color="grey-6" class="q-mr-xs" />
+                  </template>
                   <template #append>
                     <q-icon
                       :name="isConfirmPasswordVisible ? 'visibility_off' : 'visibility'"
@@ -132,16 +186,17 @@
                 label="Guardar Cambios"
                 type="submit"
                 color="primary"
-                :loading="authStore.loading"
+                :loading="loading"
                 icon="save"
                 size="lg"
+                :disable="loading"
               />
             </q-card-actions>
           </q-form>
         </q-card>
-        <div v-else class="text-center p-4">
+        <div v-else class="text-center q-pa-lg">
           <q-spinner color="primary" size="3em" />
-          <p>Cargando perfil...</p>
+          <p class="q-mt-md">Cargando perfil...</p>
         </div>
       </div>
 
@@ -150,25 +205,30 @@
         <q-card class="text-center">
           <q-card-section>
             <q-avatar size="120px" font-size="52px" color="primary" text-color="white">
-              <img v-if="form.fotoUrl" :src="fullImageUrl" />
-              <span v-else>{{ form.nombres ? form.nombres.charAt(0) : 'U' }}</span>
+              <img v-if="form.fotoUrl" :src="fullImageUrl" alt="Foto de perfil" />
+              <span v-else>{{ form.nombres ? form.nombres.charAt(0).toUpperCase() : 'U' }}</span>
             </q-avatar>
             <div class="text-h6 q-mt-sm">{{ form.nombres }} {{ form.apellidos }}</div>
             <div class="text-body2 text-grey">{{ form.email }}</div>
           </q-card-section>
           <q-card-section>
-             <q-file
-                v-model="photoToUpload"
-                label="Cambiar foto de perfil"
-                outlined
-                dense
-                accept="image/*"
-                @update:model-value="handleFileUpload"
-              >
-                <template v-slot:prepend>
-                  <q-icon name="attach_file" />
-                </template>
-              </q-file>
+            <q-file
+              v-model="photoToUpload"
+              label="Cambiar foto de perfil"
+              outlined
+              dense
+              accept="image/*"
+              :disable="loading || uploadingPhoto"
+              :loading="uploadingPhoto"
+              @update:model-value="handleFileSelected"
+            >
+              <template v-slot:prepend>
+                <q-icon name="camera_alt" />
+              </template>
+            </q-file>
+            <div v-if="uploadingPhoto" class="text-caption text-primary q-mt-xs">
+              Subiendo foto...
+            </div>
           </q-card-section>
           <q-separator />
           <q-card-section>
@@ -179,90 +239,83 @@
                 :key="avatar.seed"
                 size="60px"
                 class="cursor-pointer avatar-option"
-                @click="form.fotoUrl = avatar.url"
+                :class="{ 'avatar-selected': form.fotoUrl === avatar.url }"
+                @click="selectAvatar(avatar.url)"
               >
-                <img :src="avatar.url" />
+                <img :src="avatar.url" :alt="`Avatar ${avatar.seed}`" />
               </q-avatar>
             </div>
           </q-card-section>
         </q-card>
       </div>
     </div>
+
+    <!-- Dialog de Edición de Imagen -->
+    <ImageEditorDialog
+      v-model="showImageEditor"
+      :image-src="editorImageSrc"
+      :on-crop="handleCrop"
+      :get-original-file="getOriginalFile"
+      :create-cropped-file="createCroppedFile"
+      :target-size="TARGET_SIZE"
+    />
   </q-page>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, reactive, computed, watch } from 'vue';
+import { onMounted } from 'vue';
+import { useProfileForm } from '../composables/useProfileForm';
 import { useAuthStore } from '../../../stores/auth.store';
-import { useQuasar } from 'quasar';
-import { api } from 'boot/axios';
+import ImageEditorDialog from '../../../shared/components/ImageEditorDialog.vue';
+import { useImageEditor } from '../../../shared/composables/useImageEditor';
 
 const authStore = useAuthStore();
-const $q = useQuasar();
 
-const localProfile = ref<any>(null); // This is just for rendering username and doc number
-const photoToUpload = ref<File | null>(null);
+const {
+  form,
+  loading,
+  uploadingPhoto,
+  photoToUpload,
+  localProfile,
+  isValidatingPassword,
+  isCurrentPasswordValid,
+  isCurrentPasswordVisible,
+  isNewPasswordVisible,
+  isConfirmPasswordVisible,
+  generoOptions,
+  defaultAvatars,
+  fullImageUrl,
+  canChangePassword,
+  populateForm,
+  handleFileUpload,
+  handleSubmit,
+  selectAvatar,
+  validateCurrentPassword,
+} = useProfileForm();
 
-const isCurrentPasswordVisible = ref(false);
-const isNewPasswordVisible = ref(false);
-const isConfirmPasswordVisible = ref(false);
+// Editor de imagen usando el composable
+const {
+  showImageEditor,
+  editorImageSrc,
+  openImageEditor: openEditor,
+  getOriginalFile,
+  createCroppedFile,
+  TARGET_SIZE,
+} = useImageEditor();
 
-const generoOptions = [
-  { label: 'Masculino', value: 'M' },
-  { label: 'Femenino', value: 'F' },
-  { label: 'Otro', value: 'O' },
-];
+function handleFileSelected(file: File | null) {
+  if (!file) return;
 
-const defaultAvatars = [
-  { seed: 'Felix', url: 'https://api.dicebear.com/8.x/adventurer/svg?seed=Felix' },
-  { seed: 'Mimi', url: 'https://api.dicebear.com/8.x/adventurer/svg?seed=Mimi' },
-  { seed: 'Sheba', url: 'https://api.dicebear.com/8.x/adventurer/svg?seed=Sheba' },
-  { seed: 'Max', url: 'https://api.dicebear.com/8.x/adventurer/svg?seed=Max' },
-  { seed: 'Abby', url: 'https://api.dicebear.com/8.x/adventurer/svg?seed=Abby' },
-];
+  // Abrir el editor de imagen en lugar de subir directamente
+  const preview = URL.createObjectURL(file);
+  openEditor(preview, file);
+}
 
-const form = reactive({
-  nombres: '',
-  apellidos: '',
-  email: '',
-  telefono: '',
-  direccion: '',
-  fechaNacimiento: '',
-  genero: '',
-  biografia: '',
-  fotoUrl: '',
-  currentPassword: '',
-  newPassword: '',
-  confirmPassword: '',
-});
-
-const fullImageUrl = computed(() => {
-  if (!form.fotoUrl) return '';
-  // Si la URL es completa, la usamos, si no, la componemos con la base de la API
-  if (form.fotoUrl.startsWith('http')) {
-    return form.fotoUrl;
-  }
-  return `${api.defaults.baseURL}${form.fotoUrl}`;
-});
-
-function populateForm() {
-  if (authStore.profile) {
-    localProfile.value = authStore.profile; // Keep localProfile updated
-    const p = authStore.profile as any;
-    form.nombres = p.nombres || '';
-    form.apellidos = p.apellidos || '';
-    form.email = p.email || '';
-    form.telefono = p.telefono || '';
-    form.direccion = p.direccion || '';
-    form.fechaNacimiento = p.fechaNacimiento || '';
-    form.genero = p.genero || '';
-    form.biografia = p.biografia || '';
-    form.fotoUrl = p.fotoUrl || '';
-    // Clear password fields on form population
-    form.currentPassword = '';
-    form.newPassword = '';
-    form.confirmPassword = '';
-  }
+function handleCrop(croppedFile: File) {
+  // Subir el archivo recortado
+  void handleFileUpload(croppedFile);
+  // Limpiar el input de archivo
+  photoToUpload.value = null;
 }
 
 onMounted(async () => {
@@ -271,84 +324,23 @@ onMounted(async () => {
   }
   populateForm();
 });
-
-watch(
-  () => authStore.profile,
-  () => {
-    populateForm();
-  },
-  { deep: true }
-);
-
-async function handleFileUpload(file: File) {
-  if (!file) return;
-
-  const formData = new FormData();
-  formData.append('file', file);
-
-  $q.loading.show({ message: 'Subiendo foto...' });
-
-  try {
-    const response = await api.post('/auth/profile/photo', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
-    form.fotoUrl = response.data.filePath;
-    $q.notify({ type: 'positive', message: 'Foto subida. Guarda los cambios para aplicarla.' });
-  } catch (error) {
-    $q.notify({ type: 'negative', message: 'Error al subir la foto.' });
-  } finally {
-    $q.loading.hide();
-  }
-}
-
-async function onSubmit() {
-  if (form.newPassword && form.newPassword !== form.confirmPassword) {
-    $q.notify({
-      type: 'negative',
-      message: 'La nueva contraseña y su confirmación no coinciden.'
-    });
-    return;
-  }
-
-  try {
-    const payload: { [key: string]: any } = { ...form };
-
-    // El backend no espera este campo, es solo para validación en el frontend
-    delete payload.confirmPassword;
-
-    // No enviar campo de contraseña actual si no se está cambiando
-    if (!payload.newPassword) {
-      delete payload.currentPassword;
-      delete payload.newPassword;
-    }
-    
-    Object.keys(payload).forEach(key => {
-      if (payload[key] === '') {
-        if (['nombres', 'apellidos', 'email'].includes(key) && !payload[key]) {
-           // Dejar que la validación del form se encargue
-        } else {
-          payload[key] = undefined;
-        }
-      }
-    });
-
-    await authStore.updateProfile(payload);
-    
-    $q.notify({
-      type: 'positive',
-      message: 'Perfil actualizado exitosamente'
-    });
-
-    form.currentPassword = '';
-    form.newPassword = '';
-    form.confirmPassword = '';
-  } catch (error: any) {
-    $q.notify({
-      type: 'negative',
-      message: error.message || 'Error al actualizar perfil'
-    });
-  }
-}
 </script>
+
+<style scoped lang="scss">
+.avatar-option {
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+  border: 2px solid transparent;
+
+  &:hover {
+    transform: scale(1.1);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  }
+
+  &.avatar-selected {
+    border-color: var(--q-primary);
+    box-shadow: 0 0 0 2px var(--q-primary);
+  }
+}
+</style>

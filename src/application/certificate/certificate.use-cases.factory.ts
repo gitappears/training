@@ -5,6 +5,7 @@ import {
   ListCertificatesUseCase,
   GetCertificateUseCase,
   VerifyCertificateUseCase,
+  CheckExpirationsManuallyUseCase,
 } from './use-cases';
 
 /**
@@ -25,6 +26,12 @@ export class CertificateUseCasesFactory {
     repository: ICertificateRepository,
   ): VerifyCertificateUseCase {
     return new VerifyCertificateUseCase(repository);
+  }
+
+  static getCheckExpirationsManuallyUseCase(
+    repository: ICertificateRepository,
+  ): CheckExpirationsManuallyUseCase {
+    return new CheckExpirationsManuallyUseCase(repository);
   }
 }
 

@@ -99,7 +99,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, onMounted, watch, nextTick } from 'vue';
 import { useQuasar } from 'quasar';
 
 interface Props {
@@ -176,32 +176,71 @@ async function generateQR() {
       throw new Error('El valor para el código QR no puede estar vacío.');
     }
 
-    // Intentar usar librería QRCode si está disponible
-    // En producción: npm install qrcode
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    if (typeof window !== 'undefined' && (window as any).QRCode) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const QRCode = (window as any).QRCode;
-      if (qrCodeContainer.value) {
-        qrCodeContainer.value.innerHTML = '';
-        await QRCode.toCanvas(qrCodeContainer.value, props.value, {
-          width: props.size,
-          margin: props.margin,
-          errorCorrectionLevel: props.errorCorrectionLevel,
-          color: {
-            dark: '#000000',
-            light: '#FFFFFF',
-          },
-        });
-      }
-    } else {
-      // Fallback: usar API de generación de QR online
-      // En producción, instalar: npm install qrcode
-      generateQRWithAPI();
+    // Comprobación inicial: aunque loading es true, aseguramos que props.value existe
+    // La comprobación del contenedor se hará DESPUÉS de setear loading=false
+    // if (!qrCodeContainer.value) ... REMOVED checks here because container is logically hidden
+
+
+    // Si el valor es una imagen base64 (data:image), mostrarla directamente
+    if (props.value.startsWith('data:image')) {
+       // Primero mostramos el contenedor
+       loading.value = false;
+       await nextTick();
+
+       if (!qrCodeContainer.value) {
+          throw new Error('Contenedor de QR no disponible tras renderizado');
+       }
+
+      qrCodeContainer.value.innerHTML = '';
+      const img = document.createElement('img');
+      img.src = props.value;
+      img.alt = 'QR Code';
+      img.style.width = `${props.size}px`;
+      img.style.height = `${props.size}px`;
+      img.style.display = 'block';
+      qrCodeContainer.value.appendChild(img);
+      emit('generated');
+      return;
     }
 
-    loading.value = false;
-    emit('generated');
+    // Intentar importar y usar la librería QRCode
+    try {
+      // Importar dinámicamente la librería qrcode
+      const module = await import('qrcode');
+      const QRCode = module.default || module;
+      
+      // AHORA mostramos el contenedor para que Vue lo renderice
+      loading.value = false;
+      await nextTick(); // Esperar a que el DOM se actualice
+
+      if (!qrCodeContainer.value) {
+        throw new Error('Contenedor de QR no disponible (DOM no listo)');
+      }
+
+      // Limpiar el contenedor
+      qrCodeContainer.value.innerHTML = '';
+      
+      // Crear un canvas para el QR
+      const canvas = document.createElement('canvas');
+      qrCodeContainer.value.appendChild(canvas);
+      
+      // Generar el QR code
+      await QRCode.toCanvas(canvas, props.value, {
+        width: props.size,
+        margin: props.margin,
+        errorCorrectionLevel: props.errorCorrectionLevel,
+        color: {
+          dark: '#000000',
+          light: '#FFFFFF',
+        },
+      });
+      
+      emit('generated');
+    } catch (importError) {
+      console.warn('No se pudo cargar la librería qrcode, usando API externa:', importError);
+      // Fallback
+      generateQRWithAPI();
+    }
   } catch (err) {
     loading.value = false;
     error.value = true;

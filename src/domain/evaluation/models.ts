@@ -1,7 +1,7 @@
 // Modelos de dominio para evaluaciones
 // Capa de Dominio (arquitectura hexagonal)
 
-export type QuestionType = 'single' | 'multiple' | 'image' | 'true_false' | 'yes_no';
+export type QuestionType = 'single' | 'multiple' | 'image' | 'true_false' | 'yes_no' | 'open_text';
 export type EvaluationStatus = 'pending' | 'in_progress' | 'passed' | 'failed' | 'expired';
 
 export interface QuestionOption {
@@ -18,12 +18,15 @@ export interface Question {
   options: QuestionOption[];
   imageUrl?: string; // RF-16: Para preguntas con imagen
   order: number;
+  score?: number; // Puntaje que otorga esta pregunta
 }
 
 export interface Evaluation {
   id: string;
   courseId: string;
   courseName: string;
+  courseType?: 'standard' | 'certified' | 'survey'; // FAL-004: Tipo de capacitación para UI diferenciada
+  title: string;
   description: string;
   questions: Question[];
   questionsCount: number;
@@ -39,6 +42,8 @@ export interface Evaluation {
   };
   createdAt: string;
   updatedAt?: string;
+  mostrarResultados?: boolean; // Controla si se muestran resultados al finalizar
+  mostrarRespuestasCorrectas?: boolean; // Controla si se muestran respuestas correctas en modo revisión
 }
 
 export interface EvaluationAttempt {

@@ -13,8 +13,24 @@
       <div
         v-if="training.coverImageUrl"
         class="hero-image"
-        :style="{ backgroundImage: `url(${training.coverImageUrl})` }"
-      />
+        :style="{ backgroundImage: `url(${coverImageUrl})` }"
+      >
+        <!-- Botón de eliminar imagen (solo si tiene permisos) -->
+        <div v-if="canManageTrainings" class="absolute-top-right q-pa-md">
+          <q-btn
+            flat
+            round
+            dense
+            icon="close"
+            color="white"
+            size="md"
+            class="bg-negative"
+            @click="handleRemoveCoverImage"
+          >
+            <q-tooltip>Eliminar imagen de portada</q-tooltip>
+          </q-btn>
+        </div>
+      </div>
       <div v-else class="hero-watermark">
         <div class="watermark-content">
           <q-icon name="school" size="120px" color="grey-4" />
@@ -30,6 +46,16 @@
         </q-breadcrumbs>
         <h1 class="hero-title text-white">{{ training.title }}</h1>
         <div class="hero-meta text-white">
+          <!-- FAL-004: Badge de tipo de capacitación -->
+          <q-chip
+            :color="getTypeColor(training.type)"
+            text-color="white"
+            size="sm"
+            :icon="getTypeIcon(training.type)"
+            class="q-mr-sm"
+          >
+            {{ getTypeLabel(training.type) }}
+          </q-chip>
           <q-chip
             :color="modalityColor"
             text-color="white"
@@ -39,12 +65,6 @@
           >
             {{ trainingModalityLabel }}
           </q-chip>
-          <span class="q-mx-sm">·</span>
-          <q-icon name="schedule" size="16px" class="q-mr-xs" />
-          <span>{{ training.durationHours || 0 }} horas</span>
-          <span class="q-mx-sm">·</span>
-          <q-icon name="category" size="16px" class="q-mr-xs" />
-          <span>{{ training.area }}</span>
         </div>
         <div class="hero-instructor row items-center q-mt-md">
           <q-avatar size="48px" color="white" text-color="primary" class="q-mr-sm">
@@ -336,7 +356,7 @@
 
               <q-tab-panel name="reviews">
                 <div class="reviews-section">
-                  <div class="row items-center q-gutter-md q-mb-lg">
+                  <div v-if="training.reviews && training.reviews.length > 0" class="row items-center q-gutter-md q-mb-lg">
                     <div class="rating-summary">
                       <div class="text-h3 text-weight-bold">{{ training.averageRating.toFixed(1) }}</div>
                       <q-rating
@@ -352,8 +372,8 @@
                       </div>
                     </div>
                   </div>
-                  <q-separator class="q-mb-lg" />
-                  <div v-if="training.reviews.length === 0" class="empty-state">
+                  <q-separator v-if="training.reviews && training.reviews.length > 0" class="q-mb-lg" />
+                  <div v-if="!training.reviews || training.reviews.length === 0" class="empty-state">
                     <q-icon name="star" size="48px" color="grey-5" class="q-mb-sm" />
                     <div class="text-body1 text-grey-6">No hay reseñas disponibles</div>
                   </div>
@@ -378,7 +398,7 @@
                             <span class="text-caption text-grey-6">{{ formatDate(review.createdAt) }}</span>
                           </div>
                         </div>
-                        <div class="text-body1 text-grey-8">{{ review.comment }}</div>
+                        <div class="text-body1 text-grey-8">{{ review.comment || 'Sin comentario' }}</div>
                       </q-card-section>
                     </q-card>
                   </div>
@@ -395,9 +415,25 @@
               <q-card-section class="q-pa-none">
                 <div
                   v-if="training.coverImageUrl"
-                  class="sidebar-image"
-                  :style="{ backgroundImage: `url(${training.coverImageUrl})` }"
-                />
+                  class="sidebar-image relative-position"
+                  :style="{ backgroundImage: `url(${coverImageUrl})` }"
+                >
+                  <!-- Botón de eliminar imagen (solo si tiene permisos) -->
+                  <div v-if="canManageTrainings" class="absolute-top-right q-pa-xs">
+                    <q-btn
+                      flat
+                      round
+                      dense
+                      icon="close"
+                      color="white"
+                      size="sm"
+                      class="bg-negative"
+                      @click="handleRemoveCoverImage"
+                    >
+                      <q-tooltip>Eliminar imagen de portada</q-tooltip>
+                    </q-btn>
+                  </div>
+                </div>
                 <div v-else class="sidebar-watermark">
                   <q-icon name="image" size="64px" color="grey-4" />
                   <div class="text-caption text-grey-5 q-mt-sm">Imagen del curso</div>
@@ -405,7 +441,7 @@
               </q-card-section>
               <q-card-section>
                 <div class="text-h6 q-mb-sm text-weight-medium">{{ training.title }}</div>
-                <div class="row items-center q-gutter-xs q-mb-md">
+                <div v-if="training.averageRating > 0 && training.reviews && training.reviews.length > 0" class="row items-center q-gutter-xs q-mb-md">
                   <q-rating
                     :model-value="training.averageRating"
                     max="5"
@@ -417,30 +453,18 @@
                     {{ training.averageRating.toFixed(1) }}
                   </span>
                   <span class="text-caption text-grey-6 q-ml-xs">
-                    ({{ training.studentsCount }} {{ training.studentsCount === 1 ? 'alumno' : 'alumnos' }})
+                    ({{ training.reviews.length }} {{ training.reviews.length === 1 ? 'reseña' : 'reseñas' }})
                   </span>
                 </div>
 
                 <q-separator class="q-mb-md" />
 
                 <div class="sidebar-info q-mb-md">
-                  <div class="info-row q-mb-sm">
-                    <q-icon name="schedule" size="18px" color="grey-6" class="q-mr-sm" />
-                    <span class="text-body2 text-grey-7">
-                      <strong>Duración:</strong> {{ training.durationHours || 0 }} horas
-                    </span>
-                  </div>
-                  <div class="info-row q-mb-sm">
-                    <q-icon name="category" size="18px" color="grey-6" class="q-mr-sm" />
-                    <span class="text-body2 text-grey-7">
-                      <strong>Área:</strong> {{ training.area }}
-                    </span>
-                  </div>
                   <div class="info-row">
                     <q-icon name="people" size="18px" color="grey-6" class="q-mr-sm" />
                     <span class="text-body2 text-grey-7">
                       <strong>Capacidad:</strong>
-                      {{ training.capacity ? `${training.studentsCount}/${training.capacity}` : 'Ilimitada' }}
+                      {{ training.capacity ? `${enrolledStudentsCount}/${training.capacity}` : `${enrolledStudentsCount} inscritos` }}
                     </span>
                   </div>
                 </div>
@@ -519,12 +543,48 @@
                   class="full-width"
                   @click="handleEditTraining"
                 />
+
+                <!-- Sección de Reseñas en el Sidebar -->
+                <q-separator class="q-my-md" />
+                <div class="sidebar-reviews-section">
+                  <div class="text-subtitle2 q-mb-sm text-weight-medium">Reseñas</div>
+                  <div v-if="displayReviews.length === 0" class="text-caption text-grey-6 text-center q-py-sm">
+                    No hay reseñas disponibles
+                  </div>
+                  <div v-else class="sidebar-reviews-list">
+                    <div
+                      v-for="review in displayReviews.slice(0, 3)"
+                      :key="review.id"
+                      class="sidebar-review-item q-mb-sm"
+                    >
+                      <div class="row items-center q-gutter-xs q-mb-xs">
+                        <q-rating
+                          :model-value="review.rating"
+                          max="5"
+                          size="14px"
+                          color="amber"
+                          readonly
+                        />
+                        <span class="text-caption text-grey-6">{{ formatDate(review.createdAt) }}</span>
+                      </div>
+                      <div class="text-caption text-grey-7 ellipsis-2-lines">
+                        {{ review.comment || 'Sin comentario' }}
+                      </div>
+                    </div>
+                    <div v-if="displayReviews.length > 3" class="text-caption text-grey-6 text-center q-mt-sm">
+                      Y {{ displayReviews.length - 3 }} reseña{{ displayReviews.length - 3 !== 1 ? 's' : '' }} más
+                    </div>
+                  </div>
+                </div>
               </q-card-section>
             </q-card>
           </div>
         </div>
       </div>
     </div>
+
+    <!-- Diálogo de Inscribir Estudiante -->
+    <EnrollStudentDialog v-model="enrollDialogOpen" @enroll="handleEnrollStudentConfirm" />
   </q-page>
 </template>
 
@@ -533,7 +593,7 @@ import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 import type { QTableColumn } from 'quasar';
-import type { Training, TrainingStudent, TrainingAttachment } from '../../../domain/training/models';
+import type { Training, TrainingStudent, TrainingAttachment, TrainingReview } from '../../../domain/training/models';
 import { TrainingUseCasesFactory } from '../../../application/training/training.use-cases.factory';
 import { trainingsService } from '../../../infrastructure/http/trainings/trainings.service';
 // import { materialsService } from '../../../infrastructure/http/materials/materials.service';
@@ -541,8 +601,10 @@ import type { Material } from '../../../domain/material/models';
 import { useRole } from '../../../shared/composables/useRole';
 import { useTrainingEvaluation, type TrainingWithEvaluations } from '../../../shared/composables/useTrainingEvaluation';
 import { useEnrollmentCheck } from '../../../shared/composables/useEnrollmentCheck';
+import { useMaterialUrl } from '../../../shared/composables/useMaterialUrl';
 import { useAuthStore } from '../../../stores/auth.store';
 import { inscriptionsService, type InscriptionWithDocument } from '../../../infrastructure/http/inscriptions/inscriptions.service';
+import EnrollStudentDialog from '../../../shared/components/EnrollStudentDialog.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -558,6 +620,14 @@ const training = ref<Training | null>(null);
 const loading = ref(false);
 const materials = ref<Material[]>([]);
 const loadingMaterials = ref(false);
+
+/**
+ * Obtiene la URL completa de la imagen de portada para visualización
+ */
+const coverImageUrl = computed(() => {
+  if (!training.value?.coverImageUrl) return '';
+  return buildFullUrl(training.value.coverImageUrl);
+});
 
 // Tipo extendido para estudiantes con documento e ID de inscripción
 interface StudentWithDocument extends TrainingStudent {
@@ -580,6 +650,12 @@ const loadingEvaluation = ref(false);
 const { isEnrolled, loading: loadingEnrollment, checkEnrollment } = useEnrollmentCheck({
   courseId: computed(() => training.value?.id ?? ''),
 });
+
+// Composable para construir URLs de materiales
+const { buildFullUrl } = useMaterialUrl();
+
+// Control del diálogo de inscripción
+const enrollDialogOpen = ref(false);
 
 /**
  * Carga los materiales de la capacitación desde el backend
@@ -604,10 +680,15 @@ function loadMaterials(): void {
 
 /**
  * Mapea un material del dominio a un TrainingAttachment
+ * Construye la URL completa usando buildFullUrl para archivos locales
  */
 function mapMaterialToAttachment(material: Material): TrainingAttachment {
   const tipoNombre = material.tipoMaterial?.nombre?.toLowerCase() || '';
   const tipoCodigo = material.tipoMaterial?.codigo?.toUpperCase() || '';
+
+  // Construir URL completa: si es un enlace externo, mantenerla; si es archivo local, construir URL completa
+  const isExternalLink = material.url.startsWith('http://') || material.url.startsWith('https://');
+  const materialUrl = isExternalLink ? material.url : buildFullUrl(material.url);
 
   // Detectar si es un video
   if (tipoNombre === 'video' || tipoCodigo === 'VIDEO') {
@@ -615,7 +696,7 @@ function mapMaterialToAttachment(material: Material): TrainingAttachment {
       id: material.id,
       type: 'video',
       label: material.nombre,
-      url: material.url,
+      url: materialUrl,
     };
   }
 
@@ -624,22 +705,31 @@ function mapMaterialToAttachment(material: Material): TrainingAttachment {
     tipoNombre.includes('enlace') ||
     tipoNombre.includes('link') ||
     tipoCodigo === 'LINK' ||
-    (material.url.startsWith('http') && !material.url.match(/\.(pdf|doc|docx|ppt|pptx|jpg|jpeg|png|gif|mp4|webm|mp3|wav)$/i));
+    (isExternalLink && !material.url.match(/\.(pdf|doc|docx|ppt|pptx|jpg|jpeg|png|gif|mp4|webm|mp3|wav)$/i));
 
   return {
     id: material.id,
     type: isLink ? 'link' : 'file',
     label: material.nombre,
-    url: material.url,
+    url: materialUrl,
   };
 }
 
 /**
  * Computed que combina los attachments del training con los materiales cargados
  * Elimina duplicados basándose en la URL
+ * Construye URLs completas para archivos locales usando buildFullUrl
  */
 const allAttachments = computed<TrainingAttachment[]>(() => {
-  const attachmentsFromTraining = training.value?.attachments || [];
+  // Mapear attachments del training construyendo URLs completas si son relativas
+  const attachmentsFromTraining = (training.value?.attachments || []).map((att) => {
+    const isExternalLink = att.url.startsWith('http://') || att.url.startsWith('https://');
+    return {
+      ...att,
+      url: isExternalLink ? att.url : buildFullUrl(att.url),
+    };
+  });
+  
   const attachmentsFromMaterials = materials.value
     .filter((m) => m.activo !== false)
     .map(mapMaterialToAttachment);
@@ -790,6 +880,37 @@ const modalityIcons: Record<string, string> = {
   hybrid: 'blur_on',
 };
 
+// FAL-004: Funciones para tipo de capacitación
+const typeLabels: Record<string, string> = {
+  standard: 'ESTÁNDAR',
+  certified: 'CERTIFICADA',
+  survey: 'ENCUESTA',
+};
+
+const typeColors: Record<string, string> = {
+  standard: 'primary',
+  certified: 'positive',
+  survey: 'info',
+};
+
+const typeIcons: Record<string, string> = {
+  standard: 'school',
+  certified: 'verified',
+  survey: 'poll',
+};
+
+function getTypeLabel(type: string): string {
+  return typeLabels[type] ?? 'ESTÁNDAR';
+}
+
+function getTypeColor(type: string): string {
+  return typeColors[type] ?? 'primary';
+}
+
+function getTypeIcon(type: string): string {
+  return typeIcons[type] ?? 'school';
+}
+
 function getModalityLabel(modality: string): string {
   return modalityLabels[modality] ?? modality;
 }
@@ -830,38 +951,7 @@ function handleEnrollStudent() {
     return;
   }
 
-  // Verificar si $q.dialog está disponible, si no usar prompt nativo
-  if (typeof $q.dialog !== 'function') {
-    // Fallback si dialog no está disponible
-    const estudianteId = prompt('Ingresa el ID del estudiante que deseas inscribir en esta capacitación:');
-    if (estudianteId && !isNaN(Number(estudianteId)) && Number(estudianteId) > 0) {
-      void handleEnrollStudentConfirm(estudianteId);
-    }
-    return;
-  }
-
-  $q.dialog({
-    title: 'Inscribir Estudiante',
-    message: 'Ingresa el ID del estudiante que deseas inscribir en esta capacitación',
-    prompt: {
-      model: '',
-      type: 'number',
-      label: 'ID del Estudiante',
-      hint: 'Ingresa el ID numérico del estudiante',
-      isValid: (val) => val !== '' && !isNaN(Number(val)) && Number(val) > 0,
-    },
-    persistent: true,
-    ok: {
-      label: 'Inscribir',
-      color: 'primary',
-    },
-    cancel: {
-      label: 'Cancelar',
-      flat: true,
-    },
-  }).onOk((estudianteId: string) => {
-    void handleEnrollStudentConfirm(estudianteId);
-  });
+  enrollDialogOpen.value = true;
 }
 
 async function handleEnrollStudentConfirm(estudianteId: string): Promise<void> {
@@ -897,16 +987,33 @@ async function handleEnrollStudentConfirm(estudianteId: string): Promise<void> {
     if (currentPersonaId && estudianteId === currentPersonaId.toString()) {
       await checkEnrollment();
     }
-  } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : 'Error al inscribir el estudiante';
+  } catch (error: unknown) {
+    // Extraer el mensaje de error de forma más robusta
+    let errorMessage = 'Error al inscribir el estudiante';
+    
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    } else if (error && typeof error === 'object' && 'message' in error) {
+      errorMessage = String(error.message);
+    }
+    
+    // Mostrar notificación con el mensaje del error
     $q.notify({
       type: 'negative',
       message: errorMessage,
       icon: 'error',
       position: 'top',
-      timeout: 5000,
+      timeout: 7000, // Aumentar tiempo para mensajes más largos
+      actions: [
+        {
+          label: 'Cerrar',
+          color: 'white',
+        },
+      ],
     });
+    
+    // Log para depuración
+    console.error('Error al inscribir estudiante:', error);
   }
 }
 
@@ -1135,6 +1242,61 @@ async function handleToggleStatusConfirm(): Promise<void> {
   }
 }
 
+/**
+ * Elimina la imagen de portada de la capacitación
+ */
+function handleRemoveCoverImage(): void {
+  if (!training.value) return;
+
+  // Confirmar eliminación
+  $q.dialog({
+    title: 'Eliminar imagen de portada',
+    message: '¿Está seguro de que desea eliminar la imagen de portada? Podrá cargar una nueva imagen después.',
+    cancel: {
+      label: 'Cancelar',
+      flat: true,
+      color: 'grey-7',
+    },
+    ok: {
+      label: 'Eliminar',
+      color: 'negative',
+      unelevated: true,
+    },
+    persistent: true,
+  }).onOk(() => {
+    void (async () => {
+    try {
+      // Actualizar capacitación eliminando la imagen de portada
+      const updateTrainingUseCase = TrainingUseCasesFactory.getUpdateTrainingUseCase(trainingsService);
+      
+      await updateTrainingUseCase.execute(parseInt(training.value!.id), {
+        imagenPortadaUrl: '', // String vacío para eliminar la imagen
+      });
+
+      // Recargar la capacitación para reflejar los cambios
+      await loadTraining();
+
+      $q.notify({
+        type: 'positive',
+        message: 'Imagen de portada eliminada exitosamente',
+        icon: 'check_circle',
+        position: 'top',
+        timeout: 3000,
+      });
+    } catch (error) {
+      console.error('Error al eliminar imagen de portada:', error);
+      $q.notify({
+        type: 'negative',
+        message: 'Error al eliminar la imagen de portada',
+        icon: 'error',
+        position: 'top',
+        timeout: 5000,
+      });
+    }
+    })();
+  });
+}
+
 const trainingModalityLabel = computed(() =>
   training.value ? getModalityLabel(training.value.modality) : '',
 );
@@ -1147,6 +1309,29 @@ const modalityColor = computed(() =>
 const modalityIcon = computed(() =>
   training.value ? modalityIcons[training.value.modality] || 'school' : 'school',
 );
+/**
+ * Calcula el número de estudiantes inscritos
+ * Prioriza enrolledStudents.length (más preciso) sobre training.studentsCount
+ */
+const enrolledStudentsCount = computed(() => {
+  // Si los estudiantes ya se cargaron (incluso si la lista está vacía), usar su longitud
+  // Esto asegura que usamos el valor real en lugar del valor desactualizado del training
+  if (!loadingStudents.value) {
+    return enrolledStudents.value.length;
+  }
+  // Mientras se cargan, usar el valor del training como fallback temporal
+  return training.value?.studentsCount || 0;
+});
+
+/**
+ * Computed que devuelve las reseñas a mostrar desde la base de datos
+ */
+const displayReviews = computed<TrainingReview[]>(() => {
+  if (!training.value) return [];
+  
+  // Mostrar solo reseñas reales de la base de datos
+  return training.value.reviews || [];
+});
 
 const studentColumns: QTableColumn<StudentWithDocument>[] = [
   {
@@ -1593,5 +1778,38 @@ body.body--dark .sidebar-watermark {
 
 .resources-container {
   width: 100%;
+}
+
+// Sidebar Reviews Section
+.sidebar-reviews-section {
+  padding: 8px 0;
+}
+
+.sidebar-reviews-list {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.sidebar-review-item {
+  padding: 8px;
+  border-radius: 8px;
+  border-left: 3px solid rgba(79, 70, 229, 0.3);
+  transition: background-color 0.2s ease;
+}
+
+body.body--light .sidebar-review-item {
+  background: #f8fafc;
+}
+
+body.body--dark .sidebar-review-item {
+  background: rgba(15, 23, 42, 0.5);
+}
+
+.sidebar-review-item:hover {
+  background: rgba(79, 70, 229, 0.1);
+}
+
+body.body--dark .sidebar-review-item:hover {
+  background: rgba(79, 70, 229, 0.2);
 }
 </style>

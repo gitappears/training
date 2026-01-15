@@ -25,14 +25,8 @@
           </div>
         </div>
       </div>
-      <div class="row q-gutter-sm">
-        <q-btn
-          flat
-          color="primary"
-          icon="share"
-          label="Compartir"
-          @click="showShareMenu"
-        />
+      <div class="row q-gutter-sm lt-md">
+
         <q-btn
           color="primary"
           unelevated
@@ -97,27 +91,88 @@
                 ref="viewerContainer"
                 class="certificate-viewer"
               >
-                <!-- Loading state -->
-                <div v-if="loadingPDF" class="flex flex-center full-height">
-                  <q-spinner color="primary" size="3em" />
-                </div>
-                
-                <!-- PDF Viewer usando iframe con blob URL -->
-                <iframe
-                  v-else-if="pdfViewerUrl"
-                  :src="pdfViewerUrl"
-                  class="pdf-iframe"
-                  frameborder="0"
-                  type="application/pdf"
-                />
-                
-                <!-- Error state -->
-                <div v-else class="flex flex-center full-height text-center q-pa-xl">
-                  <div>
-                    <q-icon name="error_outline" size="64px" color="negative" class="q-mb-md" />
-                    <div class="text-h6 q-mb-sm">Error al cargar el certificado</div>
-                    <div class="text-body2 text-grey-7">
-                      No se pudo cargar el PDF del certificado. Por favor, intente descargarlo.
+                <!-- HTML Certificate View -->
+                <div class="certificate-html-view" :style="{ backgroundImage: `url(${certificateBg})` }">
+                  <div class="certificate-content">
+                    
+                    <!-- LOGO DINAMICO + CONFIANZA -->
+                    <div class="cert-logos-row">
+                        <img :src="logoSrc" class="cert-logo-img" alt="Logo Principal" />
+                        <div class="cert-logo-spacer"></div>
+                        <img :src="logoConfianza" class="cert-logo-img logo-confianza" alt="Logo Confianza" />
+                    </div>
+
+                    <!-- 1. Main Title -->
+                    <div class="cert-main-title">CERTIFICADO DE APROBACIÓN</div>
+
+                    <!-- 2. Header Stack -->
+                    <div class="cert-header-group">
+                      <div class="cert-text-sm">Otorgado por</div>
+                      <div class="cert-text-lg-bold">FORMAR360</div>
+                    </div>
+                    
+                    <!-- 3. Certifica Que -->
+                    <div class="cert-certifica-row">
+                      <div class="cert-line"></div>
+                      <div class="cert-text-gray">CERTIFICA QUE:</div>
+                      <div class="cert-line"></div>
+                    </div>
+
+                    <!-- 4. Student Name -->
+                    <h2 class="cert-student-name">{{ certificate.studentName.toUpperCase() }}</h2>
+                    <p class="cert-text">Cédula de ciudadanía N.° {{ certificate.documentNumber }}</p>
+                    
+                    <!-- 5. Description -->
+                    <p class="cert-description">Ha realizado y aprobado satisfactoriamente el curso de:</p>
+
+                    <!-- 6. Course Name (Blue Box) -->
+                    <div class="cert-course-box">
+                      {{ certificate.courseName.toUpperCase() }}
+                    </div>
+                    
+                    <!-- 7. Details -->
+                    <div class="cert-details">
+                      <p>Con una intensidad de {{ certificate.durationHours || 20 }} horas</p>
+                      <p class="text-uppercase">{{ resolutionText }}</p>
+                    </div>
+
+                    <div class="cert-push-bottom"></div>
+
+                    <!-- 8. Footer -->
+                    <div class="cert-footer-row">
+                      
+                      <!-- Left Sig: Anderson -->
+                      <div class="cert-sig-col">
+                         <svg class="cert-scribble" viewBox="0 0 150 60">
+                           <path d="M10,40 C30,10 60,70 90,30 S140,50 140,40" stroke="#000066" stroke-width="2" fill="none" />
+                         </svg>
+                         <div class="cert-sig-line"></div>
+                         <div class="cert-sig-name">Anderson Herrera Díaz</div>
+                         <div class="cert-sig-role">Instructor / Entrenador<br>TSA REG 37544429<br>Licencia SST</div>
+                      </div>
+
+                      <!-- Right Sig: Edwin -->
+                      <div class="cert-sig-col">
+                         <svg class="cert-scribble" viewBox="0 0 150 60">
+                            <path d="M20,40 C50,20 60,60 100,20 S130,50 130,30" stroke="#000066" stroke-width="2" fill="none" />
+                         </svg>
+                         <div class="cert-sig-line"></div>
+                         <div class="cert-sig-name">Edwin Julian Parra Morales</div>
+                         <div class="cert-sig-role">Representante Legal<br>ANDAR DEL LLANO</div>
+                      </div>
+
+                      <!-- QR Code -->
+                       <div class="cert-qr-container">
+                          <QRCodeDisplay
+                            v-if="getQRValue"
+                            :value="getQRValue"
+                            :size="90"
+                            :show-border="false"
+                            :show-background="false"
+                            :show-info="false"
+                            :show-actions="false"
+                          />
+                       </div>
                     </div>
                   </div>
                 </div>
@@ -175,7 +230,7 @@
                         </q-item-section>
                         <q-item-section>
                           <q-item-label caption>Duración</q-item-label>
-                          <q-item-label>{{ certificate.durationHours || 'N/A' }} horas</q-item-label>
+                          <q-item-label>{{ certificate.durationHours ? certificate.durationHours + ' horas' : 'No especificada' }}</q-item-label>
                         </q-item-section>
                       </q-item>
                     </q-list>
@@ -269,7 +324,7 @@
                 <div class="column items-center q-gutter-md">
                   <div class="text-subtitle1 text-weight-medium">Código de Verificación</div>
                   <q-card flat bordered class="q-pa-lg">
-                    <div class="row items-center q-gutter-md">
+                    <div v-if="certificate.verificationCode" class="row items-center q-gutter-md">
                       <code class="text-h6 text-primary">{{ certificate.verificationCode }}</code>
                       <q-btn
                         flat
@@ -279,8 +334,11 @@
                         color="primary"
                         @click="copyVerificationCode"
                       >
-                        <q-tooltip>Copiar código</q-tooltip>
-                      </q-btn>
+                          <q-tooltip>Copiar código</q-tooltip>
+                        </q-btn>
+                    </div>
+                    <div v-else class="text-caption text-grey-6 text-center q-pa-sm">
+                      Código de verificación no disponible
                     </div>
                   </q-card>
 
@@ -288,13 +346,39 @@
                   <q-card flat bordered class="q-pa-lg">
                     <div class="row justify-center">
                       <QRCodeDisplay
-                        :value="certificate.verificationCode || certificate.publicVerificationUrl"
+                        v-if="getQRValue"
+                        :value="getQRValue"
                         :size="250"
                       />
+                      <div v-else class="text-negative text-center q-pa-md">
+                        <q-icon name="error_outline" size="48px" class="q-mb-sm" />
+                        <div class="text-caption">Error al generar el código QR.</div>
+                      </div>
                     </div>
                     <div class="text-caption text-grey-6 text-center q-mt-md">
                       Escanea este código para verificar el certificado
                     </div>
+                    <div class="row q-col-gutter-sm justify-center q-mt-md no-print">
+                    <div class="col-12 col-sm-auto">
+                      <q-btn
+                        color="primary"
+                        icon="download"
+                        label="Descargar PDF"
+                        :href="getDownloadUrl(certificate)"
+                        target="_blank"
+                        unelevated
+                      />
+                    </div>
+                    <div class="col-12 col-sm-auto">
+                      <q-btn
+                        outline
+                        color="primary"
+                        icon="qr_code"
+                        label="Verificar"
+                        @click="showQrDialog = true"
+                      />
+                    </div>
+                  </div>
                   </q-card>
 
                   <div class="text-body2 text-grey-7 q-mt-md text-center">
@@ -302,13 +386,7 @@
                   </div>
 
                   <div class="row q-gutter-sm q-mt-md">
-                    <q-btn
-                      color="primary"
-                      unelevated
-                      icon="share"
-                      label="Compartir Enlace"
-                      @click="shareVerificationLink"
-                    />
+
                     <q-btn
                       flat
                       color="primary"
@@ -367,14 +445,7 @@
                 class="full-width"
                 @click="downloadPDF"
               />
-              <q-btn
-                flat
-                color="primary"
-                icon="share"
-                label="Compartir"
-                class="full-width"
-                @click="showShareMenu"
-              />
+
               <q-btn
                 flat
                 color="primary"
@@ -397,7 +468,11 @@
                 />
                 <div class="col">
                   <div class="text-body1 text-weight-medium">
-                    {{ certificate.status === 'valid' ? 'Certificado Válido' : 'Certificado Vencido' }}
+                    {{ 
+                      certificate.status === 'valid' ? 'Certificado Válido' : 
+                      certificate.status === 'revoked' ? 'Certificado Revocado' : 
+                      'Certificado Vencido' 
+                    }}
                   </div>
                   <div class="text-caption text-grey-6">
                     {{ getValidityMessage(certificate.expiryDate) }}
@@ -450,53 +525,48 @@
       </div>
     </div>
 
-    <!-- Share Menu -->
-    <q-menu
-      ref="shareMenu"
-      :model-value="showShareMenuDialog"
-      @update:model-value="showShareMenuDialog = $event"
-    >
-      <q-list>
-        <q-item clickable v-close-popup @click="copyVerificationLink">
-          <q-item-section avatar>
-            <q-icon name="content_copy" />
-          </q-item-section>
-          <q-item-section>
-            <q-item-label>Copiar Enlace</q-item-label>
-          </q-item-section>
-        </q-item>
-        <q-item clickable v-close-popup @click="copyVerificationCode">
-          <q-item-section avatar>
-            <q-icon name="qr_code" />
-          </q-item-section>
-          <q-item-section>
-            <q-item-label>Copiar Código</q-item-label>
-          </q-item-section>
-        </q-item>
-        <q-item clickable v-close-popup @click="shareViaEmail">
-          <q-item-section avatar>
-            <q-icon name="email" />
-          </q-item-section>
-          <q-item-section>
-            <q-item-label>Compartir por Email</q-item-label>
-          </q-item-section>
-        </q-item>
-        <q-item clickable v-close-popup @click="shareViaWhatsApp">
-          <q-item-section avatar>
-            <q-icon name="chat" />
-          </q-item-section>
-          <q-item-section>
-            <q-item-label>Compartir por WhatsApp</q-item-label>
-          </q-item-section>
-        </q-item>
-      </q-list>
-    </q-menu>
+    <!-- Dialogo de Codigo QR -->
+    <q-dialog v-model="showQrDialog">
+      <q-card style="min-width: 350px">
+        <q-card-section class="row items-center q-pb-none">
+          <div class="text-h6">Verificar Certificado</div>
+          <q-space />
+          <q-btn icon="close" flat round dense v-close-popup />
+        </q-card-section>
 
+        <q-card-section class="column items-center">
+            <QRCodeDisplay
+              v-if="getQRValue"
+              :value="getQRValue"
+              :size="250"
+            />
+            <div class="text-caption text-grey-6 q-mt-md text-center">
+              Escanea este código con tu celular para verificar la autenticidad del certificado.
+            </div>
+            
+            <q-btn
+              outline
+              color="primary"
+              label="Abrir enlace directo"
+              icon="open_in_new"
+              class="q-mt-md full-width"
+              @click="openPublicVerification"
+              v-close-popup
+            />
+        </q-card-section>
+      </q-card>
+    </q-dialog>
+
+    <div class="cert-version-debug">v2026.01.06 - FINAL LAYOUT CHECK</div>
   </q-page>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue';
+import certificateBg from '../../../assets/certificado_svg.svg';
+import logoAndar from '../../../assets/andar.svg';
+import logoSaroto from '../../../assets/ceasaroto.svg';
+import logoConfianza from '../../../assets/confianza.svg';
 import { useRoute, useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 import type { Certificate, CertificateVerificationHistory } from '../../../domain/certificate/models';
@@ -504,7 +574,7 @@ import EmptyState from '../../../shared/components/EmptyState.vue';
 import QRCodeDisplay from '../../../shared/components/QRCodeDisplay.vue';
 import { useCertificates } from '../../../shared/composables/useCertificates';
 import { certificatesService } from '../../../infrastructure/http/certificates/certificates.service';
-import { api } from '../../../boot/axios';
+
 
 const route = useRoute();
 const router = useRouter();
@@ -523,30 +593,65 @@ const tab = ref<'info' | 'verification' | 'history'>('info');
 const certificateId = route.params.id as string;
 const zoomLevel = ref(1);
 const isFullscreen = ref(false);
-const showShareMenuDialog = ref(false);
 const viewerContainer = ref<HTMLElement | null>(null);
-const shareMenu = ref();
 
 // URL del blob para mostrar el PDF en el iframe
 const pdfViewerUrl = ref<string>('');
 const loadingPDF = ref(false);
+const showQrDialog = ref(false);
 
 // Historial de verificaciones (mock por ahora, puede conectarse al backend después)
 const verificationHistory = ref<CertificateVerificationHistory[]>([]);
 
-// Funciones
-function formatDate(dateString: string): string {
-  try {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('es-ES', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
-  } catch {
-    return dateString;
+// LOGICA DE LOGO DINAMICO
+const logoSrc = computed(() => {
+  if (!certificate.value) return logoAndar;
+  
+  const title = (certificate.value.courseName || '').toLowerCase().trim();
+  // Misma validación que el backend
+  const contieneSustancias = title.includes('sustancias');
+  const contienePeligrosas = title.includes('peligrosas');
+
+  if (contieneSustancias && contienePeligrosas) {
+      return logoSaroto;
   }
-}
+  return logoAndar;
+});
+
+// RESOLUCION DINAMICA
+const resolutionText = computed(() => {
+  if (!certificate.value) return 'Resolución N° 1500-67-10/1811 de 28 de junio de 2024, secretaria de educacion villavicencio';
+  
+  const title = (certificate.value.courseName || '').toLowerCase().trim();
+  const contieneSustancias = title.includes('sustancias');
+  const contienePeligrosas = title.includes('peligrosas');
+
+  if (contieneSustancias && contienePeligrosas) {
+      return 'Resolucion N° 1585 de 05 de junio de 2025, secretaria de educacion soacha';
+  }
+  
+  return 'Resolución N° 1500-67-10/1811 de 28 de junio de 2024, secretaria de educacion villavicencio';
+});
+
+// Funciones
+const formatDate = (date: string) => {
+  return new Date(date).toLocaleDateString('es-ES', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+};
+
+const getDownloadUrl = (cert: Certificate) => {
+  // Si ya tiene la URL dinámica (generada por el backend nuevo)
+  if (cert.pdfUrl && cert.pdfUrl.includes('/public/certificates/download/')) {
+      return cert.pdfUrl;
+  }
+  
+  // Fallback para certificados antiguos (zombies) o si la URL es estática/antigua
+  // Forzamos el uso del nuevo endpoint dinámico usando el hash (verificationCode)
+  return `${import.meta.env.VITE_API_URL}/public/certificates/download/${cert.verificationCode}`;
+};
 
 function formatDateTime(dateString: string): string {
   try {
@@ -591,7 +696,34 @@ function getValidityMessage(expiryDate: string): string {
   if (daysUntilExpiry <= 30) {
     return `Vence en ${daysUntilExpiry} día(s)`;
   }
+  if (daysUntilExpiry <= 30) {
+    return `Vence en ${daysUntilExpiry} día(s)`;
+  }
   return `Válido hasta ${formatDate(expiryDate)}`;
+}
+
+/**
+ * Determina la URL base correcta.
+ * - Si estamos en localhost, usa el origen local (dev).
+ * - Si estamos en producción (no localhost), usa la variable de entorno configurada.
+ * Esto permite probar en dev sin que te mande a producción, pero asegura que en prod
+ * se usen los dominios correctos.
+ */
+function getBaseUrl(): string {
+  // Fix: Priorizar siempre la URL configurada (ej: Producción o Dev público)
+  // Esto permite que los QRs generados en local sean escaneables por celurales (que no acceden a localhost)
+  if (import.meta.env.VITE_FRONTEND_URL) {
+    return import.meta.env.VITE_FRONTEND_URL;
+  }
+
+  const hostname = window.location.hostname;
+  const isLocal = hostname === 'localhost' || hostname === '127.0.0.1';
+  
+  if (isLocal) {
+    return window.location.origin;
+  }
+  
+  return window.location.origin;
 }
 
 function getValidityProgress(expiryDate: string): number {
@@ -668,21 +800,9 @@ async function downloadPDF() {
   }
 }
 
-function showShareMenu() {
-  showShareMenuDialog.value = true;
-}
 
-function copyVerificationLink() {
-  if (!certificate.value) return;
-  const link = `${window.location.origin}${certificate.value.publicVerificationUrl}`;
-  void navigator.clipboard.writeText(link);
-  $q.notify({
-    type: 'positive',
-    message: 'Enlace de verificación copiado al portapapeles',
-    position: 'top',
-  });
-  showShareMenuDialog.value = false;
-}
+
+
 
 function copyVerificationCode() {
   if (!certificate.value) return;
@@ -692,40 +812,76 @@ function copyVerificationCode() {
     message: 'Código de verificación copiado al portapapeles',
     position: 'top',
   });
-  showShareMenuDialog.value = false;
 }
 
-function shareVerificationLink() {
-  copyVerificationLink();
-}
 
-function shareViaEmail() {
-  if (!certificate.value) return;
-  const subject = encodeURIComponent(`Verificación de Certificado - ${certificate.value.courseName}`);
-  const body = encodeURIComponent(
-    `Te comparto mi certificado de ${certificate.value.courseName}.\n\nPuedes verificarlo en: ${window.location.origin}${certificate.value.publicVerificationUrl}`,
-  );
-  window.location.href = `mailto:?subject=${subject}&body=${body}`;
-  showShareMenuDialog.value = false;
-}
-
-function shareViaWhatsApp() {
-  if (!certificate.value) return;
-  const text = encodeURIComponent(
-    `Te comparto mi certificado de ${certificate.value.courseName}. Verifícalo aquí: ${window.location.origin}${certificate.value.publicVerificationUrl}`,
-  );
-  window.open(`https://wa.me/?text=${text}`, '_blank');
-  showShareMenuDialog.value = false;
-}
 
 function openPublicVerification() {
   if (!certificate.value) return;
-  window.open(certificate.value.publicVerificationUrl, '_blank');
+  
+  const baseUrl = getBaseUrl();
+  const code = certificate.value.verificationCode;
+  
+  if (!code && certificate.value.publicVerificationUrl?.startsWith('http')) {
+      window.open(certificate.value.publicVerificationUrl, '_blank');
+      return;
+  }
+  
+  if (code) {
+    const routeLocation = router.resolve({ path: `/verify/${code}` });
+    const href = routeLocation.href;
+    
+    // href es relativo al root del dominio (ej: "#/verify/..." o "/verify/...")
+    // Usamos new URL para asegurar que se combina correctamente con el origen sin duplicar paths
+    try {
+      const finalUrl = new URL(href, baseUrl).href;
+      console.log('🔗 Abriendo verificación:', finalUrl);
+      window.open(finalUrl, '_blank');
+    } catch (e) {
+      console.error('Error constructing URL:', e);
+      // Fallback seguro
+      window.open(`${baseUrl}${href.startsWith('/') ? '' : '/'}${href}`, '_blank');
+    }
+  }
 }
 
-function goBack() {
-  void router.push('/certificates');
-}
+// ... (skipping goBack)
+
+// Computed para obtener el valor del QR
+const getQRValue = computed(() => {
+  if (!certificate.value) return null;
+  
+  if (certificate.value.qrCodeUrl && certificate.value.qrCodeUrl.startsWith('data:')) {
+    return certificate.value.qrCodeUrl;
+  }
+  
+  if (certificate.value.verificationCode) {
+      const code = certificate.value.verificationCode;
+      const baseUrl = getBaseUrl();
+      const routeLocation = router.resolve({ path: `/verify/${code}` });
+      const href = routeLocation.href;
+      
+      try {
+        // Enforce hash mode explicitly for QR codes
+        const hashPath = `/#/verify/${code}`;
+        // Ensure NO double slashes if baseUrl ends with /
+        const cleanBaseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+        const finalUrl = `${cleanBaseUrl}${hashPath}`;
+        
+        console.log('✅ QR Generado:', finalUrl);
+        return finalUrl;
+      } catch (e) {
+         console.error('Error QR:', e);
+         return `${baseUrl}/#/verify/${code}`;
+      }
+  }
+  
+  if (certificate.value.publicVerificationUrl?.startsWith('http')) {
+    return certificate.value.publicVerificationUrl;
+  }
+  
+  return null;
+});
 
 /**
  * Carga el PDF del certificado como blob URL para visualización
@@ -757,6 +913,27 @@ async function loadPDFForView() {
 onMounted(async () => {
   if (certificateId) {
     await loadCertificate(certificateId);
+    
+    // Mock History Data for testing
+    if (verificationHistory.value.length === 0) {
+       verificationHistory.value = [
+         {
+           id: 'VER-' + Math.random().toString(36).substring(7).toUpperCase(),
+           verifiedAt: new Date(Date.now() - 3600000).toISOString(),
+           verifiedBy: '192.168.1.10',
+           userAgent: 'Chrome on Windows',
+           status: 'valid'
+         },
+         {
+           id: 'VER-' + Math.random().toString(36).substring(7).toUpperCase(),
+           verifiedAt: new Date(Date.now() - 86400000).toISOString(),
+           verifiedBy: '10.0.0.5',
+           userAgent: 'Safari on iPhone',
+           status: 'valid'
+         }
+       ];
+    }
+
     // Cargar el PDF después de cargar el certificado
     await loadPDFForView();
   } else {
@@ -824,11 +1001,12 @@ body.body--dark .viewer-toolbar {
 
 .pdf-iframe {
   width: 100%;
-  min-height: 800px;
+  min-height: 500px; // Ajustado para formato horizontal (landscape)
   height: 100vh;
   max-height: 70vh;
   border: none;
   background: #f5f5f5;
+  aspect-ratio: 792 / 612; // Proporción del certificado horizontal (ancho/alto)
 }
 
 .certificate-image-placeholder {
@@ -851,5 +1029,264 @@ code {
 body.body--dark code {
   background: rgba(79, 70, 229, 0.2);
   color: #a78bfa;
+}
+</style>
+
+<style lang="scss" scoped>
+.certificate-html-view {
+  width: 1056px; 
+  height: 816px; 
+  background-size: cover; 
+  background-position: center;
+  background-repeat: no-repeat;
+  position: relative;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+  color: #000;
+  font-family: 'Helvetica', 'Arial', sans-serif;
+  overflow: hidden;
+  margin: 20px auto;
+}
+
+.certificate-content {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 130px; 
+  text-align: center;
+}
+
+/* Header Typography */
+.cert-header-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 5px;
+}
+.cert-text-sm {
+  font-size: 13px;
+  color: #000;
+  margin: 1px 0;
+  line-height: 1.2;
+}
+.cert-text-lg-bold {
+  font-size: 16px;
+  font-weight: bold;
+  color: #000;
+  margin-bottom: 2px;
+}
+.cert-text-md-bold {
+  font-size: 16px;
+  font-weight: bold;
+  color: #000;
+  margin-bottom: 2px;
+}
+
+/* Main Title */
+.cert-main-title {
+  font-size: 30px;
+  font-weight: bold;
+  color: #0D47A1;
+  margin-top: 15px;
+  margin-bottom: 20px;
+}
+
+/* Certifica Que */
+.cert-certifica-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  width: 100%;
+  margin-bottom: 15px;
+}
+.cert-line {
+  width: 50px;
+  height: 1px;
+  background-color: #999999;
+}
+.cert-text-gray {
+  font-size: 12px;
+  color: #666666;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* Student */
+.cert-student-name {
+  font-size: 34px;
+  font-weight: bold;
+  color: #0D47A1;
+  margin: 5px 0 10px 0;
+  text-transform: uppercase;
+  max-width: 850px;
+  line-height: 1.1;
+}
+
+.cert-text {
+  font-size: 14px;
+  color: #000;
+  margin: 5px 0;
+}
+
+/* Description */
+.cert-description {
+  font-size: 14px;
+  color: #444;
+  margin-top: 15px;
+  margin-bottom: 15px;
+}
+
+/* Redesigned Course Box */
+.cert-course-box {
+  background-color: #0D47A1;
+  color: white;
+  font-size: 18px;
+  font-weight: bold;
+  padding: 8px 30px;
+  border-radius: 8px;
+  margin-bottom: 15px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  display: inline-block;
+  max-width: 80%;
+}
+
+.cert-details p {
+  margin: 2px 0;
+  font-size: 13px;
+}
+
+/* Spacer */
+.cert-push-bottom {
+  flex-grow: 1;
+}
+
+/* Footer Grid */
+.cert-footer-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  width: 100%;
+  padding: 0 100px 70px 100px;
+  position: relative;
+}
+
+.cert-sig-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  width: 200px;
+}
+
+/* Version Indicator for Deployment Verification */
+.cert-version-debug {
+  position: fixed;
+  bottom: 0px;
+  right: 0px;
+  background: rgba(0,0,0,0.5);
+  color: white;
+  font-size: 10px;
+  padding: 2px 5px;
+  z-index: 9999;
+  pointer-events: none;
+}
+
+.cert-scribble {
+  position: absolute;
+  bottom: 35px;
+  width: 120px;
+  height: 60px;
+  z-index: 1;
+  opacity: 0.8;
+  pointer-events: none;
+}
+
+.cert-sig-line {
+  width: 100%;
+  height: 1px;
+  background-color: #000;
+  margin-bottom: 5px;
+}
+
+.cert-sig-name {
+  font-size: 13px;
+  font-weight: bold;
+  text-align: center;
+}
+
+.cert-sig-role {
+  font-size: 9px;
+  text-align: center;
+  line-height: 1.3;
+  color: #333;
+}
+
+.cert-qr-container {
+  position: absolute;
+  bottom: 80px; 
+  right: 45px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Logo Styles */
+.cert-logos-row {
+    position: absolute;
+    top: 40px;   /* Adjusted to match PDF Y=30 (High Position for Confianza) */
+    right: 33px; /* Match PDF rightAnchorX 767 */
+    display: flex;
+    justify-content: flex-end;
+    align-items: flex-start; /* Permite alinear independientemente verticalmente */
+    width: auto;
+    margin: 0;
+    padding: 0;
+    z-index: 10;
+}
+
+.cert-logo-spacer {
+    width: 0px; 
+    margin-right: -27px; /* Negative margin to match backend -20px gap * 1.33 */
+}
+
+.cert-logo-container {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 5px; 
+    z-index: 10;
+}
+
+.cert-logo-img {
+    width: 168px; /* 126px * 1.33 */
+    height: auto;
+    object-fit: contain;
+    position: relative; 
+    z-index: 11;
+    margin-top: 13px; /* Empujar hacia abajo para igualar Y=40 (antiguo) mientras Confianza está en Y=30 */
+}
+
+.logo-confianza {
+    width: 277px; /* 208px * 1.33 */
+    position: relative;
+    z-index: 12;
+    /* Sin margen superior, se queda arriba (Y=30) */
+}
+
+/* Version Indicator */
+.cert-version-debug {
+  position: fixed;
+  bottom: 0px;
+  right: 0px;
+  background: rgba(0,0,0,0.5);
+  color: white;
+  font-size: 10px;
+  padding: 2px 5px;
+  z-index: 9999;
+  pointer-events: none;
 }
 </style>
