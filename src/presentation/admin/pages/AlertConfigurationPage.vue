@@ -8,57 +8,69 @@
       </div>
 
       <!-- Cards de Configuración -->
-      <div class="row q-col-gutter-md">
-        <div class="col-12 col-md-4" v-for="config in configuraciones" :key="config.id">
-          <q-card>
-            <q-card-section class="bg-primary text-white">
-              <div class="text-h6">
-                Alerta {{ config.diasAntesVencimiento }}
-                {{ config.diasAntesVencimiento === 1 ? 'día' : 'días' }}
-              </div>
-              <div>
-                {{
-                  config.diasAntesVencimiento === 0
-                    ? 'El mismo día del vencimiento'
-                    : `${config.diasAntesVencimiento} días antes del vencimiento`
-                }}
-              </div>
-            </q-card-section>
+      <div class="relative-position configurations">
+        <transition-group
+          appear
+          enter-active-class="animated fadeIn"
+          leave-active-class="animated fadeOut"
+          tag="div"
+          class="row q-col-gutter-md"
+        >
+          <div class="col-12 col-md-4" v-for="config in configuraciones" :key="config.id">
+            <q-card>
+              <q-card-section class="bg-primary text-white">
+                <div class="text-h6">
+                  Alerta {{ config.diasAntesVencimiento }}
+                  {{ config.diasAntesVencimiento === 1 ? 'día' : 'días' }}
+                </div>
+                <div>
+                  {{
+                    config.diasAntesVencimiento === 0
+                      ? 'El mismo día del vencimiento'
+                      : `${config.diasAntesVencimiento} días antes del vencimiento`
+                  }}
+                </div>
+              </q-card-section>
 
-            <q-separator />
+              <q-separator />
 
-            <q-card-section>
-              <div class="row items-center">
-                <div class="col">
-                  <div class="text-subtitle1 text-weight-medium">Estado</div>
-                  <div class="text-caption text-grey-7">
-                    {{
-                      config.activo
-                        ? 'Las alertas se enviarán automáticamente'
-                        : 'Las alertas están desactivadas'
-                    }}
+              <q-card-section>
+                <div class="row items-center">
+                  <div class="col">
+                    <div class="text-subtitle1 text-weight-medium">Estado</div>
+                    <div class="text-caption text-grey-7">
+                      {{
+                        config.activo
+                          ? 'Las alertas se enviarán automáticamente'
+                          : 'Las alertas están desactivadas'
+                      }}
+                    </div>
+                  </div>
+                  <div class="col-auto">
+                    <q-toggle
+                      v-model="config.activo"
+                      color="green"
+                      @update:model-value="actualizarConfig(config)"
+                      :disable="guardando"
+                    />
                   </div>
                 </div>
-                <div class="col-auto">
-                  <q-toggle
-                    v-model="config.activo"
-                    color="green"
-                    @update:model-value="actualizarConfig(config)"
-                    :disable="guardando"
-                  />
+              </q-card-section>
+
+              <q-separator />
+
+              <q-card-section v-if="config.fechaCreacion">
+                <div class="text-caption text-grey-7">
+                  Creada: {{ formatearFecha(config.fechaCreacion) }}
                 </div>
-              </div>
-            </q-card-section>
+              </q-card-section>
+            </q-card>
+          </div>
+        </transition-group>
 
-            <q-separator />
-
-            <q-card-section>
-              <div class="text-caption text-grey-7">
-                Creada: {{ formatearFecha(config.fechaCreacion) }}
-              </div>
-            </q-card-section>
-          </q-card>
-        </div>
+        <q-inner-loading :showing="configuraciones.length === 0">
+          <q-spinner-gears size="50px" color="primary" />
+        </q-inner-loading>
       </div>
 
       <!-- Información -->
@@ -80,7 +92,7 @@
       </q-banner>
 
       <!-- Botón de Prueba -->
-      <div class="q-mt-md">
+      <div class="q-mt-md" v-if="isDev">
         <q-btn
           color="amber"
           icon="play_arrow"
@@ -96,35 +108,59 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-import { api } from 'boot/axios';
 import { useQuasar } from 'quasar';
+import { certificatesService } from '../../../infrastructure/http/certificates/certificates.service';
+import { CertificateUseCasesFactory } from '../../../application/certificate/certificate.use-cases.factory';
+
+interface AlertConfiguration {
+  id: number;
+  diasAntesVencimiento: number;
+  activo: boolean;
+  fechaCreacion?: string;
+}
 
 const $q = useQuasar();
 
-const configuraciones = ref<any[]>([]);
+const isDev = import.meta.env.VITE_API_ENV == 'dev' ? true : false;
+
+// Inicializar caso de uso para verificación manual
+const checkExpirationsManuallyUseCase =
+  CertificateUseCasesFactory.getCheckExpirationsManuallyUseCase(certificatesService);
+
+const configuraciones = ref<AlertConfiguration[]>([]);
 const guardando = ref(false);
 const ejecutando = ref(false);
 
 onMounted(() => {
-  cargarConfiguraciones();
+  void cargarConfiguraciones();
 });
 
 const cargarConfiguraciones = async () => {
   try {
-    const { data } = await api.get('/certificates/alert-configurations');
-    configuraciones.value = data;
+    const data = await certificatesService.getAlertConfigurations();
+    configuraciones.value = data.map((config) => ({
+      id: config.id,
+      diasAntesVencimiento: config.diasAntesVencimiento,
+      activo: config.activo, // El servicio ya convierte número a boolean
+      // fechaCreacion no está disponible en la respuesta del servicio
+    }));
   } catch (error) {
+    console.error(error);
     $q.notify({
       type: 'negative',
-      message: 'Error al cargar configuraciones',
+      message: error instanceof Error ? error.message : 'Error al cargar configuraciones',
     });
   }
 };
 
-const actualizarConfig = async (config: any) => {
+const actualizarConfig = async (config: AlertConfiguration) => {
   guardando.value = true;
+  $q.loading.show({
+    message: 'Actualizando configuración...',
+  });
   try {
-    await api.patch(`/certificates/alert-configurations/${config.id}`, {
+    // El servicio convierte automáticamente boolean a número (1/0) para el backend
+    await certificatesService.updateAlertConfiguration(config.id, {
       diasAntesVencimiento: config.diasAntesVencimiento,
       activo: config.activo,
     });
@@ -135,32 +171,35 @@ const actualizarConfig = async (config: any) => {
       icon: 'check_circle',
     });
   } catch (error) {
+    console.error(error);
     $q.notify({
       type: 'negative',
-      message: 'Error al actualizar configuración',
+      message: error instanceof Error ? error.message : 'Error al actualizar configuración',
     });
     // Revertir el cambio
     config.activo = !config.activo;
     await cargarConfiguraciones();
   } finally {
     guardando.value = false;
+    $q.loading.hide();
   }
 };
 
 const ejecutarVerificacionManual = async () => {
   ejecutando.value = true;
   try {
-    const { data } = await api.get('/certificates/check-expirations-manual');
+    const result = await checkExpirationsManuallyUseCase.execute();
 
     $q.notify({
       type: 'positive',
-      message: data.message || 'Verificación ejecutada correctamente',
+      message: result.message || 'Verificación ejecutada correctamente',
       icon: 'check_circle',
     });
   } catch (error) {
+    console.error(error);
     $q.notify({
       type: 'negative',
-      message: 'Error al ejecutar verificación',
+      message: error instanceof Error ? error.message : 'Error al ejecutar verificación',
     });
   } finally {
     ejecutando.value = false;
@@ -175,3 +214,11 @@ const formatearFecha = (fecha: string) => {
   });
 };
 </script>
+
+<style lang="sass" scoped>
+.configurations
+  border-radius: 10px;
+  background-color: transparent !important;
+  width: 100%;
+  height: 200px;
+</style>
