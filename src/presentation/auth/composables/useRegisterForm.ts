@@ -83,6 +83,7 @@ export function useRegisterForm() {
   /**
    * Genera un username automático basado en el número de documento
    * Si no hay documento, genera uno aleatorio
+   * @deprecated Este método ya no es necesario
    */
   function generateUsername(): string {
     if (form.value.numeroDocumento && form.value.numeroDocumento.trim()) {
