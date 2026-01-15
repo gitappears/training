@@ -596,9 +596,14 @@ export class CertificatesService implements ICertificateRepository {
       const response = await api.get<Array<{
         id: number;
         diasAntesVencimiento: number;
-        activo: boolean;
+        activo: number | boolean; // El backend puede enviar número (1/0) o boolean
       }>>('/certificates/alert-configurations');
-      return response.data;
+      // Convertir número (1/0) a boolean
+      return response.data.map((config) => ({
+        id: config.id,
+        diasAntesVencimiento: config.diasAntesVencimiento,
+        activo: typeof config.activo === 'number' ? config.activo === 1 : Boolean(config.activo),
+      }));
     } catch (error) {
       const axiosError = error as AxiosError<{ message?: string }>;
       throw new Error(
@@ -616,12 +621,24 @@ export class CertificatesService implements ICertificateRepository {
     activo: boolean;
   }> {
     try {
+      // Convertir boolean a número (1/0) para enviar al backend
+      const dtoParaBackend = {
+        diasAntesVencimiento: dto.diasAntesVencimiento,
+        activo: dto.activo ? 1 : 0,
+      };
+      
       const response = await api.patch<{
         id: number;
         diasAntesVencimiento: number;
-        activo: boolean;
-      }>(`/certificates/alert-configurations/${id}`, dto);
-      return response.data;
+        activo: number | boolean; // El backend puede retornar número (1/0) o boolean
+      }>(`/certificates/alert-configurations/${id}`, dtoParaBackend);
+      
+      // Convertir número (1/0) a boolean en la respuesta
+      return {
+        id: response.data.id,
+        diasAntesVencimiento: response.data.diasAntesVencimiento,
+        activo: typeof response.data.activo === 'number' ? response.data.activo === 1 : Boolean(response.data.activo),
+      };
     } catch (error) {
       const axiosError = error as AxiosError<{ message?: string }>;
       throw new Error(

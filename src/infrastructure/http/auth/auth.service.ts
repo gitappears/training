@@ -135,16 +135,22 @@ export class AuthService implements IAuthRepository {
           numeroDocumento: string;
         };
       }>(`${this.baseUrl}/profile`);
-      
+
       // Mapear la respuesta plana del backend a la estructura esperada por el frontend
       const backendData = response.data;
       console.log('📦 Backend profile response (RAW):', JSON.stringify(backendData, null, 2));
-      console.log('🔍 backendData.empresaId:', backendData.empresaId, 'type:', typeof backendData.empresaId);
+      console.log(
+        '🔍 backendData.empresaId:',
+        backendData.empresaId,
+        'type:',
+        typeof backendData.empresaId,
+      );
       console.log('🔍 backendData.empresa:', JSON.stringify(backendData.empresa, null, 2));
       console.log('🔍 backendData.empresa existe?', !!backendData.empresa);
-      
+
       // Construir el objeto empresa si existe
-      let empresaMapeada: { id: number; razonSocial: string; numeroDocumento: string } | undefined = undefined;
+      let empresaMapeada: { id: number; razonSocial: string; numeroDocumento: string } | undefined =
+        undefined;
       if (backendData.empresa) {
         empresaMapeada = {
           id: backendData.empresa.id,
@@ -155,42 +161,51 @@ export class AuthService implements IAuthRepository {
       } else {
         console.warn('⚠️ backendData.empresa es null/undefined');
       }
-      
+
       // Mapear empresaId
-      const empresaIdMapeado = backendData.empresaId !== undefined && backendData.empresaId !== null 
-        ? Number(backendData.empresaId) 
-        : undefined;
+      const empresaIdMapeado =
+        backendData.empresaId !== undefined && backendData.empresaId !== null
+          ? Number(backendData.empresaId)
+          : undefined;
       console.log('✅ empresaId mapeado:', empresaIdMapeado, 'type:', typeof empresaIdMapeado);
-      
+
       // Asegurar que empresaId y empresa se mapeen correctamente dentro de persona
+      // Construir persona con campos opcionales solo si están definidos (para cumplir con exactOptionalPropertyTypes)
+      const persona: UserProfile['persona'] = {
+        ...(backendData.personaId !== undefined && { id: backendData.personaId }),
+        numeroDocumento: backendData.numeroDocumento || '',
+        nombres: backendData.nombres,
+        ...(backendData.apellidos !== undefined && { apellidos: backendData.apellidos }),
+        ...(backendData.email !== undefined && { email: backendData.email }),
+        ...(backendData.fotoUrl !== undefined && { fotoUrl: backendData.fotoUrl }),
+        ...(backendData.telefono !== undefined && { telefono: backendData.telefono }),
+        ...(backendData.direccion !== undefined && { direccion: backendData.direccion }),
+        ...(backendData.fechaNacimiento !== undefined && {
+          fechaNacimiento: backendData.fechaNacimiento,
+        }),
+        ...(backendData.genero !== undefined && { genero: backendData.genero }),
+        ...(backendData.biografia !== undefined && { biografia: backendData.biografia }),
+        // Mapear empresaId desde el nivel raíz a persona.empresaId
+        ...(empresaIdMapeado !== undefined && { empresaId: empresaIdMapeado }),
+        // Mapear empresa desde el nivel raíz a persona.empresa
+        ...(empresaMapeada !== undefined && { empresa: empresaMapeada }),
+      };
+
       const userProfile: UserProfile = {
         id: backendData.id,
         username: backendData.username,
         rol: backendData.rol || '',
-        personaId: backendData.personaId,
-        persona: {
-          id: backendData.personaId,
-          numeroDocumento: backendData.numeroDocumento || '',
-          nombres: backendData.nombres,
-          apellidos: backendData.apellidos,
-          email: backendData.email,
-          fotoUrl: backendData.fotoUrl,
-          telefono: backendData.telefono,
-          direccion: backendData.direccion,
-          fechaNacimiento: backendData.fechaNacimiento,
-          genero: backendData.genero,
-          biografia: backendData.biografia,
-          // Mapear empresaId desde el nivel raíz a persona.empresaId
-          empresaId: empresaIdMapeado,
-          // Mapear empresa desde el nivel raíz a persona.empresa
-          empresa: empresaMapeada,
-        },
+        ...(backendData.personaId !== undefined && { personaId: backendData.personaId }),
+        persona,
       };
-      
+
       console.log('✅ Mapped user profile:', JSON.stringify(userProfile, null, 2));
-      console.log('🏢 Empresa en perfil mapeado:', JSON.stringify(userProfile.persona.empresa, null, 2));
+      console.log(
+        '🏢 Empresa en perfil mapeado:',
+        JSON.stringify(userProfile.persona.empresa, null, 2),
+      );
       console.log('🏢 empresaId en perfil mapeado:', userProfile.persona.empresaId);
-      
+
       // Verificación adicional
       if (!userProfile.persona.empresa && backendData.empresa) {
         console.error('❌ ERROR: empresa no se mapeó correctamente!');
@@ -202,11 +217,17 @@ export class AuthService implements IAuthRepository {
         console.error('backendData.empresaId:', backendData.empresaId);
         console.error('empresaIdMapeado:', empresaIdMapeado);
       }
-      
+
       // Verificación final antes de retornar
-      console.log('🔍 Verificación final - userProfile.persona tiene empresaId?', !!userProfile.persona.empresaId);
-      console.log('🔍 Verificación final - userProfile.persona tiene empresa?', !!userProfile.persona.empresa);
-      
+      console.log(
+        '🔍 Verificación final - userProfile.persona tiene empresaId?',
+        !!userProfile.persona.empresaId,
+      );
+      console.log(
+        '🔍 Verificación final - userProfile.persona tiene empresa?',
+        !!userProfile.persona.empresa,
+      );
+
       return userProfile;
     } catch (error) {
       const axiosError = error as AxiosError<{ message?: string }>;
@@ -235,9 +256,12 @@ export class AuthService implements IAuthRepository {
 
   async validatePassword(password: string): Promise<{ valid: boolean }> {
     try {
-      const response = await api.post<{ valid: boolean }>(`${this.baseUrl}/profile/validate-password`, {
-        password,
-      });
+      const response = await api.post<{ valid: boolean }>(
+        `${this.baseUrl}/profile/validate-password`,
+        {
+          password,
+        },
+      );
       return response.data;
     } catch (error) {
       const axiosError = error as AxiosError<{ message?: string }>;
@@ -263,21 +287,17 @@ export class AuthService implements IAuthRepository {
     try {
       const formData = new FormData();
       formData.append('file', file);
-      
+
       // Usar endpoint público durante el registro, autenticado para actualizar perfil
-      const endpoint = isPublic 
+      const endpoint = isPublic
         ? `${this.baseUrl}/register/photo`
         : `${this.baseUrl}/profile/photo`;
-      
-      const response = await api.post<{ message: string; fotoUrl: string }>(
-        endpoint,
-        formData,
-        {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
+
+      const response = await api.post<{ message: string; fotoUrl: string }>(endpoint, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
         },
-      );
+      });
       return { fotoUrl: response.data.fotoUrl };
     } catch (error) {
       const axiosError = error as AxiosError<{ message?: string }>;
