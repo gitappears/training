@@ -96,30 +96,44 @@
                   <div class="certificate-content">
                     
                     <!-- LOGO DINAMICO + CONFIANZA -->
-
-
-                    <!-- 1. Main Title -->
-                    <div class="cert-main-title">CERTIFICADO DE APROBACIÓN</div>
-
-                    <!-- 2. Header Stack -->
-                    <div class="cert-header-group">
-                      <div class="cert-text-sm">Otorgado por</div>
-                      <div class="cert-text-lg-bold">FORMAR360</div>
+                    <div class="cert-logos-row">
+                        <div class="cert-logo-container">
+                             <img 
+                                v-if="allianceCompany === 'IPS CONFIANZA.'" 
+                                src="../../../assets/logoConfianza.png" 
+                                class="cert-logo-img logo-confianza" 
+                                alt="Logo Confianza" 
+                             />
+                        </div>
+                        <div class="cert-logo-spacer" v-if="allianceCompany === 'IPS CONFIANZA.'"></div>
+                         <div class="cert-logo-container">
+                            <img src="../../../assets/logoFormar.png" class="cert-logo-img" alt="Logo Formar" />
+                        </div>
                     </div>
+
+
+                    <!-- 1. Main Title (In Background) -->
+
+                    <!-- 1. Main Title (In Background) -->
+
+
+                    <!-- 2. Header Stack (In Background) -->
+
+                    <!-- 2. Header Stack (In Background) -->
+
                     
-                    <!-- 3. Certifica Que -->
-                    <div class="cert-certifica-row">
-                      <div class="cert-line"></div>
-                      <div class="cert-text-gray">CERTIFICA QUE:</div>
-                      <div class="cert-line"></div>
-                    </div>
+                    <!-- 3. Certifica Que (In Background) -->
+
+                    <!-- 3. Certifica Que (In Background) -->
+
 
                     <!-- 4. Student Name -->
                     <h2 class="cert-student-name">{{ certificate.studentName.toUpperCase() }}</h2>
                     <p class="cert-text">Cédula de ciudadanía N.° {{ certificate.documentNumber }}</p>
                     
-                    <!-- 5. Description -->
-                    <p class="cert-description">Ha realizado y aprobado satisfactoriamente el curso de:</p>
+                    <!-- 5. Description (In Background) -->
+                    <!-- 5. Description (In Background) -->
+
 
                     <!-- 6. Course Name (Blue Box) -->
                     <div class="cert-course-box">
@@ -128,11 +142,26 @@
                     
                     <!-- 7. Details -->
                     <div class="cert-details">
-                      <p>Con una intensidad de {{ certificate.durationHours || 20 }} horas</p>
-                      <p class="text-uppercase">{{ resolutionText }}</p>
+                      <!-- Duration: Centered (approx 47 offset in PDF but we center here for simplicity or adjust) -->
+                       <!-- PDF prints 'duration' (e.g. '20') at x=47 relative to center. 
+                            We will assume background has text. We just print value. 
+                            Adjusting position to match PDF '47' offset roughly. -->
+                      <div style="text-align: center; margin-left: 60px; font-weight: bold;">{{ computedDuration }}</div>
+                      
+                      <br>
+                      <!-- Dates Container to match PDF positioning -->
+                      <div style="position: relative; width: 100%; height: 20px; margin-top: 5px;">
+                         <!-- Emission: Left shifted (-80 equivalent from center) -->
+                         <div style="position: absolute; left: 40%; transform: translateX(-50%); font-family: 'Montserrat', sans-serif; font-size: 12.5px;">
+                            {{ formattedIssuedDate }}
+                         </div>
+                         
+                         <!-- Expiration: Right shifted (+186 equivalent from center) -->
+                         <div v-if="formattedExpiryDate" style="position: absolute; left: 74%; transform: translateX(-50%); font-family: 'Montserrat', sans-serif; font-size: 12.5px;">
+                            {{ formattedExpiryDate }}.
+                         </div>
+                      </div>
                     </div>
-
-                    <div class="cert-push-bottom"></div>
 
                     <!-- 8. Footer -->
                     <div class="cert-footer-row">
@@ -686,22 +715,38 @@ const representativeDetails = computed(() => {
     return { name };
 });
 
-// RESOLUCION DINAMICA
-const resolutionText = computed(() => {
-  if (!certificate.value) return 'Resolución N° 1500-67-10/1811 de 28 de junio de 2024, secretaria de educacion villavicencio';
-  
-  const title = (certificate.value.courseName || '').toLowerCase().trim();
-  const contieneSustancias = title.includes('sustancias');
-  const contienePeligrosas = title.includes('peligrosas');
-  
-  // Condición de prueba (Re-habilitada)
-  const esPrueba = title.includes('seguridad') && title.includes('vial');
+const computedDuration = computed(() => {
+    if (!certificate.value) return '20';
+    const tituloForDuration = (certificate.value.courseName || '').toLowerCase().trim();
+    
+    if (
+        tituloForDuration.includes('curso') &&
+        (tituloForDuration.includes('basico') || tituloForDuration.includes('básico')) &&
+        tituloForDuration.includes('transporte') &&
+        (tituloForDuration.includes('mercancias') || tituloForDuration.includes('mercancías')) &&
+        tituloForDuration.includes('peligrosas')
+    ) {
+        return '60';
+    } else if (
+        (tituloForDuration.includes('manipulacion') || tituloForDuration.includes('manipulación')) &&
+        tituloForDuration.includes('alimentos')
+    ) {
+        return '10';
+    }
+    return '20';
+});
 
-  if ((contieneSustancias && contienePeligrosas) || esPrueba) {
-      return 'Resolucion N° 1585 de 05 de junio de 2025, secretaria de educacion soacha';
-  }
-  
-  return 'Resolución N° 1500-67-10/1811 de 28 de junio de 2024, secretaria de educacion villavicencio';
+const formattedIssuedDate = computed(() => {
+    if (!certificate.value?.issuedDate) return '';
+    const date = new Date(certificate.value.issuedDate);
+    // Locale 'es-ES' with options specific to PDF
+    return date.toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: '2-digit' });
+});
+
+const formattedExpiryDate = computed(() => {
+    if (!certificate.value?.expiryDate) return '';
+    const date = new Date(certificate.value.expiryDate);
+    return date.toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: '2-digit' });
 });
 
 // Funciones
@@ -1310,13 +1355,14 @@ body.body--dark code {
 
 .cert-footer-text-strip {
   position: absolute;
-  bottom: 30px;
+  bottom: 0px; /* Moved down to match PDF footer (approx Y=576 in 612 height doc) */
   left: 0;
   width: 100%;
   text-align: center;
-  font-size: 10px;
+  font-size: 9px; /* Slightly smaller to fit */
   color: #292561;
   font-family: 'Montserrat', sans-serif !important;
+  padding-bottom: 30px; /* Padding for visual balance */
 }
 
 /* Logo Styles */
