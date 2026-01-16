@@ -96,11 +96,7 @@
                   <div class="certificate-content">
                     
                     <!-- LOGO DINAMICO + CONFIANZA -->
-                    <div class="cert-logos-row">
-                        <img :src="logoSrc" class="cert-logo-img" alt="Logo Principal" />
-                        <div class="cert-logo-spacer"></div>
-                        <img :src="logoConfianza" class="cert-logo-img logo-confianza" alt="Logo Confianza" />
-                    </div>
+
 
                     <!-- 1. Main Title -->
                     <div class="cert-main-title">CERTIFICADO DE APROBACIÓN</div>
@@ -141,24 +137,24 @@
                     <!-- 8. Footer -->
                     <div class="cert-footer-row">
                       
-                      <!-- Left Sig: Anderson -->
+                      <!-- Left Sig: Instructor -->
                       <div class="cert-sig-col">
                          <svg class="cert-scribble" viewBox="0 0 150 60">
                            <path d="M10,40 C30,10 60,70 90,30 S140,50 140,40" stroke="#000066" stroke-width="2" fill="none" />
                          </svg>
                          <div class="cert-sig-line"></div>
-                         <div class="cert-sig-name">Anderson Herrera Díaz</div>
-                         <div class="cert-sig-role">Instructor / Entrenador<br>TSA REG 37544429<br>Licencia SST</div>
+                         <div class="cert-sig-name text-weight-bold">{{ instructorDetails.name }}</div>
+                         <div class="cert-sig-role" style="white-space: pre-line;">{{ instructorDetails.role }}</div>
                       </div>
 
-                      <!-- Right Sig: Edwin -->
+                      <!-- Right Sig: Rep -->
                       <div class="cert-sig-col">
                          <svg class="cert-scribble" viewBox="0 0 150 60">
                             <path d="M20,40 C50,20 60,60 100,20 S130,50 130,30" stroke="#000066" stroke-width="2" fill="none" />
                          </svg>
                          <div class="cert-sig-line"></div>
-                         <div class="cert-sig-name">Edwin Julian Parra Morales</div>
-                         <div class="cert-sig-role">Representante Legal<br>ANDAR DEL LLANO</div>
+                         <div class="cert-sig-name text-weight-bold">{{ representativeDetails.name }}</div>
+                         <div class="cert-sig-role">Representante Legal</div>
                       </div>
 
                       <!-- QR Code -->
@@ -173,6 +169,11 @@
                             :show-actions="false"
                           />
                        </div>
+                    </div>
+
+                    <!-- Footer Text Strip -->
+                    <div class="cert-footer-text-strip">
+                      Certificado emitido por <b>FORMAR360</b> en alianza con <b>{{ allianceCompany }}</b> La autenticidad de este documento puede verificarse escaneando el código QR.
                     </div>
                   </div>
                 </div>
@@ -563,10 +564,11 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue';
-import certificateBg from '../../../assets/certificado_svg.svg';
-import logoAndar from '../../../assets/andar.svg';
-import logoSaroto from '../../../assets/ceasaroto.svg';
-import logoConfianza from '../../../assets/confianza.svg';
+
+import fondoAlimentos from '../../../assets/fondoAlimentos.svg';
+import fondoSustanciasP from '../../../assets/fondoSustanciasP.svg';
+import fondoGeneral from '../../../assets/fondoGeneral.svg'; // Same as default but explicit
+
 import { useRoute, useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 import type { Certificate, CertificateVerificationHistory } from '../../../domain/certificate/models';
@@ -603,19 +605,85 @@ const showQrDialog = ref(false);
 // Historial de verificaciones (mock por ahora, puede conectarse al backend después)
 const verificationHistory = ref<CertificateVerificationHistory[]>([]);
 
-// LOGICA DE LOGO DINAMICO
-const logoSrc = computed(() => {
-  if (!certificate.value) return logoAndar;
-  
-  const title = (certificate.value.courseName || '').toLowerCase().trim();
-  // Misma validación que el backend
-  const contieneSustancias = title.includes('sustancias');
-  const contienePeligrosas = title.includes('peligrosas');
+// BACKGROUND DINAMICO
+const certificateBg = computed(() => {
+  if (!certificate.value) return fondoGeneral;
 
-  if (contieneSustancias && contienePeligrosas) {
-      return logoSaroto;
+  const title = (certificate.value.courseName || '').toLowerCase().trim();
+
+  // Logic: Alimentos -> Fondo Alimentos
+  // Logic: Alimentos -> Fondo Alimentos
+  if (
+      ((title.includes('manipulacion') || title.includes('manipulación')) && title.includes('alimentos')) ||
+      (title.includes('primeros') && title.includes('auxilios'))
+  ) {
+      return fondoAlimentos;
   }
-  return logoAndar;
+  // Logic: Sustancias / Mercancías Peligrosas -> Fondo Sustancias
+  else if (
+      title.includes('transporte') &&
+      (title.includes('mercancias') || title.includes('mercancías')) &&
+      title.includes('peligrosas')
+  ) {
+       return fondoSustanciasP;
+  }
+
+  return fondoGeneral;
+});
+
+
+
+// LOGICA DE EMPRESA ALIADA
+const allianceCompany = computed(() => {
+  if (!certificate.value) return 'ANDAR DEL LLANO.';
+  const title = (certificate.value.courseName || '').toLowerCase().trim();
+
+  if (
+      ((title.includes('manipulacion') || title.includes('manipulación')) && title.includes('alimentos')) ||
+      (title.includes('primeros') && title.includes('auxilios'))
+  ) {
+      return 'IPS CONFIANZA.';
+  } else if (
+      (title.includes('curso') && (title.includes('basico') || title.includes('básico')) && title.includes('transporte') &&
+      (title.includes('mercancias') || title.includes('mercancías')) &&
+      title.includes('peligrosas')) || (title.includes('transporte') &&
+      (title.includes('mercancias') || title.includes('mercancías')) &&
+      title.includes('peligrosas'))
+  ) {
+      return 'CEASAROTO.';
+  }
+  return 'ANDAR DEL LLANO.';
+});
+
+const instructorDetails = computed(() => {
+    let name = 'Viviana Paola Rojas Hincapie';
+    let role = 'Instructor / Entrenador\nTSA REG xxxxxxxxx\nLicencia SST';
+
+    if (!certificate.value) return { name, role };
+    const title = (certificate.value.courseName || '').toLowerCase().trim();
+
+     if (
+        ((title.includes('manipulacion') || title.includes('manipulación')) && title.includes('alimentos')) ||
+        (title.includes('primeros') && title.includes('auxilios'))
+    ) {
+         name = 'Nini Johana Peña Vanegaz';
+         role = 'Instructor / Entrenador\nTSA REG xxxxxxxxx\nLicencia SST';
+    }
+    return { name, role };
+});
+
+const representativeDetails = computed(() => {
+    let name = 'Alfonso Alejandro Velasco Reyes';
+    if (!certificate.value) return { name };
+    const title = (certificate.value.courseName || '').toLowerCase().trim();
+
+    if (
+        ((title.includes('manipulacion') || title.includes('manipulación')) && title.includes('alimentos')) ||
+        (title.includes('primeros') && title.includes('auxilios'))
+    ) {
+         name = 'Francy Dayany Gonzalez Galindo';
+    }
+    return { name };
 });
 
 // RESOLUCION DINAMICA
@@ -625,8 +693,11 @@ const resolutionText = computed(() => {
   const title = (certificate.value.courseName || '').toLowerCase().trim();
   const contieneSustancias = title.includes('sustancias');
   const contienePeligrosas = title.includes('peligrosas');
+  
+  // Condición de prueba (Re-habilitada)
+  const esPrueba = title.includes('seguridad') && title.includes('vial');
 
-  if (contieneSustancias && contienePeligrosas) {
+  if ((contieneSustancias && contienePeligrosas) || esPrueba) {
       return 'Resolucion N° 1585 de 05 de junio de 2025, secretaria de educacion soacha';
   }
   
@@ -1033,6 +1104,8 @@ body.body--dark code {
 </style>
 
 <style lang="scss" scoped>
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&display=swap');
+
 .certificate-html-view {
   width: 1056px; 
   height: 816px; 
@@ -1041,8 +1114,8 @@ body.body--dark code {
   background-repeat: no-repeat;
   position: relative;
   box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-  color: #000;
-  font-family: 'Helvetica', 'Arial', sans-serif;
+  color: #292561 !important;
+  font-family: 'Montserrat', sans-serif !important;
   overflow: hidden;
   margin: 20px auto;
 }
@@ -1069,14 +1142,14 @@ body.body--dark code {
 }
 .cert-text-sm {
   font-size: 13px;
-  color: #000;
+  color: #292561;
   margin: 1px 0;
   line-height: 1.2;
 }
 .cert-text-lg-bold {
   font-size: 16px;
   font-weight: bold;
-  color: #000;
+  color: #292561;
   margin-bottom: 2px;
 }
 .cert-text-md-bold {
@@ -1120,7 +1193,7 @@ body.body--dark code {
 .cert-student-name {
   font-size: 34px;
   font-weight: bold;
-  color: #0D47A1;
+  color: #292561;
   margin: 5px 0 10px 0;
   text-transform: uppercase;
   max-width: 850px;
@@ -1143,7 +1216,7 @@ body.body--dark code {
 
 /* Redesigned Course Box */
 .cert-course-box {
-  background-color: #0D47A1;
+  background-color: #292561;
   color: white;
   font-size: 18px;
   font-weight: bold;
@@ -1180,7 +1253,7 @@ body.body--dark code {
   flex-direction: column;
   align-items: center;
   position: relative;
-  width: 200px;
+  width: 300px; /* Increased from 200px to fit long names */
 }
 
 /* Version Indicator for Deployment Verification */
@@ -1223,7 +1296,7 @@ body.body--dark code {
   font-size: 9px;
   text-align: center;
   line-height: 1.3;
-  color: #333;
+  color: #292561 !important;
 }
 
 .cert-qr-container {
@@ -1233,6 +1306,17 @@ body.body--dark code {
   display: flex;
   flex-direction: column;
   align-items: center;
+}
+
+.cert-footer-text-strip {
+  position: absolute;
+  bottom: 30px;
+  left: 0;
+  width: 100%;
+  text-align: center;
+  font-size: 10px;
+  color: #292561;
+  font-family: 'Montserrat', sans-serif !important;
 }
 
 /* Logo Styles */
