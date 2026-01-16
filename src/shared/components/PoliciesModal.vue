@@ -1,78 +1,59 @@
 <template>
-  <q-dialog
-    v-model="isOpen"
-    maximized
-    transition-show="slide-up"
-    transition-hide="slide-down"
-  >
+  <q-dialog v-model="isOpen" maximized transition-show="slide-up" transition-hide="slide-down">
     <q-card class="policies-modal">
       <q-card-section class="row items-center q-pb-none">
         <div class="text-h6 text-weight-medium">
-          {{ policyType === 'datos' ? 'Política de Tratamiento de Datos Personales' : 'Términos y Condiciones de Uso' }}
+          {{
+            policyType === 'datos'
+              ? 'Política de Tratamiento de Datos Personales'
+              : 'Términos y Condiciones de Uso'
+          }}
         </div>
         <q-space />
-        <q-btn
-          icon="close"
-          flat
-          round
-          dense
-          @click="close"
-        />
+        <q-btn icon="close" flat round dense @click="close" />
       </q-card-section>
 
       <q-card-section class="policy-content">
-        <div class="policy-header q-mb-lg">
-          <div class="text-subtitle1 text-weight-medium q-mb-sm">
-            Versión {{ policyVersion }}
-          </div>
-          <div class="text-caption text-grey-7">
-            Última actualización: {{ lastUpdateDate }}
-          </div>
+        <q-inner-loading :showing="loading" label="Cargando documento..." />
+
+        <div v-if="!loading" class="policy-header q-mb-lg">
+          <div class="text-subtitle1 text-weight-medium q-mb-sm">Versión {{ policyVersion }}</div>
+          <div class="text-caption text-grey-7">Última actualización: {{ lastUpdateDate }}</div>
         </div>
 
         <q-scroll-area
+          v-if="!loading"
           class="policy-scroll"
-          :style="{ height: 'calc(100vh - 200px)' }"
+          :style="{ height: 'calc(100vh - 300px)' }"
         >
-          <div
-            class="policy-text"
-            v-html="policyContent"
-          />
+          <div class="policy-text" v-html="policyContent" />
         </q-scroll-area>
       </q-card-section>
 
-      <q-card-actions
-        v-if="showAcceptance"
-        align="right"
-        class="q-pa-md"
-      >
-        <q-btn
-          flat
-          label="Cancelar"
-          color="grey-7"
-          @click="close"
-        />
-        <q-btn
-          color="primary"
-          label="Aceptar"
-          @click="accept"
-        />
+      <q-card-actions v-if="showAcceptance" align="right" class="q-pa-md">
+        <q-btn flat label="Cancelar" color="grey-7" @click="close" />
+        <q-btn color="primary" label="Cerrar" @click="accept" />
       </q-card-actions>
     </q-card>
   </q-dialog>
 </template>
 
 <script setup lang="ts">
-import { computed, watch } from 'vue';
+import { computed, watch, ref } from 'vue';
+import { useQuasar } from 'quasar';
+import { documentosLegalesService } from '../../infrastructure/http/documentos-legales/documentos-legales.service';
+import type { DocumentoLegal } from '../../application/documentos-legales/documentos-legales.repository.port';
 
 interface Props {
   modelValue: boolean;
   policyType: 'datos' | 'terminos';
   showAcceptance?: boolean;
+  documento?: DocumentoLegal | null; // Documento opcional que puede venir desde el padre
 }
 
 const props = withDefaults(defineProps<Props>(), {
   showAcceptance: false,
+  documento: null,
 });
 
 const emit = defineEmits<{
@@ -81,122 +62,89 @@ const emit = defineEmits<{
   closed: [];
 }>();
 
+const $q = useQuasar();
+
 const isOpen = computed({
   get: () => props.modelValue,
   set: (value) => emit('update:modelValue', value),
 });
 
-// Datos mock de políticas - En producción vendrían del backend
-const policyVersion = computed(() => '1.0');
-const lastUpdateDate = computed(() => '18 de diciembre de 2025');
+const documento = ref<DocumentoLegal | null>(props.documento);
+const loading = ref(true);
+
+// Mapeo de tipos de política a tipos de documento en la BD
+const tipoDocumentoMap: Record<string, string> = {
+  datos: 'POLITICA_PRIVACIDAD',
+  terminos: 'TERMINOS_CONDICIONES',
+};
+
+// Cargar documento desde la base de datos si no se proporciona
+const cargarDocumento = async () => {
+  if (props.documento) {
+    documento.value = props.documento;
+    return;
+  }
+
+  loading.value = true;
+  try {
+    const tipoDocumento = tipoDocumentoMap[props.policyType];
+    if (!tipoDocumento) {
+      documento.value = null;
+      return;
+    }
+
+    const documentos = await documentosLegalesService.findByTipo(tipoDocumento, true);
+    // Obtener el documento más reciente (última versión)
+    if (documentos.length > 0) {
+      const documentoMasReciente = documentos.sort(
+        (a: DocumentoLegal, b: DocumentoLegal) =>
+          new Date(b.fechaCreacion).getTime() - new Date(a.fechaCreacion).getTime(),
+      )[0];
+      documento.value = documentoMasReciente || null;
+    } else {
+      // Fallback a contenido por defecto si no hay documento en BD
+      documento.value = null;
+    }
+  } catch (error) {
+    console.error('Error al cargar documento legal:', error);
+    $q.notify({
+      type: 'negative',
+      message: 'Error al cargar el documento. Se mostrará contenido por defecto.',
+      timeout: 3000,
+    });
+    documento.value = null;
+  } finally {
+    loading.value = false;
+  }
+};
+
+const policyVersion = computed(() => {
+  return documento.value?.version || '0.0';
+});
+
+const lastUpdateDate = computed(() => {
+  if (documento.value?.fechaActualizacion) {
+    return new Date(documento.value.fechaActualizacion).toLocaleDateString('es-CO', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+  }
+  return new Date().toLocaleDateString('es-CO', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+});
 
 const policyContent = computed(() => {
-  if (props.policyType === 'datos') {
-    return `
-      <h2>Política de Tratamiento de Datos Personales</h2>
-      <p><strong>IPS Confianza</strong> se compromete a proteger la privacidad y los datos personales de sus usuarios. Esta política describe cómo recopilamos, usamos, almacenamos y protegemos su información personal.</p>
-
-      <h3>1. Información que Recopilamos</h3>
-      <p>Recopilamos información personal que usted nos proporciona directamente, incluyendo:</p>
-      <ul>
-        <li>Nombre completo</li>
-        <li>Número de identificación</li>
-        <li>Dirección de correo electrónico</li>
-        <li>Número de teléfono</li>
-        <li>Información académica y profesional</li>
-        <li>Datos de navegación y uso de la plataforma</li>
-      </ul>
-
-      <h3>2. Uso de la Información</h3>
-      <p>Utilizamos su información personal para:</p>
-      <ul>
-        <li>Proporcionar y mejorar nuestros servicios de capacitación</li>
-        <li>Gestionar su cuenta y perfil de usuario</li>
-        <li>Enviar notificaciones y comunicaciones relacionadas con los cursos</li>
-        <li>Generar certificados y reportes de progreso</li>
-        <li>Cumplir con obligaciones legales y regulatorias</li>
-      </ul>
-
-      <h3>3. Protección de Datos</h3>
-      <p>Implementamos medidas técnicas y organizativas apropiadas para proteger sus datos personales contra acceso no autorizado, alteración, divulgación o destrucción.</p>
-
-      <h3>4. Compartir Información</h3>
-      <p>No vendemos, alquilamos ni compartimos su información personal con terceros, excepto cuando sea necesario para proporcionar nuestros servicios o cuando la ley lo requiera.</p>
-
-      <h3>5. Sus Derechos</h3>
-      <p>Usted tiene derecho a:</p>
-      <ul>
-        <li>Acceder a sus datos personales</li>
-        <li>Rectificar datos inexactos</li>
-        <li>Solicitar la eliminación de sus datos</li>
-        <li>Oponerse al tratamiento de sus datos</li>
-        <li>Revocar su consentimiento en cualquier momento</li>
-      </ul>
-
-      <h3>6. Contacto</h3>
-      <p>Para ejercer sus derechos o realizar consultas sobre esta política, puede contactarnos en: <strong>privacidad@ipsconfianza.com</strong></p>
-
-      <p class="text-caption text-grey-7 q-mt-lg">
-        Esta política puede ser actualizada periódicamente. Le notificaremos sobre cambios significativos.
-      </p>
-    `;
-  } else {
-    return `
-      <h2>Términos y Condiciones de Uso</h2>
-      <p>Al acceder y utilizar la plataforma de capacitación virtual de <strong>IPS Confianza</strong>, usted acepta cumplir con estos términos y condiciones.</p>
-
-      <h3>1. Aceptación de los Términos</h3>
-      <p>Al registrarse y utilizar nuestros servicios, usted confirma que:</p>
-      <ul>
-        <li>Ha leído y comprendido estos términos</li>
-        <li>Acepta cumplir con todas las condiciones establecidas</li>
-        <li>Es mayor de edad o tiene autorización de un tutor legal</li>
-        <li>La información proporcionada es veraz y actualizada</li>
-      </ul>
-
-      <h3>2. Uso de la Plataforma</h3>
-      <p>Usted se compromete a:</p>
-      <ul>
-        <li>Utilizar la plataforma únicamente para fines educativos y de capacitación</li>
-        <li>No compartir sus credenciales de acceso con terceros</li>
-        <li>No realizar actividades que puedan dañar o interferir con el funcionamiento de la plataforma</li>
-        <li>Respetar los derechos de propiedad intelectual de los contenidos</li>
-        <li>No utilizar la plataforma para fines ilegales o no autorizados</li>
-      </ul>
-
-      <h3>3. Contenido y Propiedad Intelectual</h3>
-      <p>Todo el contenido de la plataforma, incluyendo textos, imágenes, videos, materiales de curso y software, es propiedad de IPS Confianza o de sus licenciantes y está protegido por leyes de propiedad intelectual.</p>
-
-      <h3>4. Certificados</h3>
-      <p>Los certificados emitidos son válidos únicamente cuando:</p>
-      <ul>
-        <li>El usuario ha completado exitosamente el curso</li>
-        <li>Ha aprobado las evaluaciones correspondientes</li>
-        <li>Ha cumplido con todos los requisitos establecidos</li>
-      </ul>
-
-      <h3>5. Limitación de Responsabilidad</h3>
-      <p>IPS Confianza no se hace responsable por:</p>
-      <ul>
-        <li>Interrupciones en el servicio debido a causas fuera de su control</li>
-        <li>Pérdida de datos o información del usuario</li>
-        <li>Decisiones tomadas basándose en el contenido de los cursos</li>
-      </ul>
-
-      <h3>6. Modificaciones</h3>
-      <p>Nos reservamos el derecho de modificar estos términos en cualquier momento. Los cambios serán notificados a los usuarios y entrarán en vigor al continuar utilizando la plataforma.</p>
-
-      <h3>7. Terminación</h3>
-      <p>Podemos suspender o terminar su acceso a la plataforma si viola estos términos o si detectamos actividad fraudulenta.</p>
-
-      <h3>8. Ley Aplicable</h3>
-      <p>Estos términos se rigen por las leyes de Colombia. Cualquier disputa será resuelta en los tribunales competentes.</p>
-
-      <p class="text-caption text-grey-7 q-mt-lg">
-        Si tiene preguntas sobre estos términos, puede contactarnos en: <strong>legal@ipsconfianza.com</strong>
-      </p>
-    `;
+  // Si hay documento desde BD, usar su contenido
+  console.log('documento.value', documento.value);
+  if (documento.value?.contenido) {
+    return documento.value.contenido;
   }
+
+  return 'No hemos podido cargar las políticas de tratamiento de datos personales o términos y condiciones de uso.';
 });
 
 function close() {
@@ -211,6 +159,9 @@ function accept() {
 
 watch(isOpen, (newValue) => {
   if (newValue) {
+    // Cargar documento cuando se abre el modal
+    void cargarDocumento();
+
     // Scroll al inicio cuando se abre el modal
     setTimeout(() => {
       const scrollArea = document.querySelector('.policy-scroll');
@@ -220,12 +171,25 @@ watch(isOpen, (newValue) => {
     }, 100);
   }
 });
+
+// Observar cambios en el prop documento
+watch(
+  () => props.documento,
+  (newDocumento) => {
+    if (newDocumento) {
+      documento.value = newDocumento;
+    }
+  },
+  { immediate: true },
+);
 </script>
 
 <style scoped lang="scss">
 .policies-modal {
   .policy-content {
     padding: 0;
+    height: fit-content;
+    width: 100%;
   }
 
   .policy-header {
@@ -293,4 +257,3 @@ body.body--dark {
   }
 }
 </style>
-

@@ -80,21 +80,6 @@ export function useRegisterForm() {
     { immediate: true },
   );
 
-  /**
-   * Genera un username automático basado en el número de documento
-   * Si no hay documento, genera uno aleatorio
-   * @deprecated Este método ya no es necesario
-   */
-  function generateUsername(): string {
-    if (form.value.numeroDocumento && form.value.numeroDocumento.trim()) {
-      // Usar el número de documento como username
-      return form.value.numeroDocumento.trim();
-    }
-    // Generar username aleatorio si no hay documento
-    const randomSuffix = Math.floor(Math.random() * 10000);
-    return `user_${randomSuffix}`;
-  }
-
   // Watcher para generar username automáticamente cuando cambia el número de documento
   watch(
     () => form.value.numeroDocumento,

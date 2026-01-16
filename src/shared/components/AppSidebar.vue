@@ -123,6 +123,7 @@ const {
   canManageAlerts,
   canCreateExternalDrivers,
   canManagePayments,
+  canManageDocumentosLegales,
 } = useRole();
 
 interface MenuItem {
@@ -201,7 +202,8 @@ const menuSections = computed<MenuSection[]>(() => {
         canViewReports.value ||
         canManageAlerts.value ||
         canCreateExternalDrivers.value ||
-        canManagePayments.value,
+        canManagePayments.value ||
+        canManageDocumentosLegales.value,
       items: [
         {
           label: 'Reportes',
@@ -218,6 +220,14 @@ const menuSections = computed<MenuSection[]>(() => {
           iconColor: 'orange',
           to: '/admin/alert-config',
           visible: canManageAlerts.value,
+        },
+        {
+          label: 'Documentos Legales',
+          caption: 'Términos y políticas',
+          icon: 'description',
+          iconColor: 'teal',
+          to: '/admin/documentos-legales',
+          visible: canManageDocumentosLegales.value,
         },
         {
           label: 'Empresas',

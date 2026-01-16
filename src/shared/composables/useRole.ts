@@ -158,6 +158,14 @@ export function useRole() {
   });
 
   /**
+   * Verifica si el usuario puede gestionar documentos legales
+   * Solo ADMIN puede gestionar documentos legales
+   */
+  const canManageDocumentosLegales = computed(() => {
+    return hasRole('ADMIN');
+  });
+
+  /**
    * Verifica si el usuario puede activar/desactivar capacitaciones
    * Solo ADMIN puede activar/desactivar
    */
@@ -195,6 +203,7 @@ export function useRole() {
     canManageAlerts,
     canCreateExternalDrivers,
     canManagePayments,
+    canManageDocumentosLegales,
   };
 }
 

@@ -451,7 +451,8 @@
   <PoliciesModal
     v-model="showPoliticaModal"
     :policy-type="'datos'"
-    :show-acceptance="true"
+    :show-acceptance="false"
+    :documento="documentoPoliticaDatos"
     @accepted="
       () => {
         aceptaPoliticaDatos = true;
@@ -462,7 +463,8 @@
   <PoliciesModal
     v-model="showTerminosModal"
     :policy-type="'terminos'"
-    :show-acceptance="true"
+    :show-acceptance="false"
+    :documento="documentoTerminos"
     @accepted="
       () => {
         aceptaTerminos = true;
@@ -483,15 +485,52 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useQuasar } from 'quasar';
 import PoliciesModal from '../../../shared/components/PoliciesModal.vue';
 import ImageEditorDialog from '../../../shared/components/ImageEditorDialog.vue';
 import { useRegisterForm } from '../composables/useRegisterForm';
 import { useImageEditor } from '../../../shared/composables/useImageEditor';
+import { documentosLegalesService } from '../../../infrastructure/http/documentos-legales/documentos-legales.service';
+import type { DocumentoLegal } from '../../../application/documentos-legales/documentos-legales.repository.port';
 
 const $q = useQuasar();
 const step = ref(1);
+
+// Documentos legales cargados desde la BD
+const documentoPoliticaDatos = ref<DocumentoLegal | null>(null);
+const documentoTerminos = ref<DocumentoLegal | null>(null);
+const loadingDocumentos = ref(false);
+
+// Cargar documentos legales al montar el componente
+const cargarDocumentosLegales = async () => {
+  loadingDocumentos.value = true;
+  try {
+    const documentos = await documentosLegalesService.findAll(true);
+
+    // Buscar documento de política de datos
+    const politicaDatos = documentos
+      .filter((doc) => doc.tipo === 'POLITICA_DATOS')
+      .sort((a, b) => new Date(b.fechaCreacion).getTime() - new Date(a.fechaCreacion).getTime())[0];
+
+    // Buscar documento de términos
+    const terminos = documentos
+      .filter((doc) => doc.tipo === 'TERMINOS')
+      .sort((a, b) => new Date(b.fechaCreacion).getTime() - new Date(a.fechaCreacion).getTime())[0];
+
+    documentoPoliticaDatos.value = politicaDatos || null;
+    documentoTerminos.value = terminos || null;
+  } catch (error) {
+    console.error('Error al cargar documentos legales:', error);
+    // No mostrar error al usuario, el modal usará contenido por defecto
+  } finally {
+    loadingDocumentos.value = false;
+  }
+};
+
+onMounted(() => {
+  void cargarDocumentosLegales();
+});
 
 const {
   form,
