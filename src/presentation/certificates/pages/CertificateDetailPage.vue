@@ -100,14 +100,14 @@
                         <div class="cert-logo-container">
                              <img 
                                 v-if="allianceCompany === 'IPS CONFIANZA.'" 
-                                src="../../../assets/logoConfianza.png" 
+                                src="../../../assets/confianza.svg" 
                                 class="cert-logo-img logo-confianza" 
                                 alt="Logo Confianza" 
                              />
                         </div>
                         <div class="cert-logo-spacer" v-if="allianceCompany === 'IPS CONFIANZA.'"></div>
                          <div class="cert-logo-container">
-                            <img src="../../../assets/logoFormar.png" class="cert-logo-img" alt="Logo Formar" />
+                            <img src="../../../assets/logo_color_formar.svg" class="cert-logo-img" alt="Logo Formar" />
                         </div>
                     </div>
 
