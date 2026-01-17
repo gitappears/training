@@ -230,6 +230,14 @@ const menuSections = computed<MenuSection[]>(() => {
           visible: canManageDocumentosLegales.value,
         },
         {
+          label: 'Configuración de Sesión',
+          caption: 'Inactividad y tiempo máximo',
+          icon: 'timer',
+          iconColor: 'orange',
+          to: '/admin/configuracion-sesion',
+          visible: canManageAlerts.value,
+        },
+        {
           label: 'Empresas',
           caption: 'Gestionar empresas',
           icon: 'business',

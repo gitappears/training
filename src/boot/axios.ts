@@ -106,6 +106,7 @@ api.interceptors.request.use(
       '/public/', // Permitir endpoints públicos generales (ej: verificación de certificados)
       '/terms/active-documents', // Endpoint público para obtener documentos activos
       '/terms/public/accept', // Endpoint público para aceptar términos con credenciales
+      '/configuracion-sesion/active', // Endpoint público para obtener configuración de sesión
     ];
 
     // Verificar si el endpoint es público
@@ -176,6 +177,7 @@ api.interceptors.response.use(
         '/public/', // Importante: endpoints públicos no deben forzar logout
         '/terms/active-documents',
         '/terms/public/accept',
+        '/configuracion-sesion/active',
       ];
 
       const isPublicEndpoint =

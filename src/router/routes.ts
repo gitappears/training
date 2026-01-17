@@ -180,6 +180,14 @@ const routes: RouteRecordRaw[] = [
           roles: ['ADMIN'] as UserRole[],
         },
       },
+      {
+        path: 'admin/configuracion-sesion',
+        name: 'configuracion-sesion',
+        component: () => import('../presentation/admin/pages/ConfiguracionSesionPage.vue'),
+        meta: {
+          roles: ['ADMIN'] as UserRole[],
+        },
+      },
 
       // Perfil
       {
