@@ -1,6 +1,5 @@
 import { defineBoot } from '#q-app/wrappers';
 import axios, { type AxiosInstance } from 'axios';
-import { useRouter } from 'vue-router';
 
 declare module 'vue' {
   interface ComponentCustomProperties {
@@ -98,11 +97,11 @@ function logError(method: string, url: string, error: unknown): void {
 api.interceptors.request.use(
   (config) => {
     // Lista de endpoints públicos que no requieren token
+    // /auth/refresh NO está aquí: el backend exige Bearer JWT (access token) para refrescar
     const publicEndpoints = [
       '/auth/login',
       '/auth/public/register',
       '/auth/register/photo',
-      '/auth/refresh',
       '/public/', // Permitir endpoints públicos generales (ej: verificación de certificados)
       '/terms/active-documents', // Endpoint público para obtener documentos activos
       '/terms/public/accept', // Endpoint público para aceptar términos con credenciales
@@ -216,13 +215,8 @@ api.interceptors.response.use(
 
       localStorage.removeItem('auth_token');
       localStorage.removeItem('auth_profile');
-      // Usar hash routing para evitar peticiones HTTP directas en producción
-      // Esto es compatible con vueRouterMode: 'hash' configurado en quasar.config.ts
-      if (window.location.hash) {
-        await useRouter().push('/auth/login');
-      } else {
-        await useRouter().push('/auth/login');
-      }
+      // Redirigir a login (evita useRouter/inject fuera de setup)
+      window.location.hash = '#/auth/login';
       return Promise.reject(new Error('Sesión expirada. Por favor, inicia sesión de nuevo.'));
     }
 

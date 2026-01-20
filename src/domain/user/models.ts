@@ -1,6 +1,8 @@
 // Modelos de dominio para usuarios
 // Capa de Dominio (arquitectura hexagonal)
 
+import type { TipoDocumento } from '../../shared/constants/tipo-documento';
+
 export type UserRole = 'admin' | 'institutional' | 'driver';
 export type PersonType = 'natural' | 'juridica';
 export type UserStatus = 'enabled' | 'disabled';
@@ -11,7 +13,7 @@ export interface User {
   name: string;
   email: string;
   document: string;
-  documentType: 'CC' | 'CE' | 'PA' | 'TI' | 'NIT';
+  documentType: TipoDocumento;
   phone: string;
   role: UserRole;
   roleId?: number; // ID del rol en el backend

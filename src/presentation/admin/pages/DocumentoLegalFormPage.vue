@@ -86,7 +86,7 @@
               </div>
 
               <!-- Contenido -->
-              <div class="col-12" v-if="form.contenido">
+              <div class="col-12">
                 <q-editor
                   v-model="form.contenido"
                   min-height="8rem"
@@ -199,11 +199,12 @@ import type {
   CreateDocumentoLegalDto,
   UpdateDocumentoLegalDto,
 } from '../../../application/documentos-legales/documentos-legales.repository.port';
-import {
-  DocumentosLegalesUseCasesFactory,
+import type {
   CreateDocumentoLegalUseCase,
   UpdateDocumentoLegalUseCase,
-  GetDocumentoLegalUseCase,
+  GetDocumentoLegalUseCase} from '../../../application/documentos-legales';
+import {
+  DocumentosLegalesUseCasesFactory
 } from '../../../application/documentos-legales';
 import { useBooleanNumberToggle } from '../../../shared/composables/useBooleanNumberToggle';
 
@@ -344,7 +345,7 @@ const guardar = async () => {
 };
 
 const volver = () => {
-  router.push('/admin/documentos-legales');
+  void router.push('/admin/documentos-legales');
 };
 
 onMounted(() => {

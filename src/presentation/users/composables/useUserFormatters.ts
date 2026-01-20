@@ -1,3 +1,5 @@
+import { getTipoDocumentoLabel } from '../../../shared/constants/tipo-documento';
+
 /**
  * Composable para funciones de formateo de datos de usuarios
  */
@@ -16,14 +18,7 @@ export function useUserFormatters() {
   }
 
   function getDocumentTypeLabel(type: string): string {
-    const labels: Record<string, string> = {
-      CC: 'Cédula de Ciudadanía',
-      CE: 'Cédula de Extranjería',
-      PA: 'Pasaporte',
-      TI: 'Tarjeta de Identidad',
-      NIT: 'NIT',
-    };
-    return labels[type] ?? type;
+    return getTipoDocumentoLabel(type);
   }
 
   function getCourseStatusColor(status: string): string {

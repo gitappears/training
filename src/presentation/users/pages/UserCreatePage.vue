@@ -30,6 +30,10 @@
                       outlined
                       label="Tipo de Documento *"
                       :options="documentTypeOptions"
+                      option-value="value"
+                      option-label="label"
+                      emit-value
+                      map-options
                       :rules="[(val) => !!val || 'El tipo de documento es requerido']"
                       :disable="loading"
                     >

@@ -13,6 +13,7 @@ import type {
 } from '../../../application/user/user.repository.port';
 import type { User } from '../../../domain/user/models';
 import type { PaginatedResponse } from '../../../application/training/training.repository.port';
+import type { TipoDocumento } from '../../../shared/constants/tipo-documento';
 
 /**
  * Tipos para las respuestas del backend
@@ -113,12 +114,13 @@ function mapBackendToDomain(backendData: BackendUser): User {
   return user;
 }
 
-function mapDocumentType(type: string): 'CC' | 'CE' | 'PA' | 'TI' | 'NIT' {
+function mapDocumentType(type: string): TipoDocumento {
   const normalized = type?.toUpperCase() ?? 'CC';
   if (normalized === 'CE') return 'CE';
   if (normalized === 'PA') return 'PA';
   if (normalized === 'TI') return 'TI';
   if (normalized === 'NIT') return 'NIT';
+  if (normalized === 'RC') return 'RC';
   return 'CC';
 }
 

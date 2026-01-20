@@ -27,7 +27,7 @@
             <div class="col-12 col-md-6 q-pa-sm">
               <q-select
                 v-model="form.tipoDocumento"
-                :options="tipoDocumentoOptions"
+                :options="TIPO_DOCUMENTO_OPTIONS"
                 label="Tipo de Documento"
                 outlined
                 emit-value
@@ -115,6 +115,7 @@ import {
   type CreateEmpresaDto,
   type UpdateEmpresaDto,
 } from '../../../infrastructure/http/empresas/empresas.service';
+import { TIPO_DOCUMENTO_OPTIONS } from '../../../shared/constants/tipo-documento';
 
 interface Props {
   modelValue: boolean;
@@ -159,15 +160,6 @@ const form = ref<CreateEmpresaDto & { activo?: boolean | number | string }>({
   direccion: '',
   activo: true,
 });
-
-const tipoDocumentoOptions = [
-  { label: 'Cédula de Ciudadanía', value: 'CC' },
-  { label: 'Tarjeta de Identidad', value: 'TI' },
-  { label: 'Cédula de Extranjería', value: 'CE' },
-  { label: 'Pasaporte', value: 'PA' },
-  { label: 'Registro Civil', value: 'RC' },
-  { label: 'NIT', value: 'NIT' },
-];
 
 function toUpperCaseFormatter(val: string | number | null | undefined): string {
   if (!val) return '';
