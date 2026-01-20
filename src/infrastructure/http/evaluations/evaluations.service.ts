@@ -296,9 +296,11 @@ export class EvaluationsService implements IEvaluationRepository {
       
       // Primero, obtener todas las evaluaciones únicas
       const evaluacionesIds = new Set<number>();
-      for (const inscripcion of inscripcionesResponse.data.data) {
-        if (inscripcion.capacitacion.evaluaciones && inscripcion.capacitacion.evaluaciones.length > 0) {
-          inscripcion.capacitacion.evaluaciones.forEach((evaluacionRef) => {
+      const inscripciones = inscripcionesResponse.data?.data ?? [];
+      for (const inscripcion of inscripciones) {
+        const evaluaciones = inscripcion.capacitacion?.evaluaciones;
+        if (evaluaciones && evaluaciones.length > 0) {
+          evaluaciones.forEach((evaluacionRef) => {
             evaluacionesIds.add(evaluacionRef.id);
           });
         }
@@ -322,16 +324,18 @@ export class EvaluationsService implements IEvaluationRepository {
       });
 
       // Ahora actualizar con información de intentos y nombres de curso
-      for (const inscripcion of inscripcionesResponse.data.data) {
-        if (inscripcion.capacitacion.evaluaciones && inscripcion.capacitacion.evaluaciones.length > 0) {
-          for (const evaluacionRef of inscripcion.capacitacion.evaluaciones) {
-            const evalId = evaluacionRef.id.toString();
-            const evaluation = evaluacionesMap.get(evalId);
-            
-            if (evaluation) {
-              // Actualizar información del curso
-              evaluation.courseId = inscripcion.capacitacion.id.toString();
-              evaluation.courseName = inscripcion.capacitacion.titulo;
+      for (const inscripcion of inscripciones) {
+        const cap = inscripcion.capacitacion;
+        const evaluaciones = cap?.evaluaciones;
+        if (!cap || !evaluaciones || evaluaciones.length === 0) continue;
+        for (const evaluacionRef of evaluaciones) {
+          const evalId = evaluacionRef.id.toString();
+          const evaluation = evaluacionesMap.get(evalId);
+
+          if (evaluation) {
+            // Actualizar información del curso
+            evaluation.courseId = cap.id.toString();
+            evaluation.courseName = cap.titulo;
               
               // Obtener intentos de esta evaluación para esta inscripción
               const intentos = inscripcion.intentosEvaluacion?.filter(
@@ -358,7 +362,6 @@ export class EvaluationsService implements IEvaluationRepository {
                 evaluation.status = 'pending';
                 evaluation.attemptsRemaining = evaluation.attemptsAllowed;
               }
-            }
           }
         }
       }
