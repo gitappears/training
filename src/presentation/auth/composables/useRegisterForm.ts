@@ -2,6 +2,7 @@ import { ref, watch, computed } from 'vue';
 import { useAuth, useForm, useFileUpload, useNotifications } from '../../../shared/composables';
 import type { RegisterDto } from '../../../application/auth/auth.repository.port';
 import { authService } from '../../../infrastructure/http/auth/auth.service';
+import { TIPO_DOCUMENTO_OPTIONS } from '../../../shared/constants/tipo-documento';
 
 /**
  * Composable para manejar el formulario de registro
@@ -27,12 +28,7 @@ export function useRegisterForm() {
     { label: 'Otro', value: 'O' },
   ];
 
-  const tiposDocumento = [
-    { label: 'Cédula de Ciudadanía', value: 'CC' },
-    { label: 'Cédula de Extranjería', value: 'CE' },
-    { label: 'Pasaporte', value: 'PA' },
-    { label: 'NIT', value: 'NIT' },
-  ];
+  const tiposDocumento = TIPO_DOCUMENTO_OPTIONS;
 
   const initialForm: RegisterDto = {
     numeroDocumento: '',

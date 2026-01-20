@@ -206,7 +206,6 @@ import { useDocumentosLegalesTable } from '../composables/useDocumentosLegalesTa
 
 // Composables
 const {
-  documentos,
   loading,
   showDeleteDialog,
   documentoAEliminar,

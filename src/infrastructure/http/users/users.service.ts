@@ -13,6 +13,7 @@ import type {
 } from '../../../application/user/user.repository.port';
 import type { User } from '../../../domain/user/models';
 import type { PaginatedResponse } from '../../../application/training/training.repository.port';
+import type { TipoDocumento } from '../../../shared/constants/tipo-documento';
 
 /**
  * Tipos para las respuestas del backend
@@ -85,38 +86,41 @@ function mapBackendToDomain(backendData: BackendUser): User {
     documentType: mapDocumentType(persona.tipoDocumento),
     phone: persona.telefono || '',
     role: mapRole(backendData.rolPrincipal?.codigo || ''),
-    roleId: backendData.rolPrincipal?.id,
-    username: backendData.username,
-    personType: 'natural', // El backend no expone tipoPersona directamente, asumimos natural por defecto
+    personType: persona.tipoDocumento === 'NIT' ? 'juridica' : 'natural',
     enabled: backendData.habilitado,
     active: backendData.activo,
     mustChangePassword: backendData.debeCambiarPassword,
-    birthDate: persona.fechaNacimiento || undefined,
-    gender: (persona.genero as 'M' | 'F' | 'O') || undefined,
-    address: persona.direccion || undefined,
-    empresaId: persona.empresaId,
-    empresa: persona.empresa,
-    company: persona.empresa?.razonSocial || undefined,
-    companyName: persona.empresa?.razonSocial || undefined,
     createdAt: backendData.fechaCreacion || new Date().toISOString(),
   };
 
-  if (backendData.ultimoAcceso) {
-    user.lastLoginAt = backendData.ultimoAcceso;
+  // Propiedades opcionales: solo se asignan si tienen valor (exactOptionalPropertyTypes)
+  const roleId = backendData.rolPrincipal?.id;
+  if (roleId !== undefined) user.roleId = roleId;
+  if (backendData.username) user.username = backendData.username;
+  if (persona.fechaNacimiento) user.birthDate = persona.fechaNacimiento;
+  const gender = persona.genero as 'M' | 'F' | 'O' | undefined;
+  if (gender) user.gender = gender;
+  if (persona.direccion) user.address = persona.direccion;
+  if (persona.empresaId !== undefined) user.empresaId = persona.empresaId;
+  if (persona.empresa) user.empresa = persona.empresa;
+  const companyName = persona.empresa?.razonSocial;
+  if (companyName) {
+    user.company = companyName;
+    user.companyName = companyName;
   }
-  if (backendData.fechaActualizacion) {
-    user.updatedAt = backendData.fechaActualizacion;
-  }
+  if (backendData.ultimoAcceso) user.lastLoginAt = backendData.ultimoAcceso;
+  if (backendData.fechaActualizacion) user.updatedAt = backendData.fechaActualizacion;
 
   return user;
 }
 
-function mapDocumentType(type: string): 'CC' | 'CE' | 'PA' | 'TI' | 'NIT' {
+function mapDocumentType(type: string): TipoDocumento {
   const normalized = type?.toUpperCase() ?? 'CC';
   if (normalized === 'CE') return 'CE';
   if (normalized === 'PA') return 'PA';
   if (normalized === 'TI') return 'TI';
   if (normalized === 'NIT') return 'NIT';
+  if (normalized === 'RC') return 'RC';
   return 'CC';
 }
 
@@ -128,12 +132,6 @@ function mapRole(role: string): 'admin' | 'institutional' | 'driver' {
   if (normalized === 'ALUMNO') return 'driver'; // Los alumnos se tratan como drivers
   if (normalized === 'OPERADOR') return 'driver'; // Los operadores se tratan como drivers
   return 'driver';
-}
-
-function mapPersonType(type: string): 'natural' | 'juridica' {
-  const normalized = type?.toLowerCase() ?? 'natural';
-  if (normalized.includes('juridica') || normalized.includes('jurídica')) return 'juridica';
-  return 'natural';
 }
 
 /**
@@ -209,20 +207,15 @@ export class UsersService implements IUserRepository {
     }
   }
 
-  async create(dto: CreateUserDto): Promise<User> {
-    try {
-      // El backend no tiene endpoint de creación de usuarios directamente
-      // Se debe usar el endpoint de registro o el de creación de conductores externos
-      // Por ahora, lanzamos un error indicando que se debe usar el registro
-      throw new Error(
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- Parámetro requerido por IUserRepository; create no implementado
+  create(dto: CreateUserDto): Promise<User> {
+    // El backend no tiene endpoint de creación de usuarios directamente
+    // Se debe usar el endpoint de registro o el de creación de conductores externos
+    return Promise.reject(
+      new Error(
         'La creación de usuarios debe realizarse a través del registro o creación de conductores externos',
-      );
-    } catch (error) {
-      const axiosError = error as AxiosError<{ message?: string }>;
-      throw new Error(
-        axiosError.response?.data?.message ?? 'Error al crear el usuario',
-      );
-    }
+      ),
+    );
   }
 
   async update(id: string, dto: UpdateUserDto): Promise<User> {
@@ -294,8 +287,8 @@ export class UsersService implements IUserRepository {
       // Por lo tanto, si hay campos de persona, necesitamos usar un endpoint específico
       // Por ahora, intentamos enviarlos en el mismo request al endpoint de usuarios
       // Si el backend no los acepta, se ignorarán
-      const hasPersonData = backendDto.nombres || backendDto.apellidos || backendDto.email || 
-                            backendDto.telefono || backendDto.fechaNacimiento || 
+      const hasPersonData = backendDto.nombres || backendDto.apellidos || backendDto.email ||
+                            backendDto.telefono || backendDto.fechaNacimiento ||
                             backendDto.genero || backendDto.direccion;
 
       if (hasPersonData) {
@@ -347,7 +340,7 @@ export class UsersService implements IUserRepository {
       const params: UserListParams = {
         page: 1,
         limit: 1000, // Obtener muchos para calcular estadísticas
-        filters,
+        ...(filters !== undefined && { filters }),
       };
 
       const response = await this.findAll(params);

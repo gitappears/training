@@ -2,8 +2,8 @@ import { ref, computed } from 'vue';
 import { useQuasar } from 'quasar';
 import { usersService } from '../../../infrastructure/http/users/users.service';
 import { UserUseCasesFactory } from '../../../application/user/user.use-cases.factory';
+import type { User } from '../../../domain/user/models';
 import type {
-  User,
   UserListParams,
   UserFilters,
   UserStatistics,
@@ -35,6 +35,10 @@ export function useUsers() {
       juridica: 0,
     },
   });
+
+  function setUsersData(data: User[]) {
+    users.value = data;
+  }
 
   /**
    * Lista usuarios con paginación y filtros
@@ -161,7 +165,7 @@ export function useUsers() {
       // Por ahora, actualizamos los datos personales a través del método updateUser
       // con los campos mapeados correctamente
       const updateDto: UpdateUserDto = {};
-      
+
       if (personaData.nombres && personaData.apellidos) {
         updateDto.name = `${personaData.nombres} ${personaData.apellidos}`.trim();
       }
@@ -340,6 +344,7 @@ export function useUsers() {
     users: computed(() => users.value),
     currentUser: computed(() => currentUser.value),
     statistics: computed(() => statistics.value),
+    setUsersData,
     listUsers,
     getUser,
     createUser,
