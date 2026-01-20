@@ -36,6 +36,10 @@ export function useUsers() {
     },
   });
 
+  function setUsersData(data: User[]) {
+    users.value = data;
+  }
+
   /**
    * Lista usuarios con paginación y filtros
    */
@@ -340,6 +344,7 @@ export function useUsers() {
     users: computed(() => users.value),
     currentUser: computed(() => currentUser.value),
     statistics: computed(() => statistics.value),
+    setUsersData,
     listUsers,
     getUser,
     createUser,

@@ -7,6 +7,7 @@
       row-key="id"
       :loading="loading"
       :pagination="pagination"
+      :pagination-label="paginationLabel"
       :rows-per-page-options="[10, 25, 50, 100]"
       selection="multiple"
       flat
@@ -238,6 +239,15 @@ const emit = defineEmits<{
 }>();
 
 const { getRoleLabel, getRoleColor } = useUserRoles();
+
+/** Evita "1-0 de 0" cuando total=0. Si hay filas pero total aún no se actualizó, usa users.length. */
+function paginationLabel(start: number, end: number, total: number): string {
+  if (total === 0 && props.users.length > 0) {
+    return `1-${props.users.length} de ${props.users.length}`;
+  }
+  if (total === 0) return '0-0 de 0';
+  return `${start}-${end} de ${total}`;
+}
 
 const selectedUsers = computed({
   get: () => props.selectedUsers,
