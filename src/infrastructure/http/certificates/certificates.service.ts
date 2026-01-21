@@ -142,17 +142,13 @@ function mapBackendToDomain(backendData: BackendCertificate): Certificate {
 }
 
 function mapStatus(backendData: BackendCertificate): CertificateStatus {
+  // El backend garantiza que solo se crean certificados para inscripciones aprobadas
+  // (ver create-certificado.use-case.ts línea 63-67)
+  // Por lo tanto, solo verificamos si está activo, revocado o vencido
+
   if (!backendData.activo) return 'revoked';
 
-  // Validar puntuación si existe información de inscripción
-  if (backendData.inscripcion) {
-    const score = backendData.inscripcion.calificacionFinal ?? 0;
-    const minScore = backendData.inscripcion.minimoAprobacion ?? 70;
-    if (score < minScore) {
-      return 'revoked'; // O un estado 'failed' si existiera, pero 'revoked' o 'inválido' funciona
-    }
-  }
-
+  // Verificar si está vencido
   if (backendData.fechaVencimiento) {
     const fechaVencimiento = new Date(backendData.fechaVencimiento);
     const ahora = new Date();
