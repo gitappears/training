@@ -56,66 +56,72 @@
       </template>
 
       <template #body-cell-status="props">
-        <q-badge
-          :color="props.row.status === 'valid' ? 'positive' : 'negative'"
-          outline
-        >
-          {{ props.row.status === 'valid' ? 'Válido' : 'Vencido' }}
-        </q-badge>
+        <q-td :props="props">
+          <q-badge
+            :color="props.row.status === 'valid' ? 'positive' : 'negative'"
+            outline
+          >
+            {{ props.row.status === 'valid' ? 'Válido' : 'Vencido' }}
+          </q-badge>
+        </q-td>
       </template>
 
       <template #body-cell-verificationCode="props">
-        <div class="row items-center q-gutter-xs">
-          <code class="text-primary">{{ props.row.verificationCode.substring(0, 12) }}...</code>
-          <q-btn
-            flat
-            dense
-            round
-            icon="content_copy"
-            size="sm"
-            @click="$emit('copy-code', props.row.verificationCode)"
-          >
-            <q-tooltip>Copiar código</q-tooltip>
-          </q-btn>
-        </div>
+        <q-td :props="props">
+          <div class="row items-center q-gutter-xs">
+            <code class="text-primary">{{ props.row.verificationCode.substring(0, 12) }}...</code>
+            <q-btn
+              flat
+              dense
+              round
+              icon="content_copy"
+              size="sm"
+              @click="$emit('copy-code', props.row.verificationCode)"
+            >
+              <q-tooltip>Copiar código</q-tooltip>
+            </q-btn>
+          </div>
+        </q-td>
       </template>
 
       <template #body-cell-actions="props">
-        <div class="row q-gutter-xs">
-          <q-btn
-            flat
-            dense
-            round
-            icon="visibility"
-            color="primary"
-            size="sm"
-            @click="$emit('view', props.row.id)"
-          >
-            <q-tooltip>Ver detalles</q-tooltip>
-          </q-btn>
-          <q-btn
-            flat
-            dense
-            round
-            icon="download"
-            color="primary"
-            size="sm"
-            @click="$emit('download', props.row.id)"
-          >
-            <q-tooltip>Descargar</q-tooltip>
-          </q-btn>
-          <q-btn
-            flat
-            dense
-            round
-            icon="share"
-            color="primary"
-            size="sm"
-            @click="$emit('share', props.row.id)"
-          >
-            <q-tooltip>Compartir</q-tooltip>
-          </q-btn>
-        </div>
+        <q-td :props="props">
+          <div class="row q-gutter-xs">
+            <q-btn
+              flat
+              dense
+              round
+              icon="visibility"
+              color="primary"
+              size="sm"
+              @click="$emit('view', props.row.id)"
+            >
+              <q-tooltip>Ver detalles</q-tooltip>
+            </q-btn>
+            <q-btn
+              flat
+              dense
+              round
+              icon="download"
+              color="primary"
+              size="sm"
+              @click="$emit('download', props.row.id)"
+            >
+              <q-tooltip>Descargar</q-tooltip>
+            </q-btn>
+            <q-btn
+              flat
+              dense
+              round
+              icon="share"
+              color="primary"
+              size="sm"
+              @click="$emit('share', props.row.id)"
+            >
+              <q-tooltip>Compartir</q-tooltip>
+            </q-btn>
+          </div>
+        </q-td>
       </template>
 
       <template #no-data>
