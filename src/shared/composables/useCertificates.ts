@@ -59,12 +59,6 @@ export function useCertificates() {
 
       const response: PaginatedResponse<Certificate> = await certificatesService.findAll(paramsToUse);
 
-      console.log('📥 Respuesta del backend:', {
-        total: response.total,
-        page: response.page,
-        dataLength: response.data.length,
-        data: response.data,
-      });
 
       certificates.value = response.data;
       pagination.value = {
@@ -105,7 +99,7 @@ export function useCertificates() {
     try {
       const certificado = await certificatesService.findOne(id);
       currentCertificate.value = certificado;
-      
+
       // Log para debugging: verificar que los datos se cargaron correctamente
       if (certificado) {
         console.log('✅ Certificado cargado en frontend:', {

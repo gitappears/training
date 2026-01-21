@@ -94,15 +94,15 @@
                 <!-- HTML Certificate View -->
                 <div class="certificate-html-view" :style="{ backgroundImage: `url(${certificateBg})` }">
                   <div class="certificate-content">
-                    
+
                     <!-- LOGO DINAMICO + CONFIANZA -->
                     <div class="cert-logos-row">
                         <div class="cert-logo-container">
-                             <img 
-                                v-if="allianceCompany === 'IPS CONFIANZA.'" 
-                                src="../../../assets/confianza.svg" 
-                                class="cert-logo-img logo-confianza" 
-                                alt="Logo Confianza" 
+                             <img
+                                v-if="allianceCompany === 'IPS CONFIANZA.'"
+                                src="../../../assets/confianza.svg"
+                                class="cert-logo-img logo-confianza"
+                                alt="Logo Confianza"
                              />
                         </div>
                         <div class="cert-logo-spacer" v-if="allianceCompany === 'IPS CONFIANZA.'"></div>
@@ -121,7 +121,7 @@
 
                     <!-- 2. Header Stack (In Background) -->
 
-                    
+
                     <!-- 3. Certifica Que (In Background) -->
 
                     <!-- 3. Certifica Que (In Background) -->
@@ -130,7 +130,7 @@
                     <!-- 4. Student Name -->
                     <h2 class="cert-student-name">{{ certificate.studentName.toUpperCase() }}</h2>
                     <p class="cert-text">Cédula de ciudadanía N.° {{ certificate.documentNumber }}</p>
-                    
+
                     <!-- 5. Description (In Background) -->
                     <!-- 5. Description (In Background) -->
 
@@ -139,15 +139,15 @@
                     <div class="cert-course-box">
                       {{ certificate.courseName.toUpperCase() }}
                     </div>
-                    
+
                     <!-- 7. Details -->
                     <div class="cert-details">
                       <!-- Duration: Centered (approx 47 offset in PDF but we center here for simplicity or adjust) -->
-                       <!-- PDF prints 'duration' (e.g. '20') at x=47 relative to center. 
-                            We will assume background has text. We just print value. 
+                       <!-- PDF prints 'duration' (e.g. '20') at x=47 relative to center.
+                            We will assume background has text. We just print value.
                             Adjusting position to match PDF '47' offset roughly. -->
                       <div style="text-align: center; margin-left: 60px; font-weight: bold;">{{ computedDuration }}</div>
-                      
+
                       <br>
                       <!-- Dates Container to match PDF positioning -->
                       <div style="position: relative; width: 100%; height: 20px; margin-top: 5px;">
@@ -155,7 +155,7 @@
                          <div style="position: absolute; left: 40%; transform: translateX(-50%); font-family: 'Montserrat', sans-serif; font-size: 12.5px;">
                             {{ formattedIssuedDate }}
                          </div>
-                         
+
                          <!-- Expiration: Right shifted (+186 equivalent from center) -->
                          <div v-if="formattedExpiryDate" style="position: absolute; left: 74%; transform: translateX(-50%); font-family: 'Montserrat', sans-serif; font-size: 12.5px;">
                             {{ formattedExpiryDate }}.
@@ -165,7 +165,7 @@
 
                     <!-- 8. Footer -->
                     <div class="cert-footer-row">
-                      
+
                       <!-- Left Sig: Instructor -->
                       <div class="cert-sig-col">
                          <svg class="cert-scribble" viewBox="0 0 150 60">
@@ -498,10 +498,10 @@
                 />
                 <div class="col">
                   <div class="text-body1 text-weight-medium">
-                    {{ 
-                      certificate.status === 'valid' ? 'Certificado Válido' : 
-                      certificate.status === 'revoked' ? 'Certificado Revocado' : 
-                      'Certificado Vencido' 
+                    {{
+                      certificate.status === 'valid' ? 'Certificado Válido' :
+                      certificate.status === 'revoked' ? 'Certificado Revocado' :
+                      'Certificado Vencido'
                     }}
                   </div>
                   <div class="text-caption text-grey-6">
@@ -573,7 +573,7 @@
             <div class="text-caption text-grey-6 q-mt-md text-center">
               Escanea este código con tu celular para verificar la autenticidad del certificado.
             </div>
-            
+
             <q-btn
               outline
               color="primary"
@@ -718,7 +718,7 @@ const representativeDetails = computed(() => {
 const computedDuration = computed(() => {
     if (!certificate.value) return '20';
     const tituloForDuration = (certificate.value.courseName || '').toLowerCase().trim();
-    
+
     if (
         tituloForDuration.includes('curso') &&
         (tituloForDuration.includes('basico') || tituloForDuration.includes('básico')) &&
@@ -763,7 +763,7 @@ const getDownloadUrl = (cert: Certificate) => {
   if (cert.pdfUrl && cert.pdfUrl.includes('/public/certificates/download/')) {
       return cert.pdfUrl;
   }
-  
+
   // Fallback para certificados antiguos (zombies) o si la URL es estática/antigua
   // Forzamos el uso del nuevo endpoint dinámico usando el hash (verificationCode)
   return `${import.meta.env.VITE_API_URL}/public/certificates/download/${cert.verificationCode}`;
@@ -834,11 +834,11 @@ function getBaseUrl(): string {
 
   const hostname = window.location.hostname;
   const isLocal = hostname === 'localhost' || hostname === '127.0.0.1';
-  
+
   if (isLocal) {
     return window.location.origin;
   }
-  
+
   return window.location.origin;
 }
 
@@ -934,19 +934,19 @@ function copyVerificationCode() {
 
 function openPublicVerification() {
   if (!certificate.value) return;
-  
+
   const baseUrl = getBaseUrl();
   const code = certificate.value.verificationCode;
-  
+
   if (!code && certificate.value.publicVerificationUrl?.startsWith('http')) {
       window.open(certificate.value.publicVerificationUrl, '_blank');
       return;
   }
-  
+
   if (code) {
     const routeLocation = router.resolve({ path: `/verify/${code}` });
     const href = routeLocation.href;
-    
+
     // href es relativo al root del dominio (ej: "#/verify/..." o "/verify/...")
     // Usamos new URL para asegurar que se combina correctamente con el origen sin duplicar paths
     try {
@@ -961,29 +961,36 @@ function openPublicVerification() {
   }
 }
 
-// ... (skipping goBack)
+function goBack() {
+  // Intentar volver a la página anterior si hay historial
+  if (window.history.length > 1) {
+    router.back();
+  } else {
+    // Si no hay historial, redirigir a la lista de certificados
+    void router.push('/certificates');
+  }
+}
 
 // Computed para obtener el valor del QR
 const getQRValue = computed(() => {
   if (!certificate.value) return null;
-  
+
   if (certificate.value.qrCodeUrl && certificate.value.qrCodeUrl.startsWith('data:')) {
     return certificate.value.qrCodeUrl;
   }
-  
+
   if (certificate.value.verificationCode) {
       const code = certificate.value.verificationCode;
       const baseUrl = getBaseUrl();
-      const routeLocation = router.resolve({ path: `/verify/${code}` });
-      const href = routeLocation.href;
-      
+
+
       try {
         // Enforce hash mode explicitly for QR codes
         const hashPath = `/#/verify/${code}`;
         // Ensure NO double slashes if baseUrl ends with /
         const cleanBaseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
         const finalUrl = `${cleanBaseUrl}${hashPath}`;
-        
+
         console.log('✅ QR Generado:', finalUrl);
         return finalUrl;
       } catch (e) {
@@ -991,11 +998,11 @@ const getQRValue = computed(() => {
          return `${baseUrl}/#/verify/${code}`;
       }
   }
-  
+
   if (certificate.value.publicVerificationUrl?.startsWith('http')) {
     return certificate.value.publicVerificationUrl;
   }
-  
+
   return null;
 });
 
@@ -1004,12 +1011,12 @@ const getQRValue = computed(() => {
  */
 async function loadPDFForView() {
   if (!certificate.value) return;
-  
+
   loadingPDF.value = true;
   try {
     // Obtener el PDF como blob usando el servicio autenticado
     const blob = await certificatesService.getPDFForView(certificate.value.id);
-    
+
     // Crear blob URL para el iframe
     pdfViewerUrl.value = window.URL.createObjectURL(blob);
   } catch (error) {
@@ -1029,23 +1036,23 @@ async function loadPDFForView() {
 onMounted(async () => {
   if (certificateId) {
     await loadCertificate(certificateId);
-    
+
     // Mock History Data for testing
-    if (verificationHistory.value.length === 0) {
+    if (verificationHistory.value.length === 0 && certificateId) {
        verificationHistory.value = [
          {
            id: 'VER-' + Math.random().toString(36).substring(7).toUpperCase(),
+           certificateId: certificateId,
            verifiedAt: new Date(Date.now() - 3600000).toISOString(),
            verifiedBy: '192.168.1.10',
            userAgent: 'Chrome on Windows',
-           status: 'valid'
          },
          {
            id: 'VER-' + Math.random().toString(36).substring(7).toUpperCase(),
+           certificateId: certificateId,
            verifiedAt: new Date(Date.now() - 86400000).toISOString(),
            verifiedBy: '10.0.0.5',
            userAgent: 'Safari on iPhone',
-           status: 'valid'
          }
        ];
     }
@@ -1068,7 +1075,7 @@ onUnmounted(() => {
   if (pdfViewerUrl.value) {
     window.URL.revokeObjectURL(pdfViewerUrl.value);
   }
-  
+
   if (isFullscreen.value && document.exitFullscreen) {
     void document.exitFullscreen();
   }
@@ -1152,9 +1159,9 @@ body.body--dark code {
 @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&display=swap');
 
 .certificate-html-view {
-  width: 1056px; 
-  height: 816px; 
-  background-size: cover; 
+  width: 1056px;
+  height: 816px;
+  background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
   position: relative;
@@ -1174,7 +1181,7 @@ body.body--dark code {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding-top: 130px; 
+  padding-top: 130px;
   text-align: center;
 }
 
@@ -1346,7 +1353,7 @@ body.body--dark code {
 
 .cert-qr-container {
   position: absolute;
-  bottom: 80px; 
+  bottom: 80px;
   right: 45px;
   display: flex;
   flex-direction: column;
@@ -1380,14 +1387,14 @@ body.body--dark code {
 }
 
 .cert-logo-spacer {
-    width: 0px; 
+    width: 0px;
     margin-right: -27px; /* Negative margin to match backend -20px gap * 1.33 */
 }
 
 .cert-logo-container {
     display: flex;
     justify-content: center;
-    margin-bottom: 5px; 
+    margin-bottom: 5px;
     z-index: 10;
 }
 
@@ -1395,7 +1402,7 @@ body.body--dark code {
     width: 168px; /* 126px * 1.33 */
     height: auto;
     object-fit: contain;
-    position: relative; 
+    position: relative;
     z-index: 11;
     margin-top: 13px; /* Empujar hacia abajo para igualar Y=40 (antiguo) mientras Confianza está en Y=30 */
 }

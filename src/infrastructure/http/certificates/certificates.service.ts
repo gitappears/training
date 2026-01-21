@@ -36,6 +36,7 @@ interface BackendCertificate {
   urlVerificacionPublica: string;
   hashVerificacion: string;
   codigoQr?: string;
+  codigo_qr?: string; // Fallback para formato snake_case del backend
   firmaDigital?: string;
   activo: boolean;
   inscripcion?: {
@@ -86,7 +87,7 @@ function mapBackendToDomain(backendData: BackendCertificate): Certificate {
   // Asegurar que siempre tengamos un código de verificación y URL
   const hashVerificacion = backendData.hashVerificacion?.trim() || backendData.numeroCertificado || '';
   const urlVerificacionPublica = backendData.urlVerificacionPublica?.trim() || '';
-  
+
   // Si no hay URL pero sí hay hash, construir la URL
   const finalVerificationUrl = urlVerificacionPublica || (hashVerificacion ? `/verify/${hashVerificacion}` : '');
 
@@ -124,8 +125,8 @@ function mapBackendToDomain(backendData: BackendCertificate): Certificate {
   }
   if (backendData.codigoQr) {
     certificate.qrCodeUrl = backendData.codigoQr;
-  } else if ((backendData as any).codigo_qr) {
-    certificate.qrCodeUrl = (backendData as any).codigo_qr;
+  } else if (backendData.codigo_qr) {
+    certificate.qrCodeUrl = backendData.codigo_qr;
   }
   if (backendData.urlCertificado) {
     certificate.pdfUrl = backendData.urlCertificado;
@@ -142,7 +143,7 @@ function mapBackendToDomain(backendData: BackendCertificate): Certificate {
 
 function mapStatus(backendData: BackendCertificate): CertificateStatus {
   if (!backendData.activo) return 'revoked';
-  
+
   // Validar puntuación si existe información de inscripción
   if (backendData.inscripcion) {
     const score = backendData.inscripcion.calificacionFinal ?? 0;
@@ -151,11 +152,11 @@ function mapStatus(backendData: BackendCertificate): CertificateStatus {
       return 'revoked'; // O un estado 'failed' si existiera, pero 'revoked' o 'inválido' funciona
     }
   }
-  
+
   if (backendData.fechaVencimiento) {
     const fechaVencimiento = new Date(backendData.fechaVencimiento);
     const ahora = new Date();
-    
+
     // Debug fecha
     console.log(`[Cert Status] ID: ${backendData.id}, Vence: ${fechaVencimiento.toISOString()}, Ahora: ${ahora.toISOString()}`);
 
@@ -163,7 +164,7 @@ function mapStatus(backendData: BackendCertificate): CertificateStatus {
       return 'expired';
     }
   }
-  
+
   return 'valid';
 }
 
@@ -176,18 +177,28 @@ export class CertificatesService implements ICertificateRepository {
 
   async findAll(params: CertificateListParams): Promise<PaginatedResponse<Certificate>> {
     try {
-      const pagination = {
+      const f = params.filters;
+      const statusVal = f?.status != null ? String(f.status).trim() : undefined;
+      const body = {
         page: params.page ?? 1,
         limit: params.limit ?? 10,
-        search: params.filters?.search,
-        sortBy: params.sortBy,
-        sortOrder: params.sortOrder,
-        filters: params.filters,
+        search: f?.search || undefined,
+        sortField: params.sortBy || undefined,
+        sortOrder: (params.sortOrder?.toUpperCase() as 'ASC' | 'DESC') || undefined,
+        filters: {
+          ...(f?.studentId && { studentId: f.studentId }),
+          ...(f?.courseId && { courseId: f.courseId }),
+          ...(statusVal && { status: statusVal }),
+        },
       };
+      // Eliminar filters si está vacío para no enviar {} innecesario
+      if (Object.keys(body.filters).length === 0) {
+        delete (body as Record<string, unknown>).filters;
+      }
 
       const response = await api.post<BackendPaginatedResponse>(
         `${this.baseUrl}/list`,
-        pagination,
+        body,
       );
 
       return {
@@ -260,7 +271,7 @@ export class CertificatesService implements ICertificateRepository {
       return certificates;
     } catch (error) {
       const axiosError = error as AxiosError<{ message?: string; error?: string }>;
-      
+
       // Log detallado del error para debugging
       console.error('Error en findByUser:', {
         userId,
@@ -269,18 +280,18 @@ export class CertificatesService implements ICertificateRepository {
         data: axiosError.response?.data,
         message: axiosError.message,
       });
-      
+
       // Si es un error 404, retornar array vacío en lugar de lanzar error
       if (axiosError.response?.status === 404) {
         console.warn(`No se encontraron certificados para el usuario ${userId}`);
         return [];
       }
-      
+
       const errorMessage =
         axiosError.response?.data?.message ??
         axiosError.response?.data?.error ??
         `Error al obtener los certificados del usuario ${userId}`;
-      
+
       throw new Error(errorMessage);
     }
   }
@@ -311,7 +322,7 @@ export class CertificatesService implements ICertificateRepository {
         fechaRetroactiva?: string;
         justificacionRetroactiva?: string;
       } = {};
-      
+
       if (dto.isRetroactive !== undefined) {
         updateDto.esRetroactivo = dto.isRetroactive;
       }
@@ -504,11 +515,11 @@ export class CertificatesService implements ICertificateRepository {
       // TODO: Implementar endpoint en backend si es necesario
       // Por ahora retornar estadísticas básicas
       const result = await this.findAll({ page: 1, limit: 100, filters: filters ?? {} });
-      
+
       const valid = result.data.filter((c) => c.status === 'valid').length;
       const expired = result.data.filter((c) => c.status === 'expired').length;
       const revoked = result.data.filter((c) => c.status === 'revoked').length;
-      
+
       const byCourse: Record<string, number> = {};
       result.data.forEach((cert) => {
         if (cert.courseId) {
@@ -626,13 +637,13 @@ export class CertificatesService implements ICertificateRepository {
         diasAntesVencimiento: dto.diasAntesVencimiento,
         activo: dto.activo ? 1 : 0,
       };
-      
+
       const response = await api.patch<{
         id: number;
         diasAntesVencimiento: number;
         activo: number | boolean; // El backend puede retornar número (1/0) o boolean
       }>(`/certificates/alert-configurations/${id}`, dtoParaBackend);
-      
+
       // Convertir número (1/0) a boolean en la respuesta
       return {
         id: response.data.id,
