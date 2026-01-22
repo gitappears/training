@@ -32,6 +32,7 @@
           unelevated
           icon="download"
           label="Descargar PDF"
+          :loading="isDownloading"
           @click="downloadPDF"
         />
       </div>
@@ -57,8 +58,15 @@
                         {{ certificate.studentName.toUpperCase() }}
                       </div>
                       
-                      <!-- 2. Document Details -->
-                      <div class="cert-element cert-document-id" style="top: 301px; left: 85px">
+                      <div 
+                        class="cert-element cert-document-id" 
+                        :style="{ 
+                          top: isCesaroto ? '304px' : '301px', 
+                          left: isCesaroto ? '455px' : '85px',
+                          textAlign: isCesaroto ? 'left' : 'center',
+                          width: isCesaroto ? 'auto' : '100%'
+                        }"
+                      >
                         {{ certificate.documentNumber }}
                       </div>
 
@@ -73,7 +81,10 @@
                       </div>
 
                     
-                      <div class="cert-element cert-duration">
+                      <div 
+                        class="cert-element cert-duration"
+                        :style="{ left: isCesaroto ? '416px' : '418px', top: '406px' }"
+                      >
                         {{ computedDuration }}
                       </div>
 
@@ -322,8 +333,8 @@
                         color="primary"
                         icon="download"
                         label="Descargar PDF"
-                        :href="getDownloadUrl(certificate)"
-                        target="_blank"
+                        :loading="isDownloading"
+                        @click="downloadPDF"
                         unelevated
                       />
                     </div>
@@ -401,6 +412,7 @@
                 icon="download"
                 label="Descargar PDF"
                 class="full-width"
+                :loading="isDownloading"
                 @click="downloadPDF"
               />
 
@@ -515,7 +527,35 @@
       </q-card>
     </q-dialog>
 
-    <div class="cert-version-debug">v2026.01.06 - FINAL LAYOUT CHECK</div>
+    <div class="cert-version-debug">v2026.01.21 - FIX OVERLAY</div>
+
+    <!-- Download Progress Overlay - Custom Implementation -->
+    <transition name="fade">
+      <div v-if="isDownloading" class="download-overlay-container">
+        <div class="overlay-content">
+          <div class="training-loader">
+            <div class="birrete-container">
+              <q-icon name="school" size="100px" color="white" class="birrete-animation" />
+            </div>
+            <div class="book-loader q-mt-md">
+              <div class="book-page"></div>
+              <div class="book-page"></div>
+              <div class="book-page"></div>
+            </div>
+          </div>
+          <div class="text-h4 text-white text-weight-bold q-mt-xl text-center">
+            Generando su Certificado...
+          </div>
+          <div class="text-subtitle1 text-white opacity-80 q-mt-sm text-center">
+            Preparando material de capacitación profesional
+          </div>
+          
+          <div class="progress-bar-container q-mt-xl">
+            <q-linear-progress indeterminate color="white" rounded size="12px" />
+          </div>
+        </div>
+      </div>
+    </transition>
   </q-page>
 </template>
 
@@ -533,7 +573,7 @@ import firmaFrancyGonzalez from '../../../assets/firma_francy_gonzalez.png';
 
 import { useRoute, useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
-import type { Certificate, CertificateVerificationHistory } from '../../../domain/certificate/models';
+import type { CertificateVerificationHistory } from '../../../domain/certificate/models';
 import EmptyState from '../../../shared/components/EmptyState.vue';
 import QRCodeDisplay from '../../../shared/components/QRCodeDisplay.vue';
 import { useCertificates } from '../../../shared/composables/useCertificates';
@@ -556,6 +596,7 @@ const {
 const tab = ref<'info' | 'verification' | 'history'>('info');
 const certificateId = route.params.id as string;
 const isFullscreen = ref(false);
+const isDownloading = ref(false);
 
 // URL del blob para mostrar el PDF en el iframe
 const pdfViewerUrl = ref<string>('');
@@ -589,6 +630,12 @@ const adjustFontSize = () => {
     }
   }, 0);
 };
+
+const isCesaroto = computed(() => {
+  if (!certificate.value) return false;
+  const title = (certificate.value.courseName || '').toLowerCase().trim();
+  return (title.includes('transporte') && (title.includes('mercancias') || title.includes('mercancías')) && title.includes('peligrosas'));
+});
 
 // BACKGROUND DINAMICO
 const certificateBg = computed(() => {
@@ -717,16 +764,6 @@ const formatDate = (date: string) => {
   });
 };
 
-const getDownloadUrl = (cert: Certificate) => {
-  // Si ya tiene la URL dinámica (generada por el backend nuevo)
-  if (cert.pdfUrl && cert.pdfUrl.includes('/public/certificates/download/')) {
-      return cert.pdfUrl;
-  }
-
-  // Fallback para certificados antiguos (zombies) o si la URL es estática/antigua
-  // Forzamos el uso del nuevo endpoint dinámico usando el hash (verificationCode)
-  return `${import.meta.env.VITE_API_URL}/public/certificates/download/${cert.verificationCode}`;
-};
 
 function formatDateTime(dateString: string): string {
   try {
@@ -782,6 +819,8 @@ async function downloadPDF() {
     return;
   }
 
+  isDownloading.value = true;
+
   try {
     await downloadCertificatePDF(certificate.value.id);
     $q.notify({
@@ -796,6 +835,11 @@ async function downloadPDF() {
       message: 'Error al descargar el certificado',
       position: 'top',
     });
+  } finally {
+    // Cerramos el overlay después de un pequeño retraso para transiciones suaves
+    setTimeout(() => {
+      isDownloading.value = false;
+    }, 800);
   }
 }
 
@@ -1325,7 +1369,7 @@ body.body--dark code {
 /* Emission: Center - 80px = 316px */
 .cert-date-mission {
   top: 423px; /* Below duration */
-  left: 307.5px;
+  left: 305.5px;
   transform: translateX(-50%);
   font-size: 10.5pt;
   font-family: 'Montserrat', sans-serif;
@@ -1334,7 +1378,7 @@ body.body--dark code {
 /* Expiry: Center + 186px = 582px */
 .cert-date-expiry {
   top: 423px;
-  left: 560px;
+  left: 555px;
   transform: translateX(-50%);
   font-size: 10.5pt;
   font-family: 'Montserrat', sans-serif;
@@ -1435,5 +1479,77 @@ body.body--dark code {
   width: 100%;
   text-align: center; /* Backend calculates center logic manually, but CSS center works */
   font-size: 7pt;
+}
+/* Download Overlay Styles */
+.download-overlay-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(20, 18, 55, 0.98); /* Más oscuro para centrar la atención */
+  z-index: 10000;
+  backdrop-filter: blur(12px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: all; /* Bloquea interacciones abajo */
+}
+
+.overlay-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  max-width: 500px;
+  width: 90%;
+}
+
+.progress-bar-container {
+  width: 100%;
+  max-width: 400px;
+}
+
+.opacity-80 {
+  opacity: 0.8;
+}
+
+/* Animations */
+.birrete-animation {
+  animation: graduate 1.5s infinite ease-in-out;
+}
+
+@keyframes graduate {
+  0%, 100% { transform: translateY(0) rotate(0deg) scale(1); }
+  50% { transform: translateY(-30px) rotate(8deg) scale(1.15); filter: drop-shadow(0 10px 15px rgba(255,255,255,0.3)); }
+}
+
+.book-loader {
+  display: flex;
+  gap: 12px;
+}
+
+.book-page {
+  width: 18px;
+  height: 30px;
+  background: white;
+  border-radius: 3px;
+  animation: flip 1.2s infinite ease-in-out;
+}
+
+.book-page:nth-child(2) { animation-delay: 0.15s; }
+.book-page:nth-child(3) { animation-delay: 0.3s; }
+
+@keyframes flip {
+  0%, 100% { transform: scaleY(1); opacity: 0.3; }
+  50% { transform: scaleY(1.8); opacity: 1; }
+}
+
+/* Vue Transitions */
+.fade-enter-active, .fade-leave-active {
+  transition: opacity 0.5s ease;
+}
+.fade-enter-from, .fade-leave-to {
+  opacity: 0;
 }
 </style>
