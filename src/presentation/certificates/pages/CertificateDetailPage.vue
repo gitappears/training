@@ -46,164 +46,92 @@
           <q-card-section class="q-pa-none">
             <!-- PDF Viewer -->
             <div v-if="certificate" class="certificate-viewer-container">
-              <div class="viewer-toolbar row items-center justify-between q-pa-md bg-grey-2">
-                <div class="row items-center q-gutter-sm">
-                  <q-btn
-                    flat
-                    dense
-                    icon="zoom_out"
-                    :disable="zoomLevel <= 0.5"
-                    @click="zoomOut"
-                  >
-                    <q-tooltip>Alejar</q-tooltip>
-                  </q-btn>
-                  <div class="text-body2 text-weight-medium">{{ Math.round(zoomLevel * 100) }}%</div>
-                  <q-btn
-                    flat
-                    dense
-                    icon="zoom_in"
-                    :disable="zoomLevel >= 2"
-                    @click="zoomIn"
-                  >
-                    <q-tooltip>Acercar</q-tooltip>
-                  </q-btn>
-                  <q-btn
-                    flat
-                    dense
-                    icon="fit_screen"
-                    @click="resetZoom"
-                  >
-                    <q-tooltip>Ajustar a pantalla</q-tooltip>
-                  </q-btn>
-                </div>
-                <div class="row items-center q-gutter-sm">
-                  <q-btn
-                    flat
-                    dense
-                    icon="fullscreen"
-                    @click="toggleFullscreen"
-                  >
-                    <q-tooltip>Pantalla completa</q-tooltip>
-                  </q-btn>
-                </div>
-              </div>
-              <div
-                ref="viewerContainer"
-                class="certificate-viewer"
-              >
-                <!-- HTML Certificate View -->
-                <div class="certificate-html-view" :style="{ backgroundImage: `url(${certificateBg})` }">
-                  <div class="certificate-content">
+                <!-- HTML Certificate View (Fixed Size 792x612 matching PDFKit Letter Landscape) -->
+                <div class="certificate-scaler">
+                  <div class="certificate-html-view" :style="{ backgroundImage: `url(${certificateBg})` }">
+                    <div class="certificate-content">
 
-                    <!-- LOGO DINAMICO + CONFIANZA -->
-                    <div class="cert-logos-row">
-                        <div class="cert-logo-container">
-                             <img
-                                v-if="allianceCompany === 'IPS CONFIANZA.'"
-                                src="../../../assets/confianza.svg"
-                                class="cert-logo-img logo-confianza"
-                                alt="Logo Confianza"
-                             />
-                        </div>
-                        <div class="cert-logo-spacer" v-if="allianceCompany === 'IPS CONFIANZA.'"></div>
-                         <div class="cert-logo-container">
-                            <img src="../../../assets/logo_color_formar.svg" class="cert-logo-img" alt="Logo Formar" />
-                        </div>
-                    </div>
-
-
-                    <!-- 1. Main Title (In Background) -->
-
-                    <!-- 1. Main Title (In Background) -->
-
-
-                    <!-- 2. Header Stack (In Background) -->
-
-                    <!-- 2. Header Stack (In Background) -->
-
-
-                    <!-- 3. Certifica Que (In Background) -->
-
-                    <!-- 3. Certifica Que (In Background) -->
-
-
-                    <!-- 4. Student Name -->
-                    <h2 class="cert-student-name">{{ certificate.studentName.toUpperCase() }}</h2>
-                    <p class="cert-text">Cédula de ciudadanía N.° {{ certificate.documentNumber }}</p>
-
-                    <!-- 5. Description (In Background) -->
-                    <!-- 5. Description (In Background) -->
-
-
-                    <!-- 6. Course Name (Blue Box) -->
-                    <div class="cert-course-box">
-                      {{ certificate.courseName.toUpperCase() }}
-                    </div>
-
-                    <!-- 7. Details -->
-                    <div class="cert-details">
-                      <!-- Duration: Centered (approx 47 offset in PDF but we center here for simplicity or adjust) -->
-                       <!-- PDF prints 'duration' (e.g. '20') at x=47 relative to center.
-                            We will assume background has text. We just print value.
-                            Adjusting position to match PDF '47' offset roughly. -->
-                      <div style="text-align: center; margin-left: 60px; font-weight: bold;">{{ computedDuration }}</div>
-
-                      <br>
-                      <!-- Dates Container to match PDF positioning -->
-                      <div style="position: relative; width: 100%; height: 20px; margin-top: 5px;">
-                         <!-- Emission: Left shifted (-80 equivalent from center) -->
-                         <div style="position: absolute; left: 40%; transform: translateX(-50%); font-family: 'Montserrat', sans-serif; font-size: 12.5px;">
-                            {{ formattedIssuedDate }}
-                         </div>
-
-                         <!-- Expiration: Right shifted (+186 equivalent from center) -->
-                         <div v-if="formattedExpiryDate" style="position: absolute; left: 74%; transform: translateX(-50%); font-family: 'Montserrat', sans-serif; font-size: 12.5px;">
-                            {{ formattedExpiryDate }}.
-                         </div>
+                      <!-- 1. Student Name (Y ~230 based on code flow doc.y+=90 etc) -->
+                      <!-- doc.y starts at 140. moves down. name is roughly at 230-240px -->
+                      <div class="cert-element cert-student-name">
+                        {{ certificate.studentName.toUpperCase() }}
                       </div>
-                    </div>
-
-                    <!-- 8. Footer -->
-                    <div class="cert-footer-row">
-
-                      <!-- Left Sig: Instructor -->
-                      <div class="cert-sig-col">
-                         <svg class="cert-scribble" viewBox="0 0 150 60">
-                           <path d="M10,40 C30,10 60,70 90,30 S140,50 140,40" stroke="#000066" stroke-width="2" fill="none" />
-                         </svg>
-                         <div class="cert-sig-line"></div>
-                         <div class="cert-sig-name text-weight-bold">{{ instructorDetails.name }}</div>
-                         <div class="cert-sig-role" style="white-space: pre-line;">{{ instructorDetails.role }}</div>
+                      
+                      <!-- 2. Document Details -->
+                      <div class="cert-element cert-document-id" style="top: 301px; left: 85px">
+                        {{ certificate.documentNumber }}
                       </div>
 
-                      <!-- Right Sig: Rep -->
-                      <div class="cert-sig-col">
-                         <svg class="cert-scribble" viewBox="0 0 150 60">
-                            <path d="M20,40 C50,20 60,60 100,20 S130,50 130,30" stroke="#000066" stroke-width="2" fill="none" />
-                         </svg>
-                         <div class="cert-sig-line"></div>
-                         <div class="cert-sig-name text-weight-bold">{{ representativeDetails.name }}</div>
-                         <div class="cert-sig-role">Representante Legal</div>
+                      <!-- 3. Course Name (Blue Box) Y ~350 -->
+                      <!-- doc.y is calculated. Box is manually placed. -->
+                      <div 
+                        ref="courseBoxRef"
+                        class="cert-element cert-course-box"
+                        :style="{ fontSize: currentFontSize + 'pt' }"
+                      >
+                        <span ref="courseTextRef">{{ (certificate.courseName || '').toUpperCase() }}</span>
                       </div>
 
-                      <!-- QR Code -->
-                       <div class="cert-qr-container">
-                          <QRCodeDisplay
+                    
+                      <div class="cert-element cert-duration">
+                        {{ computedDuration }}
+                      </div>
+
+                      <!-- 5. Dates -->
+                      <!-- Emission: X=-80, align center. Center shift left by 80. Real position ~316px -->
+                      <div class="cert-element cert-date-mission">
+                        {{ formattedIssuedDate }}
+                      </div>
+
+                      <!-- Expiration: X=186, align center. Center shift right by 186. Real position ~582px -->
+                      <div v-if="formattedExpiryDate" class="cert-element cert-date-expiry">
+                        {{ formattedExpiryDate }}.
+                      </div>
+
+                      <!-- 6. Signatures (Footer Y = 500) -->
+                      <!-- Instructor (Col1 X = Center - 145 = 251) -->
+                      <div class="cert-element cert-sig-instructor-image">
+                          <!-- Image handling logic matching backend -->
+                         <img :src="instructorDetails.signatureImage" style="max-height: 80px; max-width: 190px;" />
+                      </div>
+                      <div class="cert-element cert-sig-instructor-name">
+                        {{ instructorDetails.name }}
+                      </div>
+                      <div class="cert-element cert-sig-instructor-role">
+                        <span style="white-space: pre-line">{{ instructorDetails.role }}</span>
+                      </div>
+                    
+
+                      <!-- Representative (Col2 X = Center + 115 = 511) -->
+                      <div class="cert-element cert-sig-rep-image">
+                          <img :src="representativeDetails.signatureImage" style="max-height: 61px; max-width: 145px;" />
+                      </div>
+                      <div class="cert-element cert-sig-rep-name">
+                        {{ representativeDetails.name }}
+                      </div>
+                      <div class="cert-element cert-sig-rep-role">
+                        Representante Legal
+                      </div>
+                   
+
+                      <!-- 7. QR Code (X=688, Y=448.5) -->
+                      <div class="cert-element cert-qr-code">
+                         <QRCodeDisplay
                             v-if="getQRValue"
                             :value="getQRValue"
-                            :size="90"
+                            :size="70"
                             :show-border="false"
                             :show-background="false"
                             :show-info="false"
                             :show-actions="false"
                           />
-                       </div>
-                    </div>
+                      </div>
 
-                    <!-- Footer Text Strip -->
-                    <div class="cert-footer-text-strip">
-                      Certificado emitido por <b>FORMAR360</b> en alianza con <b>{{ allianceCompany }}</b> La autenticidad de este documento puede verificarse escaneando el código QR.
-                    </div>
+                      <!-- 8. Footer Text (Y=576) -->
+                      <div class="cert-element cert-footer-text">
+                        Certificado emitido por <b>FORMAR360</b> en alianza con <b>{{ allianceCompany }}</b> La autenticidad de este documento puede verificarse escaneando el código QR.
+                      </div>
+
                   </div>
                 </div>
               </div>
@@ -598,13 +526,18 @@ import fondoAlimentos from '../../../assets/fondoAlimentos.svg';
 import fondoSustanciasP from '../../../assets/fondoSustanciasP.svg';
 import fondoGeneral from '../../../assets/fondoGeneral.svg'; // Same as default but explicit
 
+import firmaVivianaRojas from '../../../assets/firma_viviana_rojas.png';
+import firmaNiniPena from '../../../assets/firma_nini_pena.png';
+import firmaAlfonsoVelasco from '../../../assets/firma_alfonso_velasco.png';
+import firmaFrancyGonzalez from '../../../assets/firma_francy_gonzalez.png';
+
 import { useRoute, useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 import type { Certificate, CertificateVerificationHistory } from '../../../domain/certificate/models';
 import EmptyState from '../../../shared/components/EmptyState.vue';
 import QRCodeDisplay from '../../../shared/components/QRCodeDisplay.vue';
 import { useCertificates } from '../../../shared/composables/useCertificates';
-import { certificatesService } from '../../../infrastructure/http/certificates/certificates.service';
+// import { certificatesService } from '../../../infrastructure/http/certificates/certificates.service';
 
 
 const route = useRoute();
@@ -622,17 +555,40 @@ const {
 // Estado local
 const tab = ref<'info' | 'verification' | 'history'>('info');
 const certificateId = route.params.id as string;
-const zoomLevel = ref(1);
 const isFullscreen = ref(false);
-const viewerContainer = ref<HTMLElement | null>(null);
 
 // URL del blob para mostrar el PDF en el iframe
 const pdfViewerUrl = ref<string>('');
-const loadingPDF = ref(false);
 const showQrDialog = ref(false);
 
 // Historial de verificaciones (mock por ahora, puede conectarse al backend después)
 const verificationHistory = ref<CertificateVerificationHistory[]>([]);
+
+// AUTO-AJUSTE DE TAMAÑO DE LETRA
+const courseBoxRef = ref<HTMLElement | null>(null);
+const courseTextRef = ref<HTMLElement | null>(null);
+const currentFontSize = ref(20); // Base size in pt
+
+const adjustFontSize = () => {
+  if (!courseBoxRef.value || !courseTextRef.value) return;
+  
+  // Volvemos a 20pt como base
+  currentFontSize.value = 18;
+  
+  setTimeout(() => {
+    if (!courseBoxRef.value || !courseTextRef.value) return;
+    
+    let fontSize = 18;
+    const maxWidth = 640; // Aumentamos el límite para que no se encoja tanto
+    
+    // Mientras el texto sea más ancho que el espacio permitido, se reduce la letra
+    // Pero ponemos un límite mínimo de 10pt para que siga siendo legible
+    while (courseTextRef.value.scrollWidth > maxWidth && fontSize > 12) {
+      fontSize -= 0.5;
+      currentFontSize.value = fontSize;
+    }
+  }, 0);
+};
 
 // BACKGROUND DINAMICO
 const certificateBg = computed(() => {
@@ -660,8 +616,6 @@ const certificateBg = computed(() => {
   return fondoGeneral;
 });
 
-
-
 // LOGICA DE EMPRESA ALIADA
 const allianceCompany = computed(() => {
   if (!certificate.value) return 'ANDAR DEL LLANO.';
@@ -687,8 +641,9 @@ const allianceCompany = computed(() => {
 const instructorDetails = computed(() => {
     let name = 'Viviana Paola Rojas Hincapie';
     let role = 'Instructor / Entrenador\nTSA REG xxxxxxxxx\nLicencia SST';
+    let signatureImage = firmaVivianaRojas;
 
-    if (!certificate.value) return { name, role };
+    if (!certificate.value) return { name, role, signatureImage };
     const title = (certificate.value.courseName || '').toLowerCase().trim();
 
      if (
@@ -697,13 +652,16 @@ const instructorDetails = computed(() => {
     ) {
          name = 'Nini Johana Peña Vanegaz';
          role = 'Instructor / Entrenador\nTSA REG xxxxxxxxx\nLicencia SST';
+         signatureImage = firmaNiniPena;
     }
-    return { name, role };
+    return { name, role, signatureImage };
 });
 
 const representativeDetails = computed(() => {
     let name = 'Alfonso Alejandro Velasco Reyes';
-    if (!certificate.value) return { name };
+    let signatureImage = firmaAlfonsoVelasco;
+
+    if (!certificate.value) return { name, signatureImage };
     const title = (certificate.value.courseName || '').toLowerCase().trim();
 
     if (
@@ -711,8 +669,9 @@ const representativeDetails = computed(() => {
         (title.includes('primeros') && title.includes('auxilios'))
     ) {
          name = 'Francy Dayany Gonzalez Galindo';
+         signatureImage = firmaFrancyGonzalez;
     }
-    return { name };
+    return { name, signatureImage };
 });
 
 const computedDuration = computed(() => {
@@ -784,39 +743,7 @@ function formatDateTime(dateString: string): string {
   }
 }
 
-function getValidityStatus(expiryDate: string): string {
-  const expiry = new Date(expiryDate);
-  const now = new Date();
-  const daysUntilExpiry = Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 
-  if (daysUntilExpiry < 0) return 'Vencido';
-  if (daysUntilExpiry <= 30) return 'Próximo a vencer';
-  return 'Válido';
-}
-
-function getValidityColor(expiryDate: string): string {
-  const status = getValidityStatus(expiryDate);
-  if (status === 'Vencido') return 'negative';
-  if (status === 'Próximo a vencer') return 'warning';
-  return 'positive';
-}
-
-function getValidityMessage(expiryDate: string): string {
-  const expiry = new Date(expiryDate);
-  const now = new Date();
-  const daysUntilExpiry = Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-
-  if (daysUntilExpiry < 0) {
-    return `Vencido hace ${Math.abs(daysUntilExpiry)} día(s)`;
-  }
-  if (daysUntilExpiry <= 30) {
-    return `Vence en ${daysUntilExpiry} día(s)`;
-  }
-  if (daysUntilExpiry <= 30) {
-    return `Vence en ${daysUntilExpiry} día(s)`;
-  }
-  return `Válido hasta ${formatDate(expiryDate)}`;
-}
 
 /**
  * Determina la URL base correcta.
@@ -842,52 +769,8 @@ function getBaseUrl(): string {
   return window.location.origin;
 }
 
-function getValidityProgress(expiryDate: string): number {
-  if (!certificate.value) return 0;
-  const expiry = new Date(expiryDate);
-  const issued = new Date(certificate.value.issuedDate);
-  const now = new Date();
 
-  const totalDays = (expiry.getTime() - issued.getTime()) / (1000 * 60 * 60 * 24);
-  const remainingDays = (expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
 
-  if (remainingDays < 0) return 0;
-  return Math.max(0, Math.min(1, remainingDays / totalDays));
-}
-
-function zoomIn() {
-  if (zoomLevel.value < 2) {
-    zoomLevel.value = Math.min(2, zoomLevel.value + 0.25);
-  }
-}
-
-function zoomOut() {
-  if (zoomLevel.value > 0.5) {
-    zoomLevel.value = Math.max(0.5, zoomLevel.value - 0.25);
-  }
-}
-
-function resetZoom() {
-  zoomLevel.value = 1;
-}
-
-// Nota: El zoom ahora se maneja con CSS transform en el contenedor
-// pero para PDFs en iframe, es mejor usar el zoom del navegador o el viewer
-
-function toggleFullscreen() {
-  if (!viewerContainer.value) return;
-
-  if (!isFullscreen.value) {
-    if (viewerContainer.value.requestFullscreen) {
-      void viewerContainer.value.requestFullscreen();
-    }
-  } else {
-    if (document.exitFullscreen) {
-      void document.exitFullscreen();
-    }
-  }
-  isFullscreen.value = !isFullscreen.value;
-}
 
 async function downloadPDF() {
   if (!certificate.value) {
@@ -943,22 +826,76 @@ function openPublicVerification() {
       return;
   }
 
-  if (code) {
-    const routeLocation = router.resolve({ path: `/verify/${code}` });
-    const href = routeLocation.href;
+  const url = `${baseUrl}/certificates/verify/${code}`;
+  window.open(url, '_blank');
+}
 
-    // href es relativo al root del dominio (ej: "#/verify/..." o "/verify/...")
-    // Usamos new URL para asegurar que se combina correctamente con el origen sin duplicar paths
-    try {
-      const finalUrl = new URL(href, baseUrl).href;
-      console.log('🔗 Abriendo verificación:', finalUrl);
-      window.open(finalUrl, '_blank');
-    } catch (e) {
-      console.error('Error constructing URL:', e);
-      // Fallback seguro
-      window.open(`${baseUrl}${href.startsWith('/') ? '' : '/'}${href}`, '_blank');
-    }
-  }
+// Cargar datos al montar
+onMounted(async () => {
+  await loadCertificate(certificateId);
+  adjustFontSize();
+});
+  
+
+function getValidityStatus(expiryDate?: string) {
+  if (!expiryDate) return 'Sin fecha';
+  
+  const expiry = new Date(expiryDate);
+  const now = new Date();
+  
+  if (expiry < now) return 'Vencido';
+  
+  const days = Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  
+  if (days < 30) return 'Por Vencer';
+  return 'Vigente';
+}
+  
+function getValidityMessage(expiryDate?: string) {
+  if (!expiryDate) return 'Sin fecha de vencimiento';
+  
+  const expiry = new Date(expiryDate);
+  const now = new Date();
+  
+  if (expiry < now) return `Venció el ${formatDate(expiryDate)}`;
+  
+  const days = Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  return `Vence en ${days} días (${formatDate(expiryDate)})`;
+}
+
+function getValidityColor(expiryDate?: string) {
+  if (!expiryDate) return 'grey';
+  
+  const expiry = new Date(expiryDate);
+  const now = new Date();
+  
+  if (expiry < now) return 'negative';
+  
+  const days = Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  
+  if (days < 30) return 'warning';
+  return 'positive';
+}
+
+function getValidityProgress(expiryDate?: string) {
+  if (!expiryDate) return 0;
+  
+  // Logic: 100% is newly issued (e.g. 1 year ago), 0% is expired.
+  // Ideally we need start date, but let's assume 1 year validity if not provided, or logic based on current date.
+  // For now simpler: Status logic.
+  // Let's rely on remaining days vs 365.
+  
+  const expiry = new Date(expiryDate);
+  const now = new Date();
+  
+  if (expiry < now) return 1; // Full bar but red? Or 1 to show complete?
+                              // If expired, maybe return 1 (100% time used)
+  
+  const daysRemaining = Math.max(0, Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
+  const totalDays = 365; // Assumption
+  
+  const progress = Math.max(0, 1 - (daysRemaining / totalDays));
+  return progress;
 }
 
 function goBack() {
@@ -1006,31 +943,7 @@ const getQRValue = computed(() => {
   return null;
 });
 
-/**
- * Carga el PDF del certificado como blob URL para visualización
- */
-async function loadPDFForView() {
-  if (!certificate.value) return;
 
-  loadingPDF.value = true;
-  try {
-    // Obtener el PDF como blob usando el servicio autenticado
-    const blob = await certificatesService.getPDFForView(certificate.value.id);
-
-    // Crear blob URL para el iframe
-    pdfViewerUrl.value = window.URL.createObjectURL(blob);
-  } catch (error) {
-    console.error('Error al cargar PDF para visualización:', error);
-    $q.notify({
-      type: 'negative',
-      message: 'Error al cargar el certificado para visualización',
-      icon: 'error',
-      position: 'top',
-    });
-  } finally {
-    loadingPDF.value = false;
-  }
-}
 
 // Lifecycle
 onMounted(async () => {
@@ -1058,7 +971,7 @@ onMounted(async () => {
     }
 
     // Cargar el PDF después de cargar el certificado
-    await loadPDFForView();
+    // await loadPDFForView(); // Removed unused call
   } else {
     $q.notify({
       type: 'negative',
@@ -1234,131 +1147,6 @@ body.body--dark code {
   height: 1px;
   background-color: #999999;
 }
-.cert-text-gray {
-  font-size: 12px;
-  color: #666666;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-}
-
-/* Student */
-.cert-student-name {
-  font-size: 34px;
-  font-weight: bold;
-  color: #292561;
-  margin: 5px 0 10px 0;
-  text-transform: uppercase;
-  max-width: 850px;
-  line-height: 1.1;
-}
-
-.cert-text {
-  font-size: 14px;
-  color: #000;
-  margin: 5px 0;
-}
-
-/* Description */
-.cert-description {
-  font-size: 14px;
-  color: #444;
-  margin-top: 15px;
-  margin-bottom: 15px;
-}
-
-/* Redesigned Course Box */
-.cert-course-box {
-  background-color: #292561;
-  color: white;
-  font-size: 18px;
-  font-weight: bold;
-  padding: 8px 30px;
-  border-radius: 8px;
-  margin-bottom: 15px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-  display: inline-block;
-  max-width: 80%;
-}
-
-.cert-details p {
-  margin: 2px 0;
-  font-size: 13px;
-}
-
-/* Spacer */
-.cert-push-bottom {
-  flex-grow: 1;
-}
-
-/* Footer Grid */
-.cert-footer-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  width: 100%;
-  padding: 0 100px 70px 100px;
-  position: relative;
-}
-
-.cert-sig-col {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  position: relative;
-  width: 300px; /* Increased from 200px to fit long names */
-}
-
-/* Version Indicator for Deployment Verification */
-.cert-version-debug {
-  position: fixed;
-  bottom: 0px;
-  right: 0px;
-  background: rgba(0,0,0,0.5);
-  color: white;
-  font-size: 10px;
-  padding: 2px 5px;
-  z-index: 9999;
-  pointer-events: none;
-}
-
-.cert-scribble {
-  position: absolute;
-  bottom: 35px;
-  width: 120px;
-  height: 60px;
-  z-index: 1;
-  opacity: 0.8;
-  pointer-events: none;
-}
-
-.cert-sig-line {
-  width: 100%;
-  height: 1px;
-  background-color: #000;
-  margin-bottom: 5px;
-}
-
-.cert-sig-name {
-  font-size: 13px;
-  font-weight: bold;
-  text-align: center;
-}
-
-.cert-sig-role {
-  font-size: 9px;
-  text-align: center;
-  line-height: 1.3;
-  color: #292561 !important;
-}
-
-.cert-qr-container {
-  position: absolute;
-  bottom: 80px;
-  right: 45px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
 
 .cert-footer-text-strip {
   position: absolute;
@@ -1386,34 +1174,6 @@ body.body--dark code {
     z-index: 10;
 }
 
-.cert-logo-spacer {
-    width: 0px;
-    margin-right: -27px; /* Negative margin to match backend -20px gap * 1.33 */
-}
-
-.cert-logo-container {
-    display: flex;
-    justify-content: center;
-    margin-bottom: 5px;
-    z-index: 10;
-}
-
-.cert-logo-img {
-    width: 168px; /* 126px * 1.33 */
-    height: auto;
-    object-fit: contain;
-    position: relative;
-    z-index: 11;
-    margin-top: 13px; /* Empujar hacia abajo para igualar Y=40 (antiguo) mientras Confianza está en Y=30 */
-}
-
-.logo-confianza {
-    width: 277px; /* 208px * 1.33 */
-    position: relative;
-    z-index: 12;
-    /* Sin margen superior, se queda arriba (Y=30) */
-}
-
 /* Version Indicator */
 .cert-version-debug {
   position: fixed;
@@ -1421,9 +1181,259 @@ body.body--dark code {
   right: 0px;
   background: rgba(0,0,0,0.5);
   color: white;
-  font-size: 10px;
+  font-size: 8px;
   padding: 2px 5px;
   z-index: 9999;
   pointer-events: none;
+  content: "v2026.01.21 - LAYOUT TWEAK 2";
+}
+
+/* Scoped styles for fixed layout */
+.certificate-viewer-container {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow: hidden; /* Prevent scrollbars from scaling */
+}
+
+.viewer-toolbar {
+  width: 100%;
+}
+
+.certificate-viewer {
+  width: 100%;
+  overflow: auto;
+  background-color: #525659;
+  padding: 20px;
+  display: flex;
+  justify-content: center;
+}
+
+/* Scaling Container */
+.certificate-scaler {
+  /* This container scales but keeps aspect ratio */
+  /* We will let the parent flexbox handle centering */
+}
+
+/* The Fixed Canvas - Matches PDFKit Letter Landscape EXACTLY */
+.certificate-html-view {
+  width: 792px;  /* 11 inches * 72 points */
+  height: 612px; /* 8.5 inches * 72 points */
+  position: relative;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-color: white;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+  /* Ensure fonts match PDF */
+  font-family: 'Montserrat', sans-serif;
+  color: #292561; /* Default blue color from backend */
+  overflow: hidden;
+}
+
+/* Base class for all absolute elements */
+.cert-element {
+  position: absolute;
+  text-align: center;
+  /* border: 1px solid red; /* Debugging */
+}
+
+/* --- Coordinates Matching pdf-generator.service.ts --- */
+
+/* Student Name: Y ~ 230px (Approximation based on flow)
+   Backend: Y=140 + something. 
+   Let's approximate visual placement or calculate precisely?
+   PDF Header Y=140. Main Title.
+   Then "Certifica Que".
+   Then Name (Y += 90). So Name ~ 280-300? 
+   Let's use visual placement from existing PDF or fine tune.
+   Assuming Y=260px for Name based on "center" visual.
+*/
+/* Student Name: Y ~ 230px (Approximation based on flow)
+   Backend: Y=140 + something. 
+   Let's approximate visual placement or calculate precisely?
+   PDF Header Y=140. Main Title.
+   Then "Certifica Que".
+   Then Name (Y += 90). So Name ~ 280-300? 
+   Let's use visual placement from existing PDF or fine tune.
+   Assuming Y=260px for Name based on "center" visual.
+*/
+.cert-student-name {
+  top: 269px; /* Bajado un poco (antes 245px) */
+  left: 0;
+  width: 100%;
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 700; /* Bold */
+  font-size: 18pt; /* Reducido un poco (antes 22pt) */
+}
+
+.cert-document-id {
+  top: 295px; /* Bajado 10px (antes 285px) */
+  left: 20px; /* Movido a la derecha 20px (antes 0) */
+  width: 100%;
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 700;
+  font-size: 14.5pt; 
+}
+
+/* Course Name Box 
+   Backend: Y = doc.y - 68.5. Variable.
+   Roughly halfway down? ~340px.
+*/
+.cert-course-box {
+  top: 366px; /* Bajado 10px desde la posición anterior (358px) */
+  left: 50%;
+  transform: translateX(-50%);
+  color: white; 
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 700;
+  white-space: nowrap;
+  
+  /* Sin fondo ni sombra para usar el del SVG */
+  width: 680px;
+  height: 44px; /* Aumentado un poco el alto para dar aire a la letra de 20pt */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+/* Duration 
+   Backend: Y center - 3.5? No doc.y.
+   Let's place it roughly. Y ~ 400px.
+   Offset Right 47px from center.
+   Center = 396. Left = 443. 
+   Use left: 50%; margin-left: 47px; transform: translateX(-50%);
+   
+   Wait, if we use text-align center on width 100%, we can just shift content?
+   Better: Left = 50% + 47px ? No.
+   Center point is at 396 + 47 = 443px.
+   So left: 443px; transform: translateX(-50%);
+*/
+.cert-duration {
+  top: 406px; /* Visual approximation */
+  left: 418px;
+  transform: translateX(-50%);
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 700;
+  font-size: 11pt;
+}
+
+/* Dates */
+/* Emission: Center - 80px = 316px */
+.cert-date-mission {
+  top: 423px; /* Below duration */
+  left: 307.5px;
+  transform: translateX(-50%);
+  font-size: 10.5pt;
+  font-family: 'Montserrat', sans-serif;
+}
+
+/* Expiry: Center + 186px = 582px */
+.cert-date-expiry {
+  top: 423px;
+  left: 560px;
+  transform: translateX(-50%);
+  font-size: 10.5pt;
+  font-family: 'Montserrat', sans-serif;
+}
+
+/* Signatures FooterY = 500 */
+/* Instructor Col1 X = 251px */
+.cert-sig-instructor-image {
+  top: 450px; /* footerY - 45 + yOffset(-10) = 445 ~ 450 */
+  left: 251px;
+  transform: translateX(-50%); 
+  /* Visual adjustment: viviana shifts 50px right? 
+     Backend: ((col1X - 30) - (w/2)) + 50. 
+     Center of image is shifted 50px right from col1 center?
+     Let's handle specific offsets in computed props if needed or just center col1.
+     User said "positions indicated". 
+     I'll center on 251px for now.
+  */
+  display: flex;
+  justify-content: center;
+}
+
+.cert-sig-instructor-name {
+  top: 495px; /* footerY + 5 */
+  left: 235px; /* Col 1 Center */
+  width: 260px; /* Width from backend */
+  transform: translateX(-50%);
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 700;
+  font-size: 10pt; /* Backend default? Font size not explicitly 22 here. 12? */
+ 
+  padding-top: 3px;
+}
+
+
+.cert-sig-instructor-role {
+  top: 513px; /* footerY + 20 */
+  left: 217px; /* Backend: col1X - 110? No col1X is 251. 251 - 110 = 141 X pos?
+     Wait, text(str, x, y). X = 251 - 110 = 141. Width 160.
+     Center of text box = 141 + 80 = 221.
+     So role is shifted left relative to name (251).
+  */
+
+  /* Let's stick closer to col1 center 251 */
+  width: 200px;
+  transform: translateX(-50%);
+  font-size: 9.5pt;
+}
+
+/* Rep Col2 X = 511px */
+.cert-sig-rep-image {
+  top: 455px; /* footerY - 45 */
+  left: 571px; /* Backend: (col2X + 60) ... wait. 
+     Backend: "Adjust X to center over the name text box (col2X - 70 + 260/2 = col2X + 60)"
+     Col2X = 511.
+     Center of Rep Block = 511 + 60 = 571px.
+     So Rep is NOT at Col2X starting point. It's shifted right.
+  */
+  transform: translateX(-50%);
+  display: flex;
+  justify-content: center;
+}
+
+.cert-sig-rep-name {
+  top: 495px;
+  left: 565.5px; /* Center of Rep Block */
+  width: 260px;
+  transform: translateX(-50%);
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 700;
+  font-size: 9.9pt;
+  padding-top: 3px;
+}
+
+
+
+.cert-sig-rep-role {
+  top: 513px;
+  left: 571px;
+  transform: translateX(-50%);
+  font-size: 9.5pt;
+}
+
+/* 7. QR Code: Fixed X=688, Y=448.5 */
+.cert-qr-code {
+  top: 432.5px;
+  left: 671px;
+  /* No transform translate because X is top-left corner in PDFKit usually? 
+     "doc.image(..., qrX, qrY)". Yes, top-left.
+     So left: 688px is correct.
+  */
+}
+
+/* 8. Footer Text (Y=576) */
+.cert-footer-text {
+  top: 576px;
+  left: 0;
+  width: 100%;
+  text-align: center; /* Backend calculates center logic manually, but CSS center works */
+  font-size: 7pt;
 }
 </style>
