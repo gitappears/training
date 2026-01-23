@@ -870,15 +870,18 @@ function openPublicVerification() {
       return;
   }
 
-  // Lógica robusta para evitar doble hash
+  // Lógica robusta: Si ya tiene un hash, nos quedamos con la raíz.
+  // Objetivo: BASE_URL/#/verify/TOKEN
   let cleanBaseUrl = baseUrl;
   if (baseUrl.includes('#')) {
     cleanBaseUrl = baseUrl.split('#')[0];
   }
+  // Limpiar slashes finales para evitar //#/
   cleanBaseUrl = cleanBaseUrl.replace(/\/+$/, '');
   
   const url = `${cleanBaseUrl}/#/verify/${code}`;
   
+  console.log('🚀 Abriendo verificación:', url);
   window.open(url, '_blank');
 }
 
@@ -964,17 +967,13 @@ function goBack() {
 const getQRValue = computed(() => {
   if (!certificate.value) return null;
 
-  if (certificate.value.qrCodeUrl && certificate.value.qrCodeUrl.startsWith('data:')) {
-    return certificate.value.qrCodeUrl;
-  }
-
+  // PRIORIDAD 1: Generación dinámica (Asegura URL limpia y actualizada)
   if (certificate.value.verificationCode) {
       const code = certificate.value.verificationCode;
       const baseUrl = getBaseUrl();
 
-
       try {
-        // Lógica robusta para evitar doble hash
+        // Lógica robusta: Tomar solo la raíz antes del hash
         let cleanBaseUrl = baseUrl;
         if (baseUrl.includes('#')) {
           cleanBaseUrl = baseUrl.split('#')[0];
@@ -983,18 +982,27 @@ const getQRValue = computed(() => {
         
         const finalUrl = `${cleanBaseUrl}/#/verify/${code}`;
 
-        console.log('✅ QR Generado (Final):', finalUrl);
+        console.log('✅ QR Dinámico Generado:', finalUrl);
         return finalUrl;
       } catch (e) {
-         console.error('Error QR:', e);
-         let cleanBaseUrl = baseUrl;
-         if (baseUrl.includes('#')) {
-           cleanBaseUrl = baseUrl.split('#')[0];
-         }
-         cleanBaseUrl = cleanBaseUrl.replace(/\/+$/, '');
-         return `${cleanBaseUrl}/#/verify/${code}`;
+         console.error('Error generando QR dinámico:', e);
+         // Fallback de construcción si algo falla
+         let clean = baseUrl.split('#')[0].replace(/\/+$/, '');
+         return `${clean}/#/verify/${code}`;
       }
   }
+
+  // PRIORIDAD 2: Imagen estática del backend (Solo si no hay código para generar URL)
+  if (certificate.value.qrCodeUrl && certificate.value.qrCodeUrl.startsWith('data:')) {
+    return certificate.value.qrCodeUrl;
+  }
+
+  if (certificate.value.publicVerificationUrl?.startsWith('http')) {
+    return certificate.value.publicVerificationUrl;
+  }
+
+  return null;
+});
 
   if (certificate.value.publicVerificationUrl?.startsWith('http')) {
     return certificate.value.publicVerificationUrl;
