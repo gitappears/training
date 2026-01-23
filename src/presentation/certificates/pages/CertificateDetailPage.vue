@@ -870,18 +870,12 @@ function openPublicVerification() {
       return;
   }
 
-  // Lógica robusta: Si ya tiene un hash, nos quedamos con la raíz.
-  // Objetivo: BASE_URL/#/verify/TOKEN
-  let cleanBaseUrl = baseUrl;
-  if (baseUrl.includes('#')) {
-    cleanBaseUrl = baseUrl.split('#')[0];
-  }
-  // Limpiar slashes finales para evitar //#/
-  cleanBaseUrl = cleanBaseUrl.replace(/\/+$/, '');
-  
+  // SOLUCIÓN REAL: Limpieza radical con Regex para asegurar formato BASE_URL/#/verify/TOKEN
+  // Eliminamos TODO lo que sea # o / al final de la URL base
+  const cleanBaseUrl = baseUrl.replace(/#.*$/, '').replace(/\/+$/, '');
   const url = `${cleanBaseUrl}/#/verify/${code}`;
   
-  console.log('🚀 Abriendo verificación:', url);
+  console.log('� [SOLUCIÓN REAL] Abriendo URL:', url);
   window.open(url, '_blank');
 }
 
@@ -963,46 +957,36 @@ function goBack() {
   }
 }
 
-// Computed para obtener el valor del QR
 const getQRValue = computed(() => {
   if (!certificate.value) return null;
 
-  // PRIORIDAD 1: Generación dinámica (Asegura URL limpia y actualizada)
+  // PRIORIDAD 1: Construcción Dinámica (Blindada contra doble hash)
   if (certificate.value.verificationCode) {
       const code = certificate.value.verificationCode;
-      const baseUrl = getBaseUrl();
+      const rawBase = getBaseUrl();
 
       try {
-        // Lógica robusta: Tomar solo la raíz antes del hash
-        let cleanBaseUrl = baseUrl;
-        if (baseUrl.includes('#')) {
-          cleanBaseUrl = baseUrl.split('#')[0];
-        }
-        cleanBaseUrl = cleanBaseUrl.replace(/\/+$/, '');
-        
-        const finalUrl = `${cleanBaseUrl}/#/verify/${code}`;
+        // Regex /#.*$/ elimina el primer # y todo lo que le sigue
+        // Regex /\/+$/ elimina slashes finales
+        const cleanBase = rawBase.replace(/#.*$/, '').replace(/\/+$/, '');
+        const finalUrl = `${cleanBase}/#/verify/${code}`;
 
-        console.log('✅ QR Dinámico Generado:', finalUrl);
+        console.log('🎯 [QR DINÁMICO] URL Final:', finalUrl);
         return finalUrl;
       } catch (e) {
-         console.error('Error generando QR dinámico:', e);
-         // Fallback de construcción si algo falla
-         const fallbackBaseUrl = getBaseUrl();
-         const clean = fallbackBaseUrl.split('#')[0].replace(/\/+$/, '');
-         return `${clean}/#/verify/${code}`;
+         console.error('❌ Error construyendo QR:', e);
+         const fallback = getBaseUrl().split('#')[0].replace(/\/+$/, '');
+         return `${fallback}/#/verify/${code}`;
       }
   }
 
-  // PRIORIDAD 2: Imagen estática del backend (Solo si no hay código para generar URL)
+  // PRIORIDAD 2: Solo si falla lo anterior, usamos la imagen del backend
   if (certificate.value.qrCodeUrl && certificate.value.qrCodeUrl.startsWith('data:')) {
+    console.log('⚠️ Usando QR estático del backend');
     return certificate.value.qrCodeUrl;
   }
 
-  if (certificate.value.publicVerificationUrl?.startsWith('http')) {
-    return certificate.value.publicVerificationUrl;
-  }
-
-  return null;
+  return certificate.value.publicVerificationUrl || null;
 });
 
 
