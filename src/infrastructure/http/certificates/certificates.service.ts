@@ -89,10 +89,10 @@ function mapBackendToDomain(backendData: BackendCertificate): Certificate {
   const urlVerificacionPublica = backendData.urlVerificacionPublica?.trim() || '';
 
   // Fix: Quasar hash mode requires /#/ followed by the route.
-  // The 'real' path reported by user includes /certificates/ before the hash.
+  // The 'real' path reported by user on Render: /#/verify/TOKEN
   const finalVerificationUrl = urlVerificacionPublica?.startsWith('http') 
     ? urlVerificacionPublica 
-    : (hashVerificacion ? `/certificates/#/verify/${hashVerificacion}` : '');
+    : (hashVerificacion ? `/#/verify/${hashVerificacion}` : '');
 
   const certificate: Certificate = {
     id: backendData.id?.toString() ?? '',
