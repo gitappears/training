@@ -981,7 +981,7 @@ const getQRValue = computed(() => {
         }
         cleanBaseUrl = cleanBaseUrl.replace(/\/+$/, '');
         
-        const finalUrl = `${cleanBaseUrl}/verify/${code}`;
+        const finalUrl = `${cleanBaseUrl}/#/verify/${code}`;
 
         console.log('✅ QR Generado (Final):', finalUrl);
         return finalUrl;
@@ -992,7 +992,7 @@ const getQRValue = computed(() => {
            cleanBaseUrl = baseUrl.split('#')[0];
          }
          cleanBaseUrl = cleanBaseUrl.replace(/\/+$/, '');
-         return `${cleanBaseUrl}/verify/${code}`;
+         return `${cleanBaseUrl}/#/verify/${code}`;
       }
   }
 
