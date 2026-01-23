@@ -870,7 +870,10 @@ function openPublicVerification() {
       return;
   }
 
-  const url = `${baseUrl}/certificates/verify/${code}`;
+  // Lógica unificada para evitar doble hash y asegurar prefijo
+  const cleanBaseUrl = baseUrl.replace(/\/+$/, '').replace(/#+$/, '').replace(/\/+$/, '');
+  const url = `${cleanBaseUrl}/certificates/#/verify/${code}`;
+  
   window.open(url, '_blank');
 }
 
@@ -966,17 +969,16 @@ const getQRValue = computed(() => {
 
 
       try {
-        // Enforce hash mode explicitly for QR codes
-        const hashPath = `/#/verify/${code}`;
-        // Ensure NO double slashes if baseUrl ends with /
-        const cleanBaseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
-        const finalUrl = `${cleanBaseUrl}${hashPath}`;
+        // Lógica unificada para evitar doble hash y asegurar prefijo
+        const cleanBaseUrl = baseUrl.replace(/\/+$/, '').replace(/#+$/, '').replace(/\/+$/, '');
+        const finalUrl = `${cleanBaseUrl}/certificates/#/verify/${code}`;
 
-        console.log('✅ QR Generado:', finalUrl);
+        console.log('✅ QR Generado (Final):', finalUrl);
         return finalUrl;
       } catch (e) {
          console.error('Error QR:', e);
-         return `${baseUrl}/#/verify/${code}`;
+         const cleanBaseUrl = baseUrl.replace(/\/+$/, '').replace(/#+$/, '').replace(/\/+$/, '');
+         return `${cleanBaseUrl}/certificates/#/verify/${code}`;
       }
   }
 
