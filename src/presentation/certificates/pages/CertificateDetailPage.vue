@@ -870,9 +870,14 @@ function openPublicVerification() {
       return;
   }
 
-  // Lógica unificada para evitar doble hash
-  const cleanBaseUrl = baseUrl.replace(/\/+$/, '').replace(/#+$/, '');
-  const url = `${cleanBaseUrl}/verify/${code}`;
+  // Lógica robusta para evitar doble hash
+  let cleanBaseUrl = baseUrl;
+  if (baseUrl.includes('#')) {
+    cleanBaseUrl = baseUrl.split('#')[0];
+  }
+  cleanBaseUrl = cleanBaseUrl.replace(/\/+$/, '');
+  
+  const url = `${cleanBaseUrl}/#/verify/${code}`;
   
   window.open(url, '_blank');
 }
@@ -969,16 +974,25 @@ const getQRValue = computed(() => {
 
 
       try {
-        // Lógica unificada para evitar doble hash
-        const cleanBaseUrl = baseUrl.replace(/\/+$/, '').replace(/#+$/, '');
-        const finalUrl = `${cleanBaseUrl}/verify/${code}`;
+        // Lógica robusta para evitar doble hash
+        let cleanBaseUrl = baseUrl;
+        if (baseUrl.includes('#')) {
+          cleanBaseUrl = baseUrl.split('#')[0];
+        }
+        cleanBaseUrl = cleanBaseUrl.replace(/\/+$/, '');
+        
+        const finalUrl = `${cleanBaseUrl}/#/verify/${code}`;
 
         console.log('✅ QR Generado (Final):', finalUrl);
         return finalUrl;
       } catch (e) {
          console.error('Error QR:', e);
-         const cleanBaseUrl = baseUrl.replace(/\/+$/, '').replace(/#+$/, '');
-         return `${cleanBaseUrl}/verify/${code}`;
+         let cleanBaseUrl = baseUrl;
+         if (baseUrl.includes('#')) {
+           cleanBaseUrl = baseUrl.split('#')[0];
+         }
+         cleanBaseUrl = cleanBaseUrl.replace(/\/+$/, '');
+         return `${cleanBaseUrl}/#/verify/${code}`;
       }
   }
 
