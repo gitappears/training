@@ -877,7 +877,7 @@ function openPublicVerification() {
   }
   cleanBaseUrl = cleanBaseUrl.replace(/\/+$/, '');
   
-  const url = `${cleanBaseUrl}/#/verify/${code}`;
+  const url = `${cleanBaseUrl}/verify/${code}`;
   
   window.open(url, '_blank');
 }
