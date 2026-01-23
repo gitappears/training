@@ -987,7 +987,8 @@ const getQRValue = computed(() => {
       } catch (e) {
          console.error('Error generando QR dinámico:', e);
          // Fallback de construcción si algo falla
-         let clean = baseUrl.split('#')[0].replace(/\/+$/, '');
+         const fallbackBaseUrl = getBaseUrl();
+         const clean = fallbackBaseUrl.split('#')[0].replace(/\/+$/, '');
          return `${clean}/#/verify/${code}`;
       }
   }
@@ -996,13 +997,6 @@ const getQRValue = computed(() => {
   if (certificate.value.qrCodeUrl && certificate.value.qrCodeUrl.startsWith('data:')) {
     return certificate.value.qrCodeUrl;
   }
-
-  if (certificate.value.publicVerificationUrl?.startsWith('http')) {
-    return certificate.value.publicVerificationUrl;
-  }
-
-  return null;
-});
 
   if (certificate.value.publicVerificationUrl?.startsWith('http')) {
     return certificate.value.publicVerificationUrl;
