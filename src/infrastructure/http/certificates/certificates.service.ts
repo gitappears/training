@@ -460,7 +460,7 @@ export class CertificatesService implements ICertificateRepository {
         certificate: response.data.certificado
           ? {
               id: '',
-              courseId: '',
+              courseId: (response.data.certificado as any).idCapacitacion || '',
               courseName: response.data.certificado.nombreCurso,
               studentId: '',
               studentName: response.data.certificado.nombreCompleto,

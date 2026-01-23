@@ -36,13 +36,13 @@
             <!-- Field 2: Centro Médico (Static as per request context) -->
             <div class="biofile-row">
               <div class="biofile-label">Centro de Formación:</div>
-              <div class="biofile-value">FORMAR 360 - ANDAR DEL LLANO</div>
+              <div class="biofile-value">{{ trainingCenterName }}</div>
             </div>
 
             <!-- Field 3: N Invoice/ID -->
             <div class="biofile-row">
               <div class="biofile-label">N°:</div>
-              <div class="biofile-value">{{ certificate.id }}</div>
+              <div class="biofile-value">{{ certificate.courseId }}</div>
             </div>
 
             <!-- Field 4: Fecha y Hora -->
@@ -125,7 +125,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import type { Certificate } from '../../../domain/certificate/models';
 import { certificatesService } from '../../../infrastructure/http/certificates/certificates.service';
@@ -136,6 +136,27 @@ const router = useRouter();
 const loading = ref(true);
 const certificate = ref<Certificate | null>(null);
 const verificationToken = route.params.token as string;
+
+const trainingCenterName = computed(() => {
+  if (!certificate.value?.courseName) return 'FORMAR 360 - ANDAR DEL LLANO';
+  
+  const titulo = certificate.value.courseName.toLowerCase();
+  
+  if (
+    (titulo.includes('manipulación') || titulo.includes('manipulacion')) && titulo.includes('alimentos') ||
+    (titulo.includes('primeros') && titulo.includes('auxilios'))
+  ) {
+    return 'FORMAR 360 - IPS CONFIANZA';
+  }
+  
+  if (
+    titulo.includes('transporte') && (titulo.includes('mercancías') || titulo.includes('mercancias')) && titulo.includes('peligrosas')
+  ) {
+    return 'FORMAR 360 - CEASAROTO';
+  }
+  
+  return 'FORMAR 360 - ANDAR DEL LLANO';
+});
 
 function formatDateTime(dateString: string): string {
   try {
