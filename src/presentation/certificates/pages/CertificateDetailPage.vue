@@ -872,7 +872,7 @@ function openPublicVerification() {
 
   // Lógica unificada para evitar doble hash
   const cleanBaseUrl = baseUrl.replace(/\/+$/, '').replace(/#+$/, '');
-  const url = `${cleanBaseUrl}/#/verify/${code}`;
+  const url = `${cleanBaseUrl}/verify/${code}`;
   
   window.open(url, '_blank');
 }
@@ -971,14 +971,14 @@ const getQRValue = computed(() => {
       try {
         // Lógica unificada para evitar doble hash
         const cleanBaseUrl = baseUrl.replace(/\/+$/, '').replace(/#+$/, '');
-        const finalUrl = `${cleanBaseUrl}/#/verify/${code}`;
+        const finalUrl = `${cleanBaseUrl}/verify/${code}`;
 
         console.log('✅ QR Generado (Final):', finalUrl);
         return finalUrl;
       } catch (e) {
          console.error('Error QR:', e);
          const cleanBaseUrl = baseUrl.replace(/\/+$/, '').replace(/#+$/, '');
-         return `${cleanBaseUrl}/#/verify/${code}`;
+         return `${cleanBaseUrl}/verify/${code}`;
       }
   }
 
