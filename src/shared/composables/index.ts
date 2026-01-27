@@ -1,4 +1,5 @@
 export * from './useRole';
+export * from './useBooleanNumberToggle';
 export * from './useAuth';
 export * from './useTerms';
 export * from './useForm';

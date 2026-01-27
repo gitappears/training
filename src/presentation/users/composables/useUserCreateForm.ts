@@ -13,6 +13,11 @@ import { useRoles } from './useRoles';
 import { useAuthStore } from '../../../stores/auth.store';
 import type { PersonType } from '../../../domain/user/models';
 import type { RegisterDto } from '../../../application/auth/auth.repository.port';
+import {
+  TIPO_DOCUMENTO_OPTIONS,
+  type TipoDocumento,
+  getTipoDocumentoLabel,
+} from '../../../shared/constants/tipo-documento';
 
 /**
  * Composable para manejar el formulario de creación de usuarios
@@ -29,7 +34,7 @@ export function useUserCreateForm() {
   const configFormRef = ref<QForm | null>(null);
 
   interface UserForm {
-    documentType: 'CC' | 'CE' | 'PA' | 'TI' | 'NIT' | null;
+    documentType: TipoDocumento | null;
     document: string;
     nombres: string;
     apellidos: string;
@@ -187,12 +192,10 @@ export function useUserCreateForm() {
 
   // Opciones de tipo de documento (excluir NIT si es CLIENTE)
   const documentTypeOptions = computed(() => {
-    const allOptions = ['CC', 'CE', 'PA', 'TI', 'NIT'];
     if (isCliente.value) {
-      // Los CLIENTE no pueden crear usuarios con NIT
-      return allOptions.filter((opt) => opt !== 'NIT');
+      return TIPO_DOCUMENTO_OPTIONS.filter((o) => o.value !== 'NIT');
     }
-    return allOptions;
+    return TIPO_DOCUMENTO_OPTIONS;
   });
 
   const personTypeOptions = [
@@ -454,14 +457,7 @@ export function useUserCreateForm() {
   }
 
   function getDocumentTypeLabel(type: string | null): string {
-    const labels: Record<string, string> = {
-      CC: 'Cédula de Ciudadanía',
-      CE: 'Cédula de Extranjería',
-      PA: 'Pasaporte',
-      TI: 'Tarjeta de Identidad',
-      NIT: 'NIT',
-    };
-    return labels[type ?? ''] ?? type ?? '';
+    return getTipoDocumentoLabel(type);
   }
 
   function getRoleLabel(role: string | null): string {

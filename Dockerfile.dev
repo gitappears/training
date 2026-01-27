@@ -1,0 +1,13 @@
+FROM node:22
+
+WORKDIR /app
+
+COPY package.json package-lock.json .npmrc ./
+
+COPY . .
+
+EXPOSE 9000
+
+# Using standard Debian node image should allow native binaries (sass, esbuild, rollup) to work.
+# running install at runtime to ensure volume-mounted node_modules are consistent
+CMD ["sh", "-c", "npm install && npm rebuild && npm run dev -- --host 0.0.0.0"]

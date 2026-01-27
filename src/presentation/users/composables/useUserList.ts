@@ -1,4 +1,4 @@
-import { watch } from 'vue';
+import { ref, watch } from 'vue';
 import type { QTableProps } from 'quasar';
 import type { User, UserFilters } from '../../../domain/user/models';
 import { useUsers } from './useUsers';
@@ -15,12 +15,17 @@ export function useUserList() {
     loading,
     users,
     statistics,
+    setUsersData,
     listUsers,
     toggleUserStatus: toggleUserStatusUseCase,
     bulkEnable: bulkEnableUseCase,
     bulkDisable: bulkDisableUseCase,
     getStatistics,
   } = useUsers();
+
+  /** Cuando totalPages===1, el back ya devolvió todo; la paginación es solo local. */
+  const allUsersWhenSinglePage = ref<User[]>([]);
+  const lastTotalPages = ref(0);
 
   const {
     filters,
@@ -75,6 +80,12 @@ export function useUserList() {
       }
 
       const response = await listUsers(params);
+      lastTotalPages.value = response.totalPages ?? 0;
+      if (response.totalPages === 1) {
+        allUsersWhenSinglePage.value = response.data;
+      } else {
+        allUsersWhenSinglePage.value = [];
+      }
       updatePagination({
         page: response.page,
         limit: response.limit,
@@ -89,7 +100,29 @@ export function useUserList() {
   }
 
   async function onRequest(props: { pagination: QTableProps['pagination'] }) {
-    pagination.value = props.pagination;
+    const p = props.pagination;
+    const page = p?.page ?? 1;
+    const rowsPerPage = p?.rowsPerPage ?? 10;
+    // Actualizar solo page y rowsPerPage; mantener rowsNumber para no perder el total y evitar "0-0" mientras llega la respuesta.
+    pagination.value = {
+      ...pagination.value,
+      page,
+      rowsPerPage,
+    };
+
+    // Si totalPages===1, todos los datos ya están en memoria: paginar solo en local, sin petición al back.
+    if (lastTotalPages.value === 1 && allUsersWhenSinglePage.value.length > 0) {
+      const start = (page - 1) * rowsPerPage;
+      const end = start + rowsPerPage;
+      setUsersData(allUsersWhenSinglePage.value.slice(start, end));
+      updatePagination({
+        page,
+        limit: rowsPerPage,
+        total: allUsersWhenSinglePage.value.length,
+      });
+      return;
+    }
+
     await loadUsers();
   }
 

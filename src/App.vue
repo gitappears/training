@@ -9,8 +9,8 @@ import { useThemeStore } from './stores/theme.store';
 const themeStore = useThemeStore();
 
 onMounted(() => {
-  // DEBUG: Verificar versión de la App
-  console.log('🚀 APP VERSION: 2026-01-03-DEBUG-FIX-V2');
+  // DEBUG: Verificar versión de la App (Actualizado para solucionar Doble Hash)
+  console.log('🚀 APP VERSION: 2026-01-23-FIX-V3');
   console.log('📍 Current URL:', window.location.href);
 
   // FORCE: Eliminar Service Workers antiguos que puedan estar cacheando la app vieja

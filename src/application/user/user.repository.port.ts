@@ -2,6 +2,7 @@
 // Define el contrato que debe cumplir cualquier implementación
 
 import type { User, UserListParams, UserFilters, UserStatistics } from '../../domain/user/models';
+import type { TipoDocumento } from '../../shared/constants/tipo-documento';
 import type { PaginatedResponse } from '../training/training.repository.port';
 
 // Re-exportar tipos del dominio para facilitar importaciones
@@ -11,7 +12,7 @@ export interface CreateUserDto {
   name: string;
   email: string;
   document: string;
-  documentType: 'CC' | 'CE' | 'PA' | 'TI' | 'NIT';
+  documentType: TipoDocumento;
   phone?: string;
   role: 'admin' | 'institutional' | 'driver';
   personType: 'natural' | 'juridica';

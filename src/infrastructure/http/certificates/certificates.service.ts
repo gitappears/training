@@ -36,6 +36,7 @@ interface BackendCertificate {
   urlVerificacionPublica: string;
   hashVerificacion: string;
   codigoQr?: string;
+  codigo_qr?: string; // Fallback para formato snake_case del backend
   firmaDigital?: string;
   activo: boolean;
   inscripcion?: {
@@ -86,9 +87,12 @@ function mapBackendToDomain(backendData: BackendCertificate): Certificate {
   // Asegurar que siempre tengamos un código de verificación y URL
   const hashVerificacion = backendData.hashVerificacion?.trim() || backendData.numeroCertificado || '';
   const urlVerificacionPublica = backendData.urlVerificacionPublica?.trim() || '';
-  
-  // Si no hay URL pero sí hay hash, construir la URL
-  const finalVerificationUrl = urlVerificacionPublica || (hashVerificacion ? `/verify/${hashVerificacion}` : '');
+
+  // Fix: Quasar hash mode requires /#/ followed by the route.
+  // The 'real' path reported by user on Render: /#/verify/TOKEN
+  const finalVerificationUrl = urlVerificacionPublica?.startsWith('http') 
+    ? urlVerificacionPublica 
+    : (hashVerificacion ? `/#/verify/${hashVerificacion}` : '');
 
   const certificate: Certificate = {
     id: backendData.id?.toString() ?? '',
@@ -124,8 +128,8 @@ function mapBackendToDomain(backendData: BackendCertificate): Certificate {
   }
   if (backendData.codigoQr) {
     certificate.qrCodeUrl = backendData.codigoQr;
-  } else if ((backendData as any).codigo_qr) {
-    certificate.qrCodeUrl = (backendData as any).codigo_qr;
+  } else if (backendData.codigo_qr) {
+    certificate.qrCodeUrl = backendData.codigo_qr;
   }
   if (backendData.urlCertificado) {
     certificate.pdfUrl = backendData.urlCertificado;
@@ -141,21 +145,17 @@ function mapBackendToDomain(backendData: BackendCertificate): Certificate {
 }
 
 function mapStatus(backendData: BackendCertificate): CertificateStatus {
+  // El backend garantiza que solo se crean certificados para inscripciones aprobadas
+  // (ver create-certificado.use-case.ts línea 63-67)
+  // Por lo tanto, solo verificamos si está activo, revocado o vencido
+
   if (!backendData.activo) return 'revoked';
-  
-  // Validar puntuación si existe información de inscripción
-  if (backendData.inscripcion) {
-    const score = backendData.inscripcion.calificacionFinal ?? 0;
-    const minScore = backendData.inscripcion.minimoAprobacion ?? 70;
-    if (score < minScore) {
-      return 'revoked'; // O un estado 'failed' si existiera, pero 'revoked' o 'inválido' funciona
-    }
-  }
-  
+
+  // Verificar si está vencido
   if (backendData.fechaVencimiento) {
     const fechaVencimiento = new Date(backendData.fechaVencimiento);
     const ahora = new Date();
-    
+
     // Debug fecha
     console.log(`[Cert Status] ID: ${backendData.id}, Vence: ${fechaVencimiento.toISOString()}, Ahora: ${ahora.toISOString()}`);
 
@@ -163,7 +163,7 @@ function mapStatus(backendData: BackendCertificate): CertificateStatus {
       return 'expired';
     }
   }
-  
+
   return 'valid';
 }
 
@@ -176,18 +176,28 @@ export class CertificatesService implements ICertificateRepository {
 
   async findAll(params: CertificateListParams): Promise<PaginatedResponse<Certificate>> {
     try {
-      const pagination = {
+      const f = params.filters;
+      const statusVal = f?.status != null ? String(f.status).trim() : undefined;
+      const body = {
         page: params.page ?? 1,
         limit: params.limit ?? 10,
-        search: params.filters?.search,
-        sortBy: params.sortBy,
-        sortOrder: params.sortOrder,
-        filters: params.filters,
+        search: f?.search || undefined,
+        sortField: params.sortBy || undefined,
+        sortOrder: (params.sortOrder?.toUpperCase() as 'ASC' | 'DESC') || undefined,
+        filters: {
+          ...(f?.studentId && { studentId: f.studentId }),
+          ...(f?.courseId && { courseId: f.courseId }),
+          ...(statusVal && { status: statusVal }),
+        },
       };
+      // Eliminar filters si está vacío para no enviar {} innecesario
+      if (Object.keys(body.filters).length === 0) {
+        delete (body as Record<string, unknown>).filters;
+      }
 
       const response = await api.post<BackendPaginatedResponse>(
         `${this.baseUrl}/list`,
-        pagination,
+        body,
       );
 
       return {
@@ -260,7 +270,7 @@ export class CertificatesService implements ICertificateRepository {
       return certificates;
     } catch (error) {
       const axiosError = error as AxiosError<{ message?: string; error?: string }>;
-      
+
       // Log detallado del error para debugging
       console.error('Error en findByUser:', {
         userId,
@@ -269,18 +279,18 @@ export class CertificatesService implements ICertificateRepository {
         data: axiosError.response?.data,
         message: axiosError.message,
       });
-      
+
       // Si es un error 404, retornar array vacío en lugar de lanzar error
       if (axiosError.response?.status === 404) {
         console.warn(`No se encontraron certificados para el usuario ${userId}`);
         return [];
       }
-      
+
       const errorMessage =
         axiosError.response?.data?.message ??
         axiosError.response?.data?.error ??
         `Error al obtener los certificados del usuario ${userId}`;
-      
+
       throw new Error(errorMessage);
     }
   }
@@ -311,7 +321,7 @@ export class CertificatesService implements ICertificateRepository {
         fechaRetroactiva?: string;
         justificacionRetroactiva?: string;
       } = {};
-      
+
       if (dto.isRetroactive !== undefined) {
         updateDto.esRetroactivo = dto.isRetroactive;
       }
@@ -450,7 +460,7 @@ export class CertificatesService implements ICertificateRepository {
         certificate: response.data.certificado
           ? {
               id: '',
-              courseId: '',
+              courseId: (response.data.certificado as any).idCapacitacion || '',
               courseName: response.data.certificado.nombreCurso,
               studentId: '',
               studentName: response.data.certificado.nombreCompleto,
@@ -504,11 +514,11 @@ export class CertificatesService implements ICertificateRepository {
       // TODO: Implementar endpoint en backend si es necesario
       // Por ahora retornar estadísticas básicas
       const result = await this.findAll({ page: 1, limit: 100, filters: filters ?? {} });
-      
+
       const valid = result.data.filter((c) => c.status === 'valid').length;
       const expired = result.data.filter((c) => c.status === 'expired').length;
       const revoked = result.data.filter((c) => c.status === 'revoked').length;
-      
+
       const byCourse: Record<string, number> = {};
       result.data.forEach((cert) => {
         if (cert.courseId) {
@@ -626,13 +636,13 @@ export class CertificatesService implements ICertificateRepository {
         diasAntesVencimiento: dto.diasAntesVencimiento,
         activo: dto.activo ? 1 : 0,
       };
-      
+
       const response = await api.patch<{
         id: number;
         diasAntesVencimiento: number;
         activo: number | boolean; // El backend puede retornar número (1/0) o boolean
       }>(`/certificates/alert-configurations/${id}`, dtoParaBackend);
-      
+
       // Convertir número (1/0) a boolean en la respuesta
       return {
         id: response.data.id,
@@ -657,6 +667,47 @@ export class CertificatesService implements ICertificateRepository {
       const axiosError = error as AxiosError<{ message?: string }>;
       throw new Error(
         axiosError.response?.data?.message ?? 'Error al ejecutar la verificación de vencimientos',
+      );
+    }
+  }
+
+  /**
+   * Buscar certificados por hash o texto (para editor de PDF)
+   * @param search Término de búsqueda (hash, nombre estudiante, curso, etc.)
+   * @param limit Límite de resultados (default: 20)
+   * @returns Lista de certificados con información básica
+   */
+  async searchHashes(search?: string, limit: number = 20): Promise<Array<{
+    id: number;
+    hashVerificacion: string;
+    numeroCertificado: string;
+    estudianteNombre: string;
+    cursoNombre: string;
+    fechaEmision: string;
+  }>> {
+    try {
+      const params = new URLSearchParams();
+      if (search) {
+        params.append('search', search);
+      }
+      if (limit) {
+        params.append('limit', limit.toString());
+      }
+
+      const response = await api.get<Array<{
+        id: number;
+        hashVerificacion: string;
+        numeroCertificado: string;
+        estudianteNombre: string;
+        cursoNombre: string;
+        fechaEmision: string;
+      }>>(`${this.baseUrl}/search/hashes?${params.toString()}`);
+
+      return response.data;
+    } catch (error) {
+      const axiosError = error as AxiosError<{ message?: string }>;
+      throw new Error(
+        axiosError.response?.data?.message ?? 'Error al buscar certificados',
       );
     }
   }

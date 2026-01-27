@@ -156,6 +156,46 @@ const routes: RouteRecordRaw[] = [
           roles: ['ADMIN'] as UserRole[],
         },
       },
+      {
+        path: 'admin/documentos-legales',
+        name: 'documentos-legales',
+        component: () => import('../presentation/admin/pages/DocumentosLegalesPage.vue'),
+        meta: {
+          roles: ['ADMIN'] as UserRole[],
+        },
+      },
+      {
+        path: 'admin/documentos-legales/new',
+        name: 'documento-legal-new',
+        component: () => import('../presentation/admin/pages/DocumentoLegalFormPage.vue'),
+        meta: {
+          roles: ['ADMIN'] as UserRole[],
+        },
+      },
+      {
+        path: 'admin/documentos-legales/:id/edit',
+        name: 'documento-legal-edit',
+        component: () => import('../presentation/admin/pages/DocumentoLegalFormPage.vue'),
+        meta: {
+          roles: ['ADMIN'] as UserRole[],
+        },
+      },
+      {
+        path: 'admin/configuracion-sesion',
+        name: 'configuracion-sesion',
+        component: () => import('../presentation/admin/pages/ConfiguracionSesionPage.vue'),
+        meta: {
+          roles: ['ADMIN'] as UserRole[],
+        },
+      },
+      {
+        path: 'admin/pdf-editor',
+        name: 'pdf-editor',
+        component: () => import('../presentation/admin/pages/PdfEditorPage.vue'),
+        meta: {
+          roles: ['ADMIN'] as UserRole[],
+        },
+      },
 
       // Perfil
       {

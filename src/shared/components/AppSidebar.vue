@@ -16,7 +16,7 @@
     <div class="drawer-header q-pa-md">
       <div class="row items-center no-wrap cursor-pointer" @click="$router.push('/')">
         <div v-if="!localMiniState" class="text-center">
-          <img :src="logoColor" alt="Formar 360" class="logo-image q-mb-xs" />
+          <img :src="themeStore.isDark ? logoWhite : logoColor" alt="Formar 360" class="logo-image q-mb-xs" />
           <div class="text-caption text-grey-6">Plataforma de capacitación</div>
         </div>
       </div>
@@ -83,6 +83,10 @@
 import { computed, ref, watch } from 'vue';
 import { useRole } from '../composables';
 import logoColor from '../../assets/logo_color_formar.svg';
+import logoWhite from '../../assets/logo_blanco_formar360.svg';
+
+import { useThemeStore } from '../../stores/theme.store';
+const themeStore = useThemeStore();
 
 interface Props {
   modelValue: boolean;
@@ -123,6 +127,8 @@ const {
   canManageAlerts,
   canCreateExternalDrivers,
   canManagePayments,
+  canManageDocumentosLegales,
+  isAdmin,
 } = useRole();
 
 interface MenuItem {
@@ -201,7 +207,9 @@ const menuSections = computed<MenuSection[]>(() => {
         canViewReports.value ||
         canManageAlerts.value ||
         canCreateExternalDrivers.value ||
-        canManagePayments.value,
+        canManagePayments.value ||
+        canManageDocumentosLegales.value ||
+        isAdmin.value,
       items: [
         {
           label: 'Reportes',
@@ -218,6 +226,30 @@ const menuSections = computed<MenuSection[]>(() => {
           iconColor: 'orange',
           to: '/admin/alert-config',
           visible: canManageAlerts.value,
+        },
+        {
+          label: 'Documentos Legales',
+          caption: 'Términos y políticas',
+          icon: 'description',
+          iconColor: 'teal',
+          to: '/admin/documentos-legales',
+          visible: canManageDocumentosLegales.value,
+        },
+        {
+          label: 'Configuración de Sesión',
+          caption: 'Inactividad y tiempo máximo',
+          icon: 'timer',
+          iconColor: 'orange',
+          to: '/admin/configuracion-sesion',
+          visible: canManageAlerts.value,
+        },
+        {
+          label: 'Editor de PDF',
+          caption: 'Configurar formatos de certificados',
+          icon: 'picture_as_pdf',
+          iconColor: 'red',
+          to: '/admin/pdf-editor',
+          visible: isAdmin.value,
         },
         {
           label: 'Empresas',

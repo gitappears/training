@@ -94,6 +94,17 @@
     <q-page-container>
       <router-view />
     </q-page-container>
+
+    <!-- Diálogos de Timeout de Sesión -->
+    <SessionTimeoutDialog
+      :show-inactivity-dialog="showInactivityDialog"
+      :show-max-session-dialog="showMaxSessionDialog"
+      :warning-time="warningTime"
+      @update:show-inactivity-dialog="(value) => (showInactivityDialog = value)"
+      @update:show-max-session-dialog="(value) => (showMaxSessionDialog = value)"
+      @extend="() => extenderSesion()"
+      @close="() => cerrarSesion('usuario')"
+    />
   </q-layout>
 </template>
 
@@ -102,12 +113,23 @@ import { ref, watch, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useThemeStore } from '../../stores/theme.store';
 import { useAuth } from '../composables';
+import { useSessionTimeout } from '../composables/useSessionTimeout';
 import { api } from 'boot/axios';
 import AppSidebar from '../components/AppSidebar.vue';
+import SessionTimeoutDialog from '../components/SessionTimeoutDialog.vue';
 
 const router = useRouter();
 const themeStore = useThemeStore();
 const { logout, user } = useAuth();
+
+// Gestión de timeout de sesión
+const {
+  showInactivityDialog,
+  showMaxSessionDialog,
+  warningTime,
+  extenderSesion,
+  cerrarSesion,
+} = useSessionTimeout();
 
 const userImageUrl = computed(() => {
   const fotoUrl = user.value?.persona?.fotoUrl;
