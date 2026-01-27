@@ -188,6 +188,14 @@ const routes: RouteRecordRaw[] = [
           roles: ['ADMIN'] as UserRole[],
         },
       },
+      {
+        path: 'admin/pdf-editor',
+        name: 'pdf-editor',
+        component: () => import('../presentation/admin/pages/PdfEditorPage.vue'),
+        meta: {
+          roles: ['ADMIN'] as UserRole[],
+        },
+      },
 
       // Perfil
       {

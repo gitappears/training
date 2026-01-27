@@ -670,6 +670,47 @@ export class CertificatesService implements ICertificateRepository {
       );
     }
   }
+
+  /**
+   * Buscar certificados por hash o texto (para editor de PDF)
+   * @param search Término de búsqueda (hash, nombre estudiante, curso, etc.)
+   * @param limit Límite de resultados (default: 20)
+   * @returns Lista de certificados con información básica
+   */
+  async searchHashes(search?: string, limit: number = 20): Promise<Array<{
+    id: number;
+    hashVerificacion: string;
+    numeroCertificado: string;
+    estudianteNombre: string;
+    cursoNombre: string;
+    fechaEmision: string;
+  }>> {
+    try {
+      const params = new URLSearchParams();
+      if (search) {
+        params.append('search', search);
+      }
+      if (limit) {
+        params.append('limit', limit.toString());
+      }
+
+      const response = await api.get<Array<{
+        id: number;
+        hashVerificacion: string;
+        numeroCertificado: string;
+        estudianteNombre: string;
+        cursoNombre: string;
+        fechaEmision: string;
+      }>>(`${this.baseUrl}/search/hashes?${params.toString()}`);
+
+      return response.data;
+    } catch (error) {
+      const axiosError = error as AxiosError<{ message?: string }>;
+      throw new Error(
+        axiosError.response?.data?.message ?? 'Error al buscar certificados',
+      );
+    }
+  }
 }
 
 // Exportar instancia singleton

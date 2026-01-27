@@ -128,6 +128,7 @@ const {
   canCreateExternalDrivers,
   canManagePayments,
   canManageDocumentosLegales,
+  isAdmin,
 } = useRole();
 
 interface MenuItem {
@@ -207,7 +208,8 @@ const menuSections = computed<MenuSection[]>(() => {
         canManageAlerts.value ||
         canCreateExternalDrivers.value ||
         canManagePayments.value ||
-        canManageDocumentosLegales.value,
+        canManageDocumentosLegales.value ||
+        isAdmin.value,
       items: [
         {
           label: 'Reportes',
@@ -240,6 +242,14 @@ const menuSections = computed<MenuSection[]>(() => {
           iconColor: 'orange',
           to: '/admin/configuracion-sesion',
           visible: canManageAlerts.value,
+        },
+        {
+          label: 'Editor de PDF',
+          caption: 'Configurar formatos de certificados',
+          icon: 'picture_as_pdf',
+          iconColor: 'red',
+          to: '/admin/pdf-editor',
+          visible: isAdmin.value,
         },
         {
           label: 'Empresas',
