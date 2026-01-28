@@ -577,7 +577,7 @@ import type { CertificateVerificationHistory } from '../../../domain/certificate
 import EmptyState from '../../../shared/components/EmptyState.vue';
 import QRCodeDisplay from '../../../shared/components/QRCodeDisplay.vue';
 import { useCertificates } from '../../../shared/composables/useCertificates';
-// import { certificatesService } from '../../../infrastructure/http/certificates/certificates.service';
+import { certificateFormatsService, type PdfConfig } from '../../../infrastructure/http/certificate-formats/certificate-formats.service';
 
 
 const route = useRoute();
@@ -601,6 +601,9 @@ const isDownloading = ref(false);
 // URL del blob para mostrar el PDF en el iframe
 const pdfViewerUrl = ref<string>('');
 const showQrDialog = ref(false);
+
+// Configuración dinámica de certificados desde BD
+const certificateConfig = ref<PdfConfig | null>(null);
 
 // Historial de verificaciones (mock por ahora, puede conectarse al backend después)
 const verificationHistory = ref<CertificateVerificationHistory[]>([]);
@@ -663,8 +666,38 @@ const certificateBg = computed(() => {
   return fondoGeneral;
 });
 
+// Determinar si es curso de alimentos
+const isAlimentos = computed(() => {
+  if (!certificate.value) return false;
+  const title = (certificate.value.courseName || '').toLowerCase().trim();
+  return (
+    ((title.includes('manipulacion') || title.includes('manipulación')) && title.includes('alimentos')) ||
+    (title.includes('primeros') && title.includes('auxilios'))
+  );
+});
+
+// Obtener la configuración dinámica según el tipo de curso
+const dynamicData = computed(() => {
+  if (!certificateConfig.value) return null;
+  
+  if (isAlimentos.value && certificateConfig.value.alimentos?.dataDinamica) {
+    return certificateConfig.value.alimentos.dataDinamica;
+  } else if (isCesaroto.value && certificateConfig.value.sustancias?.dataDinamica) {
+    return certificateConfig.value.sustancias.dataDinamica;
+  } else if (certificateConfig.value.otros?.dataDinamica) {
+    return certificateConfig.value.otros.dataDinamica;
+  }
+  return null;
+});
+
 // LOGICA DE EMPRESA ALIADA
 const allianceCompany = computed(() => {
+  // Usar datos dinámicos si están disponibles
+  if (dynamicData.value?.alianzaEmpresa) {
+    return dynamicData.value.alianzaEmpresa;
+  }
+
+  // Fallback a valores por defecto
   if (!certificate.value) return 'ANDAR DEL LLANO.';
   const title = (certificate.value.courseName || '').toLowerCase().trim();
 
@@ -685,43 +718,79 @@ const allianceCompany = computed(() => {
   return 'ANDAR DEL LLANO.';
 });
 
+// Mapa de imágenes de firma por nombre de archivo
+const signatureImages: Record<string, string> = {
+  'firma_viviana_rojas.png': firmaVivianaRojas,
+  'firma_nini_pena.png': firmaNiniPena,
+  'firma_alfonso_velasco.png': firmaAlfonsoVelasco,
+  'firma_francy_gonzalez.png': firmaFrancyGonzalez,
+};
+
 const instructorDetails = computed(() => {
-    let name = 'Viviana Paola Rojas Hincapie';
-    let role = 'Instructor / Entrenador\nTSA REG xxxxxxxxx\nLicencia SST';
-    let signatureImage = firmaVivianaRojas;
+    // Valores por defecto según el tipo de curso
+    let defaultName = 'Viviana Paola Rojas Hincapie';
+    let defaultRole = 'Instructor / Entrenador\nTSA REG 48207\nLicencia SST';
+    let defaultSignatureImage = firmaVivianaRojas;
 
-    if (!certificate.value) return { name, role, signatureImage };
-    const title = (certificate.value.courseName || '').toLowerCase().trim();
-
-     if (
-        ((title.includes('manipulacion') || title.includes('manipulación')) && title.includes('alimentos')) ||
-        (title.includes('primeros') && title.includes('auxilios'))
-    ) {
-         name = 'Nini Johana Peña Vanegaz';
-         role = 'Instructor / Entrenador\nTSA REG xxxxxxxxx\nLicencia SST';
-         signatureImage = firmaNiniPena;
+    if (isAlimentos.value) {
+      defaultName = 'Nini Johana Peña Vanegaz';
+      defaultRole = 'Instructor / Entrenador\nTSA RM 30937322\nLicencia SST';
+      defaultSignatureImage = firmaNiniPena;
     }
-    return { name, role, signatureImage };
+
+    // Usar datos dinámicos si están disponibles
+    if (dynamicData.value?.instructor) {
+      const { nombre, rol, firmaImagen } = dynamicData.value.instructor;
+      return {
+        name: nombre || defaultName,
+        role: rol || defaultRole,
+        signatureImage: firmaImagen && signatureImages[firmaImagen] 
+          ? signatureImages[firmaImagen] 
+          : defaultSignatureImage,
+      };
+    }
+
+    return { 
+      name: defaultName, 
+      role: defaultRole, 
+      signatureImage: defaultSignatureImage 
+    };
 });
 
 const representativeDetails = computed(() => {
-    let name = 'Alfonso Alejandro Velasco Reyes';
-    let signatureImage = firmaAlfonsoVelasco;
+    // Valores por defecto según el tipo de curso
+    let defaultName = 'Alfonso Alejandro Velasco Reyes';
+    let defaultSignatureImage = firmaAlfonsoVelasco;
 
-    if (!certificate.value) return { name, signatureImage };
-    const title = (certificate.value.courseName || '').toLowerCase().trim();
-
-    if (
-        ((title.includes('manipulacion') || title.includes('manipulación')) && title.includes('alimentos')) ||
-        (title.includes('primeros') && title.includes('auxilios'))
-    ) {
-         name = 'Francy Dayany Gonzalez Galindo';
-         signatureImage = firmaFrancyGonzalez;
+    if (isAlimentos.value) {
+      defaultName = 'Francy Dayany Gonzalez Galindo';
+      defaultSignatureImage = firmaFrancyGonzalez;
     }
-    return { name, signatureImage };
+
+    // Usar datos dinámicos si están disponibles
+    if (dynamicData.value?.representante) {
+      const { nombre, firmaImagen } = dynamicData.value.representante;
+      return {
+        name: nombre || defaultName,
+        signatureImage: firmaImagen && signatureImages[firmaImagen] 
+          ? signatureImages[firmaImagen] 
+          : defaultSignatureImage,
+      };
+    }
+
+    return { 
+      name: defaultName, 
+      signatureImage: defaultSignatureImage 
+    };
 });
 
 const computedDuration = computed(() => {
+    // Usar datos dinámicos si están disponibles
+    if (dynamicData.value?.duracionHoras) {
+      return dynamicData.value.duracionHoras;
+    }
+
+    // Fallback a valores por defecto
     if (!certificate.value) return '20';
     const tituloForDuration = (certificate.value.courseName || '').toLowerCase().trim();
 
@@ -991,8 +1060,25 @@ const getQRValue = computed(() => {
 
 
 
+// Cargar configuración dinámica de certificados
+async function loadCertificateConfig() {
+  try {
+    const config = await certificateFormatsService.getPublicConfig();
+    if (config) {
+      certificateConfig.value = config;
+      console.log('[CertificateDetailPage] Configuración dinámica cargada:', config);
+    }
+  } catch (error) {
+    console.warn('[CertificateDetailPage] Error cargando configuración dinámica:', error);
+    // Continuar con valores por defecto si falla
+  }
+}
+
 // Lifecycle
 onMounted(async () => {
+  // Cargar configuración dinámica primero
+  await loadCertificateConfig();
+
   if (certificateId) {
     await loadCertificate(certificateId);
 
