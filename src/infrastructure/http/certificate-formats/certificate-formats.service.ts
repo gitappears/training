@@ -1,5 +1,7 @@
 import { api } from '../../../boot/axios';
-import type { CertificateFormatType } from '@/entities/certificate-formats/certificate-format.entity';
+
+// Tipo local para evitar dependencia de módulo no existente
+export type CertificateFormatType = 'alimentos' | 'sustancias' | 'otros';
 
 export interface CertificateFormat {
   id?: number;
@@ -69,6 +71,21 @@ class CertificateFormatsService {
       `${this.baseUrl}/config`,
     );
     return response.data;
+  }
+
+  /**
+   * Obtener la configuración activa pública (sin autenticación)
+   */
+  async getPublicConfig(): Promise<PdfConfig | null> {
+    try {
+      const response = await api.get<PdfConfig | null>(
+        `${this.baseUrl}/config/public`,
+      );
+      return response.data;
+    } catch (error) {
+      console.warn('[CertificateFormatsService] Error obteniendo config pública:', error);
+      return null;
+    }
   }
 
   /**
