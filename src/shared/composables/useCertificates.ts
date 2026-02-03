@@ -6,7 +6,11 @@
 
 import { ref, computed } from 'vue';
 import { useQuasar } from 'quasar';
-import type { Certificate, CertificateListParams, CertificateFilters } from '../../domain/certificate/models';
+import type {
+  Certificate,
+  CertificateListParams,
+  CertificateFilters,
+} from '../../domain/certificate/models';
 import { certificatesService } from '../../infrastructure/http/certificates/certificates.service';
 import type { PaginatedResponse } from '../../application/training/training.repository.port';
 
@@ -57,8 +61,8 @@ export function useCertificates() {
         filters: paramsToUse.filters,
       });
 
-      const response: PaginatedResponse<Certificate> = await certificatesService.findAll(paramsToUse);
-
+      const response: PaginatedResponse<Certificate> =
+        await certificatesService.findAll(paramsToUse);
 
       certificates.value = response.data;
       pagination.value = {
@@ -115,9 +119,7 @@ export function useCertificates() {
     } catch (error) {
       console.error('Error al cargar certificado:', error);
       const errorMessage =
-        error instanceof Error
-          ? error.message
-          : `Error al cargar el certificado con ID ${id}`;
+        error instanceof Error ? error.message : `Error al cargar el certificado con ID ${id}`;
 
       $q.notify({
         type: 'negative',
@@ -136,16 +138,17 @@ export function useCertificates() {
   /**
    * Carga certificados de un usuario específico
    */
-  const loadUserCertificates = async (userId: string, filters?: CertificateFilters): Promise<void> => {
+  const loadUserCertificates = async (
+    userId: string,
+    filters?: CertificateFilters,
+  ): Promise<void> => {
     loading.value = true;
     try {
       certificates.value = await certificatesService.findByUser(userId, filters);
     } catch (error) {
       console.error('Error al cargar certificados del usuario:', error);
       const errorMessage =
-        error instanceof Error
-          ? error.message
-          : 'Error al cargar los certificados del usuario.';
+        error instanceof Error ? error.message : 'Error al cargar los certificados del usuario.';
 
       $q.notify({
         type: 'negative',
@@ -181,7 +184,9 @@ export function useCertificates() {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
+      // Retrasar revoke: en algunos navegadores (Safari, móviles) revocar al instante
+      // puede impedir que la descarga arranque. Ver https://stackoverflow.com/questions/30694452
+      setTimeout(() => window.URL.revokeObjectURL(url), 200);
 
       $q.notify({
         type: 'positive',
@@ -270,4 +275,3 @@ export function useCertificates() {
     changePage,
   };
 }
-
