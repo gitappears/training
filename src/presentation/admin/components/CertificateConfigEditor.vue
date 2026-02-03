@@ -10,10 +10,12 @@
       default-opened
     >
       <q-card flat class="q-pa-sm">
+        {{ section }}
         <div class="row q-col-gutter-sm">
           <!-- Campos X e Y -->
           <template v-if="section.fields.includes('x') || section.fields.includes('y')">
             <div class="col-6" v-if="section.fields.includes('x')">
+              KEY {{ section.key }}
               <q-input
                 :key="`${sectionKey}-x-${configKey}`"
                 :model-value="getElementValue(sectionKey, 'x')"
@@ -298,82 +300,11 @@ const sections = computed(() => {
   return baseSections;
 });
 
-// Inicializar configElements con los valores disponibles
-function initializeConfigElements() {
-  if (props.config && Object.keys(props.config).length > 0) {
-    console.log('[CertificateConfigEditor] Inicializando con props.config:', props.config);
-    configElements.value = JSON.parse(JSON.stringify(props.config));
-  } else if (props.defaultValues && Object.keys(props.defaultValues).length > 0) {
-    console.log('[CertificateConfigEditor] Inicializando con defaultValues:', props.defaultValues);
-    configElements.value = JSON.parse(JSON.stringify(props.defaultValues));
-  } else {
-    console.log('[CertificateConfigEditor] Inicializando con objeto vacío');
-    configElements.value = {};
-  }
-  console.log('[CertificateConfigEditor] configElements inicializado:', configElements.value);
-}
-
-// Inicializar inmediatamente
-initializeConfigElements();
-
-// Log inicial para verificar que el componente se monta
-onMounted(() => {
-  console.log('[CertificateConfigEditor] Componente montado. Tipo:', props.tipo);
-  console.log('[CertificateConfigEditor] Config recibida:', props.config);
-  console.log('[CertificateConfigEditor] Default values:', props.defaultValues);
-  console.log('[CertificateConfigEditor] configElements actual:', configElements.value);
-  
-  // Re-inicializar si es necesario
-  if (!configElements.value || Object.keys(configElements.value).length === 0) {
-    console.log('[CertificateConfigEditor] Re-inicializando en onMounted');
-    initializeConfigElements();
-  }
-});
-
 // Sincronizar config con configElements
 watch(
   () => props.config,
-  (newConfig, oldConfig) => {
-    console.log('[CertificateConfigEditor] Watch disparado. Tipo:', props.tipo);
-    console.log('[CertificateConfigEditor] Config recibida:', {
-      new: newConfig,
-      old: oldConfig,
-      tipo: props.tipo,
-      tieneKeys: newConfig ? Object.keys(newConfig).length : 0,
-      configElementsKeys: configElements.value ? Object.keys(configElements.value).length : 0,
-    });
-
-    // Si hay configuración nueva y tiene contenido, aplicarla siempre
-    if (newConfig && Object.keys(newConfig).length > 0) {
-      console.log('[CertificateConfigEditor] Aplicando configuración desde props.config');
-      // Hacer una copia profunda para asegurar reactividad
-      const newConfigCopy = JSON.parse(JSON.stringify(newConfig));
-      
-      // Actualizar directamente - Vue debería detectar el cambio
-      configElements.value = newConfigCopy;
-      // Incrementar key para forzar re-render de los inputs
-      configKey.value++;
-      console.log('[CertificateConfigEditor] configElements actualizado:', configElements.value);
-      console.log('[CertificateConfigEditor] Verificando valores específicos:', {
-        cursoNombre: configElements.value.cursoNombre,
-        nombreEstudiante: configElements.value.nombreEstudiante,
-        qr: configElements.value.qr,
-        cursoNombreX: configElements.value.cursoNombre?.x,
-        cursoNombreY: configElements.value.cursoNombre?.y,
-      });
-      
-      // Forzar reactividad usando nextTick
-      void nextTick(() => {
-        console.log('[CertificateConfigEditor] Después de nextTick, verificando valores:', {
-          cursoNombreX: configElements.value.cursoNombre?.x,
-          cursoNombreY: configElements.value.cursoNombre?.y,
-        });
-      });
-    } else if (props.defaultValues && Object.keys(props.defaultValues).length > 0) {
-      // Si no hay config pero hay defaults, usar defaults
-      console.log('[CertificateConfigEditor] Usando valores por defecto');
-      configElements.value = JSON.parse(JSON.stringify(props.defaultValues));
-    }
+  (newConfig) => {
+    configElements.value = newConfig;
   },
   { immediate: false, deep: true },
 );
@@ -400,29 +331,16 @@ watch(
 
 // Función helper para obtener valores de manera reactiva
 function getElementValue(sectionKey: string, field: string, defaultValue: any = 0): any {
+  console.log('key', sectionKey);
   // Asegurar que configElements.value existe
   if (!configElements.value) {
     return defaultValue;
   }
-  
+
   // Acceder a configElements.value para que Vue rastree la dependencia
   const elements = configElements.value;
   const element = elements[sectionKey];
-  
-  // Debug para los primeros valores (solo una vez para no saturar)
-  if (sectionKey === 'cursoNombre' && field === 'x' && configKey.value > 0) {
-    console.log('[CertificateConfigEditor] getElementValue llamado:', {
-      sectionKey,
-      field,
-      element,
-      configElementsKeys: Object.keys(elements),
-      tieneElement: !!element,
-      valor: element ? element[field] : 'no existe',
-      tipoValor: element && element[field] !== undefined ? typeof element[field] : 'undefined',
-      configKey: configKey.value,
-    });
-  }
-  
+
   if (!element) {
     return defaultValue;
   }
@@ -436,13 +354,13 @@ function getElementValue(sectionKey: string, field: string, defaultValue: any = 
   }
 
   const value = element[field] !== undefined ? element[field] : defaultValue;
-  
+
   // Convertir a número si es un campo numérico
   if (['x', 'y', 'fontSize', 'width', 'height', 'size', 'lineSpacing'].includes(field)) {
     const numValue = typeof value === 'string' ? parseFloat(value) : value;
     return !isNaN(numValue) ? numValue : defaultValue;
   }
-  
+
   return value;
 }
 
