@@ -14,10 +14,14 @@
   >
     <!-- Logo Section -->
     <div class="drawer-header q-pa-md">
-      <div class="row items-center no-wrap cursor-pointer" @click="$router.push('/')">
-        <div v-if="!localMiniState" class="text-center">
-          <img :src="themeStore.isDark ? logoWhite : logoColor" alt="Formar 360" class="logo-image q-mb-xs" />
-          <div class="text-caption text-grey-6">Plataforma de capacitación</div>
+      <div class="row items-center no-wrap cursor-pointer w-full" @click="$router.push('/')">
+        <div v-if="!localMiniState" class="text-center w-full">
+          <img
+            :src="themeStore.isDark ? logoWhite : logoColor"
+            alt="Formar 360"
+            class="logo-image q-mb-xs"
+          />
+          <div class="text-caption text-grey-6">Plataforma de capacitación v.{{ version }}</div>
         </div>
       </div>
     </div>
@@ -84,7 +88,7 @@ import { computed, ref, watch } from 'vue';
 import { useRole } from '../composables';
 import logoColor from '../../assets/logo_color_formar.svg';
 import logoWhite from '../../assets/logo_blanco_formar360.svg';
-
+import { version } from '../../../package.json';
 import { useThemeStore } from '../../stores/theme.store';
 const themeStore = useThemeStore();
 
@@ -276,6 +280,9 @@ const menuSections = computed<MenuSection[]>(() => {
 </script>
 
 <style lang="scss" scoped>
+.w-full {
+  width: 100%;
+}
 .app-drawer {
   border-right: 1px solid rgba(0, 0, 0, 0.08);
   transition:
