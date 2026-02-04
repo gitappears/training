@@ -26,12 +26,6 @@ export const useAuthStore = defineStore('auth', () => {
   );
   const loading = ref(false);
 
-  // Log del perfil inicial desde localStorage
-  if (profile.value) {
-    console.log('📋 Perfil cargado desde localStorage:', JSON.stringify(profile.value, null, 2));
-    console.log('🏢 Empresa en perfil desde localStorage:', profile.value.persona?.empresa);
-  }
-
   // Getters
   const isAuthenticated = computed(() => !!token.value);
   const userFullName = computed(() => {

@@ -84,110 +84,128 @@
             <q-spinner size="50px" color="primary" />
           </q-inner-loading>
 
-          <!-- Tabs -->
-          <q-tabs
-            v-model="activeTab"
-            dense
-            class="text-grey q-mb-md"
-            active-color="primary"
-            indicator-color="primary"
-            align="justify"
+          <!-- Sin PDF seleccionado: solo mensaje -->
+          <div
+            v-if="!hasPdfSelected"
+            class="column items-center justify-center q-pa-xl text-center"
           >
-            <q-tab name="otros" label="Otros" icon="description" />
-            <q-tab name="alimentos" label="Alimentos" icon="restaurant" />
-            <q-tab name="sustancias" label="Sustancias" icon="warning" />
-          </q-tabs>
-
-          <q-tab-panels v-model="activeTab" animated>
-            <!-- Tab: Otros -->
-            <q-tab-panel name="otros" class="q-pa-none">
-              <CertificateConfigEditor
-                :key="`otros-${configOtros ? JSON.stringify(configOtros) : 'empty'}`"
-                :config="configOtros || defaultValuesOtros"
-                :tipo="'otros'"
-                :default-values="defaultValuesOtros"
-                @update:config="handleConfigUpdate('otros', $event)"
-                @update:pdf="updatePDFPreview"
-              />
-            </q-tab-panel>
-
-            <!-- Tab: Alimentos -->
-            <q-tab-panel name="alimentos" class="q-pa-none">
-              <CertificateConfigEditor
-                :key="`alimentos-${configAlimentos ? JSON.stringify(configAlimentos) : 'empty'}`"
-                :config="configAlimentos || defaultValuesAlimentos"
-                :tipo="'alimentos'"
-                :default-values="defaultValuesAlimentos"
-                @update:config="handleConfigUpdate('alimentos', $event)"
-                @update:pdf="updatePDFPreview"
-              />
-            </q-tab-panel>
-
-            <!-- Tab: Sustancias -->
-            <q-tab-panel name="sustancias" class="q-pa-none">
-              <CertificateConfigEditor
-                :key="`sustancias-${configSustancias ? JSON.stringify(configSustancias) : 'empty'}`"
-                :config="configSustancias || defaultValuesSustancias"
-                :tipo="'sustancias'"
-                :default-values="defaultValuesSustancias"
-                @update:config="handleConfigUpdate('sustancias', $event)"
-                @update:pdf="updatePDFPreview"
-              />
-            </q-tab-panel>
-          </q-tab-panels>
-
-          <!-- Botones de Acción -->
-          <div class="row q-col-gutter-sm q-mt-md">
-            <div class="col">
-              <q-btn
-                flat
-                label="Cargar desde BD"
-                color="info"
-                icon="cloud_download"
-                @click="cargarConfiguracion"
-                :loading="loading"
-                class="full-width"
-              />
+            <q-icon name="picture_as_pdf" size="64px" color="grey-5" class="q-mb-md" />
+            <div class="text-body1 text-grey-7 q-mb-sm">
+              Seleccione un certificado (por hash o desde el buscador) y pulse el botón de cargar
+              <q-icon name="search" size="sm" /> para editar la configuración del PDF.
             </div>
-            <div class="col">
-              <q-btn
-                label="Guardar en BD"
-                color="primary"
-                icon="save"
-                @click="guardarTodo"
-                :loading="guardando"
-                class="full-width"
-              />
+            <div class="text-caption text-grey-6">
+              Los valores del formulario se cargarán después de cargar el certificado.
             </div>
           </div>
 
-          <!-- Upload de Fondo -->
-          <q-card class="q-mt-md">
-            <q-card-section>
-              <div class="text-subtitle2 q-mb-sm">🎨 Fondo PNG</div>
-              <q-file
-                v-model="backgroundFile"
-                label="Seleccionar archivo PNG"
-                accept=".png,image/png"
-                outlined
-                dense
-                @update:model-value="handleFileSelect"
-              >
-                <template v-slot:prepend>
-                  <q-icon name="attach_file" />
-                </template>
-              </q-file>
-              <q-btn
-                v-if="backgroundFile"
-                label="Subir Fondo"
-                color="primary"
-                icon="cloud_upload"
-                class="q-mt-sm full-width"
-                :loading="uploading"
-                @click="uploadBackground"
-              />
-            </q-card-section>
-          </q-card>
+          <!-- Con PDF seleccionado: tabs y formulario -->
+          <template v-else>
+            <!-- Tabs -->
+            <q-tabs
+              v-model="activeTab"
+              dense
+              class="text-grey q-mb-md"
+              active-color="primary"
+              indicator-color="primary"
+              align="justify"
+            >
+              <q-tab name="otros" label="Otros" icon="description" />
+              <q-tab name="alimentos" label="Alimentos" icon="restaurant" />
+              <q-tab name="sustancias" label="Sustancias" icon="warning" />
+            </q-tabs>
+
+            <q-tab-panels v-model="activeTab" animated>
+              <!-- Tab: Otros -->
+              <q-tab-panel name="otros" class="q-pa-none">
+                <CertificateConfigEditor
+                  :key="`otros-${configOtros ? JSON.stringify(configOtros) : 'empty'}`"
+                  :config="configOtros || defaultValuesOtros"
+                  :tipo="'otros'"
+                  :default-values="defaultValuesOtros"
+                  @update:config="handleConfigUpdate('otros', $event)"
+                  @update:pdf="updatePDFPreview"
+                />
+              </q-tab-panel>
+
+              <!-- Tab: Alimentos -->
+              <q-tab-panel name="alimentos" class="q-pa-none">
+                <CertificateConfigEditor
+                  :key="`alimentos-${configAlimentos ? JSON.stringify(configAlimentos) : 'empty'}`"
+                  :config="configAlimentos || defaultValuesAlimentos"
+                  :tipo="'alimentos'"
+                  :default-values="defaultValuesAlimentos"
+                  @update:config="handleConfigUpdate('alimentos', $event)"
+                  @update:pdf="updatePDFPreview"
+                />
+              </q-tab-panel>
+
+              <!-- Tab: Sustancias -->
+              <q-tab-panel name="sustancias" class="q-pa-none">
+                <CertificateConfigEditor
+                  :key="`sustancias-${configSustancias ? JSON.stringify(configSustancias) : 'empty'}`"
+                  :config="configSustancias || defaultValuesSustancias"
+                  :tipo="'sustancias'"
+                  :default-values="defaultValuesSustancias"
+                  @update:config="handleConfigUpdate('sustancias', $event)"
+                  @update:pdf="updatePDFPreview"
+                />
+              </q-tab-panel>
+            </q-tab-panels>
+
+            <!-- Botones de Acción -->
+            <div class="row q-col-gutter-sm q-mt-md">
+              <div class="col">
+                <q-btn
+                  flat
+                  label="Cargar desde BD"
+                  color="info"
+                  icon="cloud_download"
+                  @click="cargarConfiguracion"
+                  :loading="loading"
+                  class="full-width"
+                />
+              </div>
+              <div class="col">
+                <q-btn
+                  label="Guardar en BD"
+                  color="primary"
+                  icon="save"
+                  @click="guardarTodo"
+                  :loading="guardando"
+                  class="full-width"
+                />
+              </div>
+            </div>
+
+            <!-- Upload de Fondo (solo con PDF seleccionado) -->
+            <q-card v-if="hasPdfSelected" class="q-mt-md">
+              <q-card-section>
+                <div class="text-subtitle2 q-mb-sm">🎨 Fondo PNG</div>
+                <q-file
+                  v-model="backgroundFile"
+                  label="Seleccionar archivo PNG"
+                  accept=".png,image/png"
+                  outlined
+                  dense
+                  @update:model-value="handleFileSelect"
+                >
+                  <template v-slot:prepend>
+                    <q-icon name="attach_file" />
+                  </template>
+                </q-file>
+                <q-btn
+                  v-if="backgroundFile"
+                  label="Subir Fondo"
+                  color="primary"
+                  icon="cloud_upload"
+                  class="q-mt-sm full-width"
+                  :loading="uploading"
+                  @click="uploadBackground"
+                />
+              </q-card-section>
+            </q-card>
+          </template>
         </div>
       </div>
 
@@ -252,7 +270,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, nextTick } from 'vue';
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue';
 import { useQuasar } from 'quasar';
 import { useRoute } from 'vue-router';
 import { certificateFormatsService } from '../../../infrastructure/http/certificate-formats/certificate-formats.service';
@@ -366,15 +384,19 @@ const defaultValuesSustancias = {
   footer: { x: 396, y: 590, fontSize: 7, bold: true, color: [41, 37, 97] },
 };
 
-// Cargar hash desde URL si existe
-onMounted(async () => {
-  // Primero cargar configuraciones por defecto
-  await cargarConfiguracion();
+/** Solo hay valores en el formulario cuando el usuario ha seleccionado un certificado y se ha cargado */
+const hasPdfSelected = computed(() => {
+  const v = certificateHash.value;
+  if (typeof v === 'string') return v.trim() !== '';
+  return !!(v && typeof v === 'object' && (v as { hash?: string }).hash);
+});
 
+// Cargar hash desde URL si existe; no cargar config hasta que haya un PDF seleccionado
+onMounted(async () => {
   // Cargar certificados por defecto (uno de cada categoría)
   await cargarCertificadosPorDefecto();
 
-  // Luego, si hay hash en la URL, cargar el certificado
+  // Si hay hash en la URL, cargar el certificado (y entonces sí se carga la config en el formulario)
   const hashFromUrl = route.query.hash as string;
   if (hashFromUrl) {
     certificateHash.value = hashFromUrl;
@@ -458,7 +480,7 @@ function handleConfigUpdate(tipo: 'otros' | 'alimentos' | 'sustancias', config: 
       configSustancias.value = config;
       break;
   }
-  updatePDFPreview();
+  // El PDF solo se refresca con @update:pdf (Enter o blur en el editor), no al escribir
 }
 
 function getConfig(): any {

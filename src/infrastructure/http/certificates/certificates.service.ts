@@ -4,6 +4,37 @@
 import { api } from '../../../boot/axios';
 import type { AxiosError } from 'axios';
 import { useAuthStore } from '../../../stores/auth.store';
+
+/** Timeout para descarga de PDF (conexiones lentas o PDFs grandes) */
+const DOWNLOAD_PDF_TIMEOUT_MS = 60000;
+
+/**
+ * Cuando la petición usa responseType: 'blob', los errores 4xx/5xx llegan con
+ * response.data como Blob (no JSON). Extrae el mensaje del backend si existe.
+ */
+async function getMessageFromBlobError(
+  axiosError: AxiosError<Blob | { message?: string }>,
+  fallback: string,
+): Promise<string> {
+  const data = axiosError.response?.data;
+  if (!data) return fallback;
+  if (typeof (data as { message?: string }).message === 'string') {
+    return (data as { message: string }).message;
+  }
+  if (data instanceof Blob) {
+    try {
+      const text = await data.text();
+      const json = JSON.parse(text) as { message?: string };
+      if (typeof json.message === 'string') return json.message;
+    } catch {
+      // ignorar si no es JSON válido
+    }
+  }
+  if (axiosError.response?.status) {
+    return `Error ${axiosError.response.status}: ${axiosError.response.statusText || 'Error en el servidor'}`;
+  }
+  return fallback;
+}
 import type {
   ICertificateRepository,
   CreateCertificateDto,
@@ -80,19 +111,23 @@ function mapBackendToDomain(backendData: BackendCertificate): Certificate {
   const instructor = capacitacion?.instructor;
 
   // Calcular fecha de emisión (retroactiva si aplica) (RF-28, RF-31)
-  const fechaEmision = backendData.esRetroactivo && backendData.fechaRetroactiva
-    ? new Date(backendData.fechaRetroactiva).toISOString()
-    : backendData.fechaEmision;
+  const fechaEmision =
+    backendData.esRetroactivo && backendData.fechaRetroactiva
+      ? new Date(backendData.fechaRetroactiva).toISOString()
+      : backendData.fechaEmision;
 
   // Asegurar que siempre tengamos un código de verificación y URL
-  const hashVerificacion = backendData.hashVerificacion?.trim() || backendData.numeroCertificado || '';
+  const hashVerificacion =
+    backendData.hashVerificacion?.trim() || backendData.numeroCertificado || '';
   const urlVerificacionPublica = backendData.urlVerificacionPublica?.trim() || '';
 
   // Fix: Quasar hash mode requires /#/ followed by the route.
   // The 'real' path reported by user on Render: /#/verify/TOKEN
-  const finalVerificationUrl = urlVerificacionPublica?.startsWith('http') 
-    ? urlVerificacionPublica 
-    : (hashVerificacion ? `/#/verify/${hashVerificacion}` : '');
+  const finalVerificationUrl = urlVerificacionPublica?.startsWith('http')
+    ? urlVerificacionPublica
+    : hashVerificacion
+      ? `/#/verify/${hashVerificacion}`
+      : '';
 
   const certificate: Certificate = {
     id: backendData.id?.toString() ?? '',
@@ -157,7 +192,9 @@ function mapStatus(backendData: BackendCertificate): CertificateStatus {
     const ahora = new Date();
 
     // Debug fecha
-    console.log(`[Cert Status] ID: ${backendData.id}, Vence: ${fechaVencimiento.toISOString()}, Ahora: ${ahora.toISOString()}`);
+    console.log(
+      `[Cert Status] ID: ${backendData.id}, Vence: ${fechaVencimiento.toISOString()}, Ahora: ${ahora.toISOString()}`,
+    );
 
     if (ahora > fechaVencimiento) {
       return 'expired';
@@ -195,10 +232,7 @@ export class CertificatesService implements ICertificateRepository {
         delete (body as Record<string, unknown>).filters;
       }
 
-      const response = await api.post<BackendPaginatedResponse>(
-        `${this.baseUrl}/list`,
-        body,
-      );
+      const response = await api.post<BackendPaginatedResponse>(`${this.baseUrl}/list`, body);
 
       return {
         data: response.data.data.map(mapBackendToDomain),
@@ -308,9 +342,7 @@ export class CertificatesService implements ICertificateRepository {
       return mapBackendToDomain(response.data);
     } catch (error) {
       const axiosError = error as AxiosError<{ message?: string }>;
-      throw new Error(
-        axiosError.response?.data?.message ?? 'Error al crear el certificado',
-      );
+      throw new Error(axiosError.response?.data?.message ?? 'Error al crear el certificado');
     }
   }
 
@@ -360,13 +392,16 @@ export class CertificatesService implements ICertificateRepository {
     try {
       const response = await api.get(`${this.baseUrl}/${id}/download`, {
         responseType: 'blob',
+        timeout: DOWNLOAD_PDF_TIMEOUT_MS,
       });
-      return response.data;
+      return response.data as Blob;
     } catch (error) {
-      const axiosError = error as AxiosError<{ message?: string }>;
-      throw new Error(
-        axiosError.response?.data?.message ?? `Error al descargar el certificado con ID ${id}`,
+      const axiosError = error as AxiosError<Blob | { message?: string }>;
+      const message = await getMessageFromBlobError(
+        axiosError,
+        `Error al descargar el certificado con ID ${id}`,
       );
+      throw new Error(message);
     }
   }
 
@@ -415,7 +450,8 @@ export class CertificatesService implements ICertificateRepository {
       const axiosError = error as AxiosError<{ message?: string }>;
       console.error('Error al buscar certificado por inscripción:', error);
       throw new Error(
-        axiosError.response?.data?.message ?? `Error al buscar el certificado para la inscripción ${inscripcionId}`,
+        axiosError.response?.data?.message ??
+          `Error al buscar el certificado para la inscripción ${inscripcionId}`,
       );
     }
   }
@@ -429,13 +465,16 @@ export class CertificatesService implements ICertificateRepository {
     try {
       const response = await api.get(`${this.baseUrl}/${id}/view`, {
         responseType: 'blob',
+        timeout: DOWNLOAD_PDF_TIMEOUT_MS,
       });
-      return response.data;
+      return response.data as Blob;
     } catch (error) {
-      const axiosError = error as AxiosError<{ message?: string }>;
-      throw new Error(
-        axiosError.response?.data?.message ?? `Error al obtener el certificado con ID ${id} para visualización`,
+      const axiosError = error as AxiosError<Blob | { message?: string }>;
+      const message = await getMessageFromBlobError(
+        axiosError,
+        `Error al obtener el certificado con ID ${id} para visualización`,
       );
+      throw new Error(message);
     }
   }
 
@@ -496,9 +535,7 @@ export class CertificatesService implements ICertificateRepository {
           verifiedAt: new Date().toISOString(),
         };
       }
-      throw new Error(
-        axiosError.response?.data?.message ?? 'Error al verificar el certificado',
-      );
+      throw new Error(axiosError.response?.data?.message ?? 'Error al verificar el certificado');
     }
   }
 
@@ -592,22 +629,27 @@ export class CertificatesService implements ICertificateRepository {
     } catch (error) {
       const axiosError = error as AxiosError<{ message?: string }>;
       throw new Error(
-        axiosError.response?.data?.message ?? 'Error al obtener el reporte de certificados próximos a vencer',
+        axiosError.response?.data?.message ??
+          'Error al obtener el reporte de certificados próximos a vencer',
       );
     }
   }
 
-  async getAlertConfigurations(): Promise<Array<{
-    id: number;
-    diasAntesVencimiento: number;
-    activo: boolean;
-  }>> {
+  async getAlertConfigurations(): Promise<
+    Array<{
+      id: number;
+      diasAntesVencimiento: number;
+      activo: boolean;
+    }>
+  > {
     try {
-      const response = await api.get<Array<{
-        id: number;
-        diasAntesVencimiento: number;
-        activo: number | boolean; // El backend puede enviar número (1/0) o boolean
-      }>>('/certificates/alert-configurations');
+      const response = await api.get<
+        Array<{
+          id: number;
+          diasAntesVencimiento: number;
+          activo: number | boolean; // El backend puede enviar número (1/0) o boolean
+        }>
+      >('/certificates/alert-configurations');
       // Convertir número (1/0) a boolean
       return response.data.map((config) => ({
         id: config.id,
@@ -647,12 +689,16 @@ export class CertificatesService implements ICertificateRepository {
       return {
         id: response.data.id,
         diasAntesVencimiento: response.data.diasAntesVencimiento,
-        activo: typeof response.data.activo === 'number' ? response.data.activo === 1 : Boolean(response.data.activo),
+        activo:
+          typeof response.data.activo === 'number'
+            ? response.data.activo === 1
+            : Boolean(response.data.activo),
       };
     } catch (error) {
       const axiosError = error as AxiosError<{ message?: string }>;
       throw new Error(
-        axiosError.response?.data?.message ?? `Error al actualizar la configuración de alerta con ID ${id}`,
+        axiosError.response?.data?.message ??
+          `Error al actualizar la configuración de alerta con ID ${id}`,
       );
     }
   }
@@ -677,14 +723,19 @@ export class CertificatesService implements ICertificateRepository {
    * @param limit Límite de resultados (default: 20)
    * @returns Lista de certificados con información básica
    */
-  async searchHashes(search?: string, limit: number = 20): Promise<Array<{
-    id: number;
-    hashVerificacion: string;
-    numeroCertificado: string;
-    estudianteNombre: string;
-    cursoNombre: string;
-    fechaEmision: string;
-  }>> {
+  async searchHashes(
+    search?: string,
+    limit: number = 20,
+  ): Promise<
+    Array<{
+      id: number;
+      hashVerificacion: string;
+      numeroCertificado: string;
+      estudianteNombre: string;
+      cursoNombre: string;
+      fechaEmision: string;
+    }>
+  > {
     try {
       const params = new URLSearchParams();
       if (search) {
@@ -694,21 +745,21 @@ export class CertificatesService implements ICertificateRepository {
         params.append('limit', limit.toString());
       }
 
-      const response = await api.get<Array<{
-        id: number;
-        hashVerificacion: string;
-        numeroCertificado: string;
-        estudianteNombre: string;
-        cursoNombre: string;
-        fechaEmision: string;
-      }>>(`${this.baseUrl}/search/hashes?${params.toString()}`);
+      const response = await api.get<
+        Array<{
+          id: number;
+          hashVerificacion: string;
+          numeroCertificado: string;
+          estudianteNombre: string;
+          cursoNombre: string;
+          fechaEmision: string;
+        }>
+      >(`${this.baseUrl}/search/hashes?${params.toString()}`);
 
       return response.data;
     } catch (error) {
       const axiosError = error as AxiosError<{ message?: string }>;
-      throw new Error(
-        axiosError.response?.data?.message ?? 'Error al buscar certificados',
-      );
+      throw new Error(axiosError.response?.data?.message ?? 'Error al buscar certificados');
     }
   }
 }

@@ -2,8 +2,8 @@
   <div class="certificate-config-editor">
     <!-- Secciones de configuración organizadas como en el HTML -->
     <q-expansion-item
-      v-for="(section, sectionKey) in sections"
-      :key="sectionKey"
+      v-for="section in sections"
+      :key="section.key"
       :label="section.title"
       :icon="section.icon"
       class="q-mb-sm"
@@ -15,26 +15,30 @@
           <template v-if="section.fields.includes('x') || section.fields.includes('y')">
             <div class="col-6" v-if="section.fields.includes('x')">
               <q-input
-                :key="`${sectionKey}-x-${configKey}`"
-                :model-value="getElementValue(sectionKey, 'x')"
+                :key="`${section.key}-x-${configKey}`"
+                :model-value="getElementValue(section.key, 'x')"
                 type="number"
                 :label="section.xLabel || 'Posición X'"
                 outlined
                 dense
                 step="0.1"
-                @update:model-value="setElementValue(sectionKey, 'x', $event)"
+                @update:model-value="setElementValue(section.key, 'x', $event)"
+                @blur="commitConfig"
+                @keydown.enter="commitConfig"
               />
             </div>
             <div class="col-6" v-if="section.fields.includes('y')">
               <q-input
-                :key="`${sectionKey}-y-${configKey}`"
-                :model-value="getElementValue(sectionKey, 'y')"
+                :key="`${section.key}-y-${configKey}`"
+                :model-value="getElementValue(section.key, 'y')"
                 type="number"
                 label="Posición Y"
                 outlined
                 dense
                 step="0.1"
-                @update:model-value="setElementValue(sectionKey, 'y', $event)"
+                @update:model-value="setElementValue(section.key, 'y', $event)"
+                @blur="commitConfig"
+                @keydown.enter="commitConfig"
               />
             </div>
           </template>
@@ -42,22 +46,25 @@
           <!-- Tamaño de Fuente -->
           <div class="col-6" v-if="section.fields.includes('fontSize')">
             <q-input
-              :model-value="getElementValue(sectionKey, 'fontSize')"
+              :model-value="getElementValue(section.key, 'fontSize')"
               type="number"
               label="Tamaño de Fuente"
               outlined
               dense
               step="0.5"
-              @update:model-value="setElementValue(sectionKey, 'fontSize', $event)"
+              @update:model-value="setElementValue(section.key, 'fontSize', $event)"
+              @blur="commitConfig"
+              @keydown.enter="commitConfig"
             />
           </div>
 
           <!-- Negrita -->
           <div class="col-6" v-if="section.fields.includes('bold')">
             <q-toggle
-              :model-value="getElementValue(sectionKey, 'bold', false)"
+              :model-value="getElementValue(section.key, 'bold', false)"
               label="Negrita"
-              @update:model-value="setElementValue(sectionKey, 'bold', $event)"
+              @update:model-value="setElementValue(section.key, 'bold', $event)"
+              @blur="commitConfig"
             />
           </div>
 
@@ -69,10 +76,11 @@
                 <div class="col-auto">
                   <input
                     type="color"
-                    :value="getColorHex(sectionKey)"
+                    :value="getColorHex(section.key)"
                     @input="
-                      updateColorFromPicker(sectionKey, ($event.target as HTMLInputElement).value)
+                      updateColorFromPicker(section.key, ($event.target as HTMLInputElement).value)
                     "
+                    @blur="commitConfig"
                     style="
                       width: 50px;
                       height: 35px;
@@ -84,38 +92,44 @@
                 </div>
                 <div class="col">
                   <q-input
-                    :model-value="getElementValue(sectionKey, 'color.0')"
+                    :model-value="getElementValue(section.key, 'color.0')"
                     type="number"
                     label="R"
                     outlined
                     dense
                     min="0"
                     max="255"
-                    @update:model-value="setElementValue(sectionKey, 'color.0', $event)"
+                    @update:model-value="setElementValue(section.key, 'color.0', $event)"
+                    @blur="commitConfig"
+                    @keydown.enter="commitConfig"
                   />
                 </div>
                 <div class="col">
                   <q-input
-                    :model-value="getElementValue(sectionKey, 'color.1')"
+                    :model-value="getElementValue(section.key, 'color.1')"
                     type="number"
                     label="G"
                     outlined
                     dense
                     min="0"
                     max="255"
-                    @update:model-value="setElementValue(sectionKey, 'color.1', $event)"
+                    @update:model-value="setElementValue(section.key, 'color.1', $event)"
+                    @blur="commitConfig"
+                    @keydown.enter="commitConfig"
                   />
                 </div>
                 <div class="col">
                   <q-input
-                    :model-value="getElementValue(sectionKey, 'color.2')"
+                    :model-value="getElementValue(section.key, 'color.2')"
                     type="number"
                     label="B"
                     outlined
                     dense
                     min="0"
                     max="255"
-                    @update:model-value="setElementValue(sectionKey, 'color.2', $event)"
+                    @update:model-value="setElementValue(section.key, 'color.2', $event)"
+                    @blur="commitConfig"
+                    @keydown.enter="commitConfig"
                   />
                 </div>
               </div>
@@ -125,50 +139,58 @@
           <!-- Ancho y Alto (para imágenes) -->
           <div class="col-6" v-if="section.fields.includes('width')">
             <q-input
-              :model-value="getElementValue(sectionKey, 'width')"
+              :model-value="getElementValue(section.key, 'width')"
               type="number"
               label="Ancho"
               outlined
               dense
               step="0.1"
-              @update:model-value="setElementValue(sectionKey, 'width', $event)"
+              @update:model-value="setElementValue(section.key, 'width', $event)"
+              @blur="commitConfig"
+              @keydown.enter="commitConfig"
             />
           </div>
           <div class="col-6" v-if="section.fields.includes('height')">
             <q-input
-              :model-value="getElementValue(sectionKey, 'height')"
+              :model-value="getElementValue(section.key, 'height')"
               type="number"
               label="Alto"
               outlined
               dense
               step="0.1"
-              @update:model-value="setElementValue(sectionKey, 'height', $event)"
+              @update:model-value="setElementValue(section.key, 'height', $event)"
+              @blur="commitConfig"
+              @keydown.enter="commitConfig"
             />
           </div>
 
           <!-- Tamaño (para QR) -->
           <div class="col-6" v-if="section.fields.includes('size')">
             <q-input
-              :model-value="getElementValue(sectionKey, 'size')"
+              :model-value="getElementValue(section.key, 'size')"
               type="number"
               label="Tamaño"
               outlined
               dense
               step="1"
-              @update:model-value="setElementValue(sectionKey, 'size', $event)"
+              @update:model-value="setElementValue(section.key, 'size', $event)"
+              @blur="commitConfig"
+              @keydown.enter="commitConfig"
             />
           </div>
 
           <!-- Espaciado de Línea -->
           <div class="col-6" v-if="section.fields.includes('lineSpacing')">
             <q-input
-              :model-value="getElementValue(sectionKey, 'lineSpacing')"
+              :model-value="getElementValue(section.key, 'lineSpacing')"
               type="number"
               label="Espaciado entre Líneas"
               outlined
               dense
               step="0.5"
-              @update:model-value="setElementValue(sectionKey, 'lineSpacing', $event)"
+              @update:model-value="setElementValue(section.key, 'lineSpacing', $event)"
+              @blur="commitConfig"
+              @keydown.enter="commitConfig"
             />
           </div>
         </div>
@@ -178,7 +200,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed, onMounted, nextTick } from 'vue';
+import { ref, watch, computed } from 'vue';
 
 interface Props {
   config: any;
@@ -196,233 +218,169 @@ const emit = defineEmits<Emits>();
 
 // const $q = useQuasar(); // No se usa actualmente
 
-const configElements = ref<any>({});
-const configKey = ref(0); // Key para forzar re-render cuando cambia la config
-
-// Definir secciones según el tipo
-const sections = computed(() => {
-  const baseSections = [
-    {
-      key: 'cursoNombre',
-      title: '📋 Nombre del Curso',
-      icon: 'title',
-      fields: ['x', 'y', 'fontSize', 'bold', 'color'],
-      xLabel: 'Posición X (centrado = 396)',
-    },
-    {
-      key: 'nombreEstudiante',
-      title: '👤 Nombre del Estudiante',
-      icon: 'person',
-      fields: ['x', 'y', 'fontSize', 'bold', 'color'],
-      xLabel: 'Posición X (centrado = 396)',
-    },
-    {
-      key: 'documento',
-      title: '🆔 Documento',
-      icon: 'badge',
-      fields: ['x', 'y', 'fontSize', 'bold'],
-    },
-    {
-      key: 'duracion',
-      title: '⏱️ Duración',
-      icon: 'schedule',
-      fields: ['x', 'y', 'fontSize', 'bold'],
-    },
-    {
-      key: 'fechaEmision',
-      title: '📅 Fecha de Emisión',
-      icon: 'event',
-      fields: ['x', 'y', 'fontSize', 'bold'],
-    },
-    {
-      key: 'fechaVencimiento',
-      title: '📅 Fecha de Vencimiento',
-      icon: 'event',
-      fields: ['x', 'y', 'fontSize', 'bold'],
-    },
-    {
-      key: 'qr',
-      title: '📱 Código QR',
-      icon: 'qr_code',
-      fields: ['x', 'y', 'size'],
-    },
-    {
-      key: 'instructorFirma',
-      title: '✍️ Firma del Instructor',
-      icon: 'draw',
-      fields: ['x', 'y', 'width', 'height'],
-    },
-    {
-      key: 'instructorNombre',
-      title: '✍️ Nombre del Instructor',
-      icon: 'person',
-      fields: ['x', 'y', 'fontSize', 'bold', 'color'],
-      xLabel: 'Posición X (centrado = 235)',
-    },
-    {
-      key: 'instructorRol',
-      title: '👔 Rol del Instructor',
-      icon: 'work',
-      fields: ['x', 'y', 'fontSize', 'bold', 'lineSpacing', 'color'],
-      xLabel: 'Posición X (centrado = 217)',
-    },
-    {
-      key: 'representanteFirma',
-      title: '✍️ Firma del Representante',
-      icon: 'draw',
-      fields: ['x', 'y', 'width', 'height'],
-    },
-    {
-      key: 'representanteNombre',
-      title: '✍️ Nombre del Representante',
-      icon: 'person',
-      fields: ['x', 'y', 'fontSize', 'bold', 'color'],
-      xLabel: 'Posición X (centrado = 565.5)',
-    },
-    {
-      key: 'representanteRol',
-      title: '👔 Rol del Representante',
-      icon: 'work',
-      fields: ['x', 'y', 'fontSize', 'bold', 'color'],
-      xLabel: 'Posición X (centrado = 571)',
-    },
-    {
-      key: 'footer',
-      title: '📄 Pie de Página',
-      icon: 'description',
-      fields: ['x', 'y', 'fontSize', 'bold', 'color'],
-      xLabel: 'Posición X (centrado = 396)',
-    },
-  ];
-
-  return baseSections;
-});
-
-// Inicializar configElements con los valores disponibles
-function initializeConfigElements() {
-  if (props.config && Object.keys(props.config).length > 0) {
-    console.log('[CertificateConfigEditor] Inicializando con props.config:', props.config);
-    configElements.value = JSON.parse(JSON.stringify(props.config));
-  } else if (props.defaultValues && Object.keys(props.defaultValues).length > 0) {
-    console.log('[CertificateConfigEditor] Inicializando con defaultValues:', props.defaultValues);
-    configElements.value = JSON.parse(JSON.stringify(props.defaultValues));
-  } else {
-    console.log('[CertificateConfigEditor] Inicializando con objeto vacío');
-    configElements.value = {};
+/** Clona la config inicial para no depender del orden de ejecución del watch */
+function cloneConfig(config: Record<string, unknown> | null | undefined): Record<string, unknown> {
+  if (!config || typeof config !== 'object') return {};
+  try {
+    return JSON.parse(JSON.stringify(config));
+  } catch {
+    return { ...config };
   }
-  console.log('[CertificateConfigEditor] configElements inicializado:', configElements.value);
 }
 
-// Inicializar inmediatamente
-initializeConfigElements();
+const configElements = ref<any>(cloneConfig(props.config));
+const configKey = ref(0); // Key para forzar re-render cuando cambia la config
 
-// Log inicial para verificar que el componente se monta
-onMounted(() => {
-  console.log('[CertificateConfigEditor] Componente montado. Tipo:', props.tipo);
-  console.log('[CertificateConfigEditor] Config recibida:', props.config);
-  console.log('[CertificateConfigEditor] Default values:', props.defaultValues);
-  console.log('[CertificateConfigEditor] configElements actual:', configElements.value);
-  
-  // Re-inicializar si es necesario
-  if (!configElements.value || Object.keys(configElements.value).length === 0) {
-    console.log('[CertificateConfigEditor] Re-inicializando en onMounted');
-    initializeConfigElements();
+/** Campos que se muestran como inputs en el editor (posición, fuente, color, etc.) */
+const LAYOUT_FIELDS = [
+  'x',
+  'y',
+  'fontSize',
+  'bold',
+  'color',
+  'width',
+  'height',
+  'size',
+  'lineSpacing',
+] as const;
+
+/** Claves que no son bloques de posición (ej. dataDinamica) y se excluyen del listado */
+const SKIP_KEYS = new Set(['dataDinamica']);
+
+/** Mapa key → título e icono para las secciones (el resto usa el key formateado) */
+const SECTION_META: Record<string, { title: string; icon: string; xLabel?: string }> = {
+  cursoNombre: {
+    title: '📋 Nombre del Curso',
+    icon: 'title',
+    xLabel: 'Posición X (centrado = 396)',
+  },
+  nombreEstudiante: {
+    title: '👤 Nombre del Estudiante',
+    icon: 'person',
+    xLabel: 'Posición X (centrado = 396)',
+  },
+  documento: { title: '🆔 Documento', icon: 'badge' },
+  duracion: { title: '⏱️ Duración', icon: 'schedule' },
+  fechaEmision: { title: '📅 Fecha de Emisión', icon: 'event' },
+  fechaVencimiento: { title: '📅 Fecha de Vencimiento', icon: 'event' },
+  qr: { title: '📱 Código QR', icon: 'qr_code' },
+  instructorFirma: { title: '✍️ Firma del Instructor', icon: 'draw' },
+  instructorNombre: {
+    title: '✍️ Nombre del Instructor',
+    icon: 'person',
+    xLabel: 'Posición X (centrado = 235)',
+  },
+  instructorRol: {
+    title: '👔 Rol del Instructor',
+    icon: 'work',
+    xLabel: 'Posición X (centrado = 217)',
+  },
+  representanteFirma: { title: '✍️ Firma del Representante', icon: 'draw' },
+  representanteNombre: {
+    title: '✍️ Nombre del Representante',
+    icon: 'person',
+    xLabel: 'Posición X (centrado = 565.5)',
+  },
+  representanteRol: {
+    title: '👔 Rol del Representante',
+    icon: 'work',
+    xLabel: 'Posición X (centrado = 571)',
+  },
+  footer: {
+    title: '📄 Pie de Página',
+    icon: 'description',
+    xLabel: 'Posición X (centrado = 396)',
+  },
+};
+
+function formatKeyAsTitle(key: string): string {
+  return key
+    .replace(/([A-Z])/g, ' $1')
+    .replace(/^./, (s) => s.toUpperCase())
+    .trim();
+}
+
+/** Secciones derivadas de configElements: una por clave con datos de posición/formato */
+const sections = computed(() => {
+  const config = configElements.value;
+  if (!config || typeof config !== 'object') return [];
+
+  const result: Array<{
+    key: string;
+    title: string;
+    icon: string;
+    fields: string[];
+    xLabel?: string;
+  }> = [];
+
+  for (const key of Object.keys(config)) {
+    if (SKIP_KEYS.has(key)) continue;
+
+    const value = config[key];
+    if (!value || typeof value !== 'object' || Array.isArray(value)) continue;
+
+    const fields = Object.keys(value).filter((f) =>
+      (LAYOUT_FIELDS as readonly string[]).includes(f),
+    );
+    if (fields.length === 0) continue;
+
+    const meta = SECTION_META[key];
+    result.push({
+      key,
+      title: meta?.title ?? formatKeyAsTitle(key),
+      icon: meta?.icon ?? 'tune',
+      fields,
+      ...(meta?.xLabel !== undefined && { xLabel: meta.xLabel }),
+    });
   }
+
+  return result;
 });
 
-// Sincronizar config con configElements
+// Sincronizar config con configElements: immediate para que la instancia recién montada
+// (p. ej. al cambiar de tab o al cambiar la key) reciba ya la config del padre.
+// No sobrescribir con objeto vacío si ya tenemos datos (evita parpadeos/limpiezas).
 watch(
   () => props.config,
-  (newConfig, oldConfig) => {
-    console.log('[CertificateConfigEditor] Watch disparado. Tipo:', props.tipo);
-    console.log('[CertificateConfigEditor] Config recibida:', {
-      new: newConfig,
-      old: oldConfig,
-      tipo: props.tipo,
-      tieneKeys: newConfig ? Object.keys(newConfig).length : 0,
-      configElementsKeys: configElements.value ? Object.keys(configElements.value).length : 0,
-    });
-
-    // Si hay configuración nueva y tiene contenido, aplicarla siempre
-    if (newConfig && Object.keys(newConfig).length > 0) {
-      console.log('[CertificateConfigEditor] Aplicando configuración desde props.config');
-      // Hacer una copia profunda para asegurar reactividad
-      const newConfigCopy = JSON.parse(JSON.stringify(newConfig));
-      
-      // Actualizar directamente - Vue debería detectar el cambio
-      configElements.value = newConfigCopy;
-      // Incrementar key para forzar re-render de los inputs
-      configKey.value++;
-      console.log('[CertificateConfigEditor] configElements actualizado:', configElements.value);
-      console.log('[CertificateConfigEditor] Verificando valores específicos:', {
-        cursoNombre: configElements.value.cursoNombre,
-        nombreEstudiante: configElements.value.nombreEstudiante,
-        qr: configElements.value.qr,
-        cursoNombreX: configElements.value.cursoNombre?.x,
-        cursoNombreY: configElements.value.cursoNombre?.y,
-      });
-      
-      // Forzar reactividad usando nextTick
-      void nextTick(() => {
-        console.log('[CertificateConfigEditor] Después de nextTick, verificando valores:', {
-          cursoNombreX: configElements.value.cursoNombre?.x,
-          cursoNombreY: configElements.value.cursoNombre?.y,
-        });
-      });
-    } else if (props.defaultValues && Object.keys(props.defaultValues).length > 0) {
-      // Si no hay config pero hay defaults, usar defaults
-      console.log('[CertificateConfigEditor] Usando valores por defecto');
-      configElements.value = JSON.parse(JSON.stringify(props.defaultValues));
+  (newConfig) => {
+    const next = newConfig && typeof newConfig === 'object' ? newConfig : {};
+    const hasNewData = Object.keys(next).length > 0;
+    const hasCurrentData = Object.keys(configElements.value || {}).length > 0;
+    if (hasNewData || !hasCurrentData) {
+      configElements.value = cloneConfig(next);
     }
   },
-  { immediate: false, deep: true },
+  { immediate: true, deep: true },
 );
 
-// También observar defaultValues por si cambian
+// Aplicar defaultValues solo cuando la config del padre está vacía y tenemos defaults
 watch(
   () => props.defaultValues,
   (newDefaults) => {
-    if (newDefaults && Object.keys(newDefaults).length > 0) {
-      // Solo aplicar defaults si no hay config o está vacía
-      if (!props.config || Object.keys(props.config).length === 0) {
-        const defaultsStr = JSON.stringify(newDefaults);
-        const currentConfigStr = JSON.stringify(configElements.value);
-
-        if (defaultsStr !== currentConfigStr) {
-          console.log('[CertificateConfigEditor] Aplicando valores por defecto desde watch');
-          configElements.value = JSON.parse(JSON.stringify(newDefaults));
-        }
-      }
+    if (!newDefaults || Object.keys(newDefaults).length === 0) return;
+    const parentEmpty = !props.config || Object.keys(props.config).length === 0;
+    const currentEmpty = !configElements.value || Object.keys(configElements.value).length === 0;
+    if (parentEmpty && currentEmpty) {
+      configElements.value = cloneConfig(newDefaults);
     }
   },
   { deep: true },
 );
 
 // Función helper para obtener valores de manera reactiva
-function getElementValue(sectionKey: string, field: string, defaultValue: any = 0): any {
-  // Asegurar que configElements.value existe
+function getElementValue(
+  sectionKey: string,
+  field: string,
+  defaultValue: any = 0,
+  category: 'otros' | 'alimentos' | 'sustancias' = 'otros',
+): any {
   if (!configElements.value) {
     return defaultValue;
   }
-  
-  // Acceder a configElements.value para que Vue rastree la dependencia
+
   const elements = configElements.value;
   const element = elements[sectionKey];
-  
-  // Debug para los primeros valores (solo una vez para no saturar)
-  if (sectionKey === 'cursoNombre' && field === 'x' && configKey.value > 0) {
-    console.log('[CertificateConfigEditor] getElementValue llamado:', {
-      sectionKey,
-      field,
-      element,
-      configElementsKeys: Object.keys(elements),
-      tieneElement: !!element,
-      valor: element ? element[field] : 'no existe',
-      tipoValor: element && element[field] !== undefined ? typeof element[field] : 'undefined',
-      configKey: configKey.value,
-    });
-  }
-  
+
   if (!element) {
     return defaultValue;
   }
@@ -436,13 +394,13 @@ function getElementValue(sectionKey: string, field: string, defaultValue: any = 
   }
 
   const value = element[field] !== undefined ? element[field] : defaultValue;
-  
+
   // Convertir a número si es un campo numérico
   if (['x', 'y', 'fontSize', 'width', 'height', 'size', 'lineSpacing'].includes(field)) {
     const numValue = typeof value === 'string' ? parseFloat(value) : value;
     return !isNaN(numValue) ? numValue : defaultValue;
   }
-  
+
   return value;
 }
 
@@ -461,6 +419,11 @@ function setElementValue(sectionKey: string, field: string, value: any) {
   } else {
     configElements.value[sectionKey][field] = value;
   }
+  // No emitir aquí: la carga del PDF se hace solo en commitConfig (Enter o blur)
+}
+
+/** Emite la config al padre y dispara la actualización del PDF (solo al pulsar Enter o al hacer blur). */
+function commitConfig() {
   updateConfig();
 }
 
@@ -487,7 +450,7 @@ function updateColorFromPicker(sectionKey: string, hex: string) {
     configElements.value[sectionKey] = {};
   }
   configElements.value[sectionKey].color = [r, g, b];
-  updateConfig();
+  // La actualización del PDF se dispara en commitConfig (blur del input color)
 }
 
 function updateConfig() {
