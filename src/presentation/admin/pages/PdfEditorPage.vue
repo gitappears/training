@@ -288,7 +288,7 @@ const uploading = ref(false);
 const loadingSearch = ref(false);
 const activeTab = ref<'otros' | 'alimentos' | 'sustancias'>('otros');
 const autoRefresh = ref(false);
-const certificateHash = ref('');
+const certificateHash = ref<string | { hash: string }>('');
 const backgroundFile = ref<File | null>(null);
 const certificateOptions = ref<Array<{ hash: string; label: string; caption: string }>>([]);
 const allCertificates = ref<
@@ -302,10 +302,20 @@ const allCertificates = ref<
   }>
 >([]);
 
+/** Configuración por sección (otros/alimentos/sustancias); mismo tipo que recibe CertificateConfigEditor */
+type CertificateConfig = Record<string, unknown>;
+
+/** Configuración completa del PDF (las tres secciones) */
+interface CertificateFullConfig {
+  otros: CertificateConfig;
+  alimentos: CertificateConfig;
+  sustancias: CertificateConfig;
+}
+
 // Inicializar con valores por defecto en lugar de null para que el componente hijo los reciba
-const configOtros = ref<any>({});
-const configAlimentos = ref<any>({});
-const configSustancias = ref<any>({});
+const configOtros = ref<CertificateConfig>({});
+const configAlimentos = ref<CertificateConfig>({});
+const configSustancias = ref<CertificateConfig>({});
 
 const currentFormatId = ref<number | null>(null);
 const pdfViewer = ref<HTMLIFrameElement | null>(null);
@@ -468,7 +478,7 @@ async function cargarConfiguracion() {
   }
 }
 
-function handleConfigUpdate(tipo: 'otros' | 'alimentos' | 'sustancias', config: any) {
+function handleConfigUpdate(tipo: 'otros' | 'alimentos' | 'sustancias', config: CertificateConfig) {
   switch (tipo) {
     case 'otros':
       configOtros.value = config;
@@ -483,7 +493,7 @@ function handleConfigUpdate(tipo: 'otros' | 'alimentos' | 'sustancias', config: 
   // El PDF solo se refresca con @update:pdf (Enter o blur en el editor), no al escribir
 }
 
-function getConfig(): any {
+function getConfig(): CertificateFullConfig {
   return {
     alimentos: configAlimentos.value,
     sustancias: configSustancias.value,
@@ -519,15 +529,12 @@ async function cargarCertificadosPorDefecto() {
 
       // Seleccionar uno de cada categoría (el más reciente)
       const certificadosPorDefecto: typeof results = [];
-      if (certificadosAlimentos.length > 0) {
-        certificadosPorDefecto.push(certificadosAlimentos[0]);
-      }
-      if (certificadosSustancias.length > 0) {
-        certificadosPorDefecto.push(certificadosSustancias[0]);
-      }
-      if (certificadosOtros.length > 0) {
-        certificadosPorDefecto.push(certificadosOtros[0]);
-      }
+      const primeroAlimentos = certificadosAlimentos[0];
+      const primeroSustancias = certificadosSustancias[0];
+      const primeroOtros = certificadosOtros[0];
+      if (primeroAlimentos) certificadosPorDefecto.push(primeroAlimentos);
+      if (primeroSustancias) certificadosPorDefecto.push(primeroSustancias);
+      if (primeroOtros) certificadosPorDefecto.push(primeroOtros);
 
       // Actualizar lista de certificados
       allCertificates.value = results;
@@ -570,9 +577,12 @@ async function filterCertificates(val: string, update: (callback: () => void) =>
       );
 
       const certificadosPorDefecto: typeof allCertificates.value = [];
-      if (certificadosAlimentos.length > 0) certificadosPorDefecto.push(certificadosAlimentos[0]);
-      if (certificadosSustancias.length > 0) certificadosPorDefecto.push(certificadosSustancias[0]);
-      if (certificadosOtros.length > 0) certificadosPorDefecto.push(certificadosOtros[0]);
+      const primeroAlimentos = certificadosAlimentos[0];
+      const primeroSustancias = certificadosSustancias[0];
+      const primeroOtros = certificadosOtros[0];
+      if (primeroAlimentos) certificadosPorDefecto.push(primeroAlimentos);
+      if (primeroSustancias) certificadosPorDefecto.push(primeroSustancias);
+      if (primeroOtros) certificadosPorDefecto.push(primeroOtros);
 
       update(() => {
         certificateOptions.value = certificadosPorDefecto.map((cert) => ({
@@ -615,8 +625,8 @@ async function filterCertificates(val: string, update: (callback: () => void) =>
   }
 }
 
-async function onCertificateSelect(value: any) {
-  if (value && typeof value === 'object' && value.hash) {
+async function onCertificateSelect(value: string | { hash: string } | null | undefined) {
+  if (value && typeof value === 'object' && 'hash' in value && value.hash) {
     certificateHash.value = value.hash;
     await loadPDF();
   } else if (typeof value === 'string') {
@@ -628,10 +638,11 @@ async function onCertificateSelect(value: any) {
 async function loadPDF() {
   let hash = '';
 
-  if (typeof certificateHash.value === 'object' && certificateHash.value?.hash) {
-    hash = certificateHash.value.hash;
-  } else if (typeof certificateHash.value === 'string') {
-    hash = certificateHash.value.trim();
+  const hashValue = certificateHash.value;
+  if (typeof hashValue === 'object' && hashValue && 'hash' in hashValue) {
+    hash = hashValue.hash;
+  } else if (typeof hashValue === 'string') {
+    hash = hashValue.trim();
   }
 
   if (!hash) {
@@ -702,8 +713,9 @@ async function cargarConfiguracionYDeterminarTipo(hash: string) {
       try {
         console.log('[PdfEditor] Certificado no encontrado en lista, buscando...');
         const results = await certificatesService.searchHashes(hash, 1);
-        if (results.length > 0 && results[0].hashVerificacion === hash) {
-          certificadoInfo = results[0];
+        const resultado = results[0];
+        if (resultado && resultado.hashVerificacion === hash) {
+          certificadoInfo = resultado;
           console.log('[PdfEditor] Certificado encontrado:', certificadoInfo.cursoNombre);
           // Agregar a la lista para futuras referencias
           if (!allCertificates.value.find((c) => c.hashVerificacion === hash)) {
@@ -800,7 +812,10 @@ async function cargarConfiguracionYDeterminarTipo(hash: string) {
  * Función auxiliar para hacer merge profundo de objetos
  * Asegura que todos los valores de source sobrescriban los de target
  */
-function deepMerge(target: any, source: any): any {
+function deepMerge(
+  target: Record<string, unknown>,
+  source: Record<string, unknown>,
+): Record<string, unknown> {
   if (!isObject(target) || !isObject(source)) {
     return source || target;
   }
@@ -828,17 +843,17 @@ function deepMerge(target: any, source: any): any {
   return output;
 }
 
-function isObject(item: any): boolean {
-  return item && typeof item === 'object' && !Array.isArray(item);
+function isObject(item: unknown): item is Record<string, unknown> {
+  return !!item && typeof item === 'object' && !Array.isArray(item);
 }
 
 function updatePDFPreview() {
   let hash = '';
-
-  if (typeof certificateHash.value === 'object' && certificateHash.value?.hash) {
-    hash = certificateHash.value.hash;
-  } else if (typeof certificateHash.value === 'string') {
-    hash = certificateHash.value.trim();
+  const hashValue = certificateHash.value;
+  if (typeof hashValue === 'object' && hashValue && 'hash' in hashValue) {
+    hash = hashValue.hash;
+  } else if (typeof hashValue === 'string') {
+    hash = hashValue.trim();
   }
 
   if (!hash) return;

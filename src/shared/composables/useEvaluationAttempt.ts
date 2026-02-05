@@ -5,8 +5,26 @@
  */
 
 import { ref, computed, onUnmounted, type Ref } from 'vue';
+
+/** Extrae mensaje de un error unknown (Error o respuesta API) */
+function getErrorMessage(err: unknown, fallback: string): string {
+  if (err instanceof Error) return err.message;
+  if (err && typeof err === 'object' && 'response' in err) {
+    const data = (err as { response?: { data?: { message?: string | string[] } } }).response?.data
+      ?.message;
+    if (data) return Array.isArray(data) ? data.join(', ') : data;
+  }
+  if (
+    err &&
+    typeof err === 'object' &&
+    'message' in err &&
+    typeof (err as { message: unknown }).message === 'string'
+  ) {
+    return (err as { message: string }).message;
+  }
+  return fallback;
+}
 import { useQuasar } from 'quasar';
-import { useRouter } from 'vue-router';
 import { evaluationAttemptsService } from '../../infrastructure/http/evaluation-attempts/evaluation-attempts.service';
 import { inscriptionsService } from '../../infrastructure/http/inscriptions/inscriptions.service';
 import { useAuthStore } from '../../stores/auth.store';
@@ -61,7 +79,6 @@ export function useEvaluationAttempt(
   options: UseEvaluationAttemptOptions,
 ): UseEvaluationAttemptReturn {
   const $q = useQuasar();
-  const router = useRouter();
   const authStore = useAuthStore();
 
   // Estado
@@ -74,10 +91,16 @@ export function useEvaluationAttempt(
   const inscripcionId = ref<number | null>(null);
 
   // Opciones reactivas
-  const evaluacionId = typeof options.evaluacionId === 'number' ? ref(options.evaluacionId) : options.evaluacionId;
-  const capacitacionId = typeof options.capacitacionId === 'number' ? ref(options.capacitacionId) : options.capacitacionId;
-  const tiempoLimiteMinutos = options.tiempoLimiteMinutos 
-    ? (typeof options.tiempoLimiteMinutos === 'number' ? ref(options.tiempoLimiteMinutos) : options.tiempoLimiteMinutos)
+  const evaluacionId =
+    typeof options.evaluacionId === 'number' ? ref(options.evaluacionId) : options.evaluacionId;
+  const capacitacionId =
+    typeof options.capacitacionId === 'number'
+      ? ref(options.capacitacionId)
+      : options.capacitacionId;
+  const tiempoLimiteMinutos = options.tiempoLimiteMinutos
+    ? typeof options.tiempoLimiteMinutos === 'number'
+      ? ref(options.tiempoLimiteMinutos)
+      : options.tiempoLimiteMinutos
     : ref(0);
 
   // Timers
@@ -111,35 +134,44 @@ export function useEvaluationAttempt(
       const personaId = authStore.profile?.personaId || authStore.profile?.persona?.id;
       if (!personaId) {
         console.error('No se pudo obtener el personaId del perfil:', authStore.profile);
-        throw new Error('No se pudo obtener el ID del usuario. Por favor, inicia sesión nuevamente.');
+        throw new Error(
+          'No se pudo obtener el ID del usuario. Por favor, inicia sesión nuevamente.',
+        );
       }
 
       const inscripciones = await inscriptionsService.findByUser(personaId.toString());
-      
+
       // Usar capacitacionId.value en lugar de options.capacitacionId
-      const capacitacionIdValue = typeof capacitacionId.value === 'number' 
-        ? capacitacionId.value 
-        : parseInt(String(capacitacionId.value));
-      
+      const capacitacionIdValue =
+        typeof capacitacionId.value === 'number'
+          ? capacitacionId.value
+          : parseInt(String(capacitacionId.value));
+
       if (isNaN(capacitacionIdValue)) {
         throw new Error('ID de capacitación inválido');
       }
-      
+
       const inscripcion = inscripciones.find(
         (ins) => parseInt(ins.courseId) === capacitacionIdValue,
       );
 
       if (!inscripcion) {
         console.error('No se encontró inscripción para capacitación:', capacitacionIdValue);
-        console.error('Inscripciones disponibles:', inscripciones.map(ins => ({ id: ins.id, courseId: ins.courseId })));
+        console.error(
+          'Inscripciones disponibles:',
+          inscripciones.map((ins) => ({ id: ins.id, courseId: ins.courseId })),
+        );
         throw new Error('No estás inscrito en esta capacitación');
       }
 
       inscripcionId.value = parseInt(inscripcion.id);
       return inscripcionId.value;
-    } catch (error: any) {
-      console.error('Error al obtener inscripción:', error);
-      const errorMessage = error.message || 'Error al obtener tu inscripción. Por favor, intenta nuevamente.';
+    } catch (err: unknown) {
+      console.error('Error al obtener inscripción:', err);
+      const errorMessage = getErrorMessage(
+        err,
+        'Error al obtener tu inscripción. Por favor, intenta nuevamente.',
+      );
       $q.notify({
         type: 'negative',
         message: errorMessage,
@@ -190,12 +222,12 @@ export function useEvaluationAttempt(
         icon: 'play_arrow',
         position: 'top',
       });
-    } catch (error: any) {
-      console.error('Error al iniciar intento:', error);
-      const message =
-        error.response?.data?.message ||
-        error.message ||
-        'Error al iniciar la evaluación. Por favor, intenta nuevamente.';
+    } catch (err: unknown) {
+      console.error('Error al iniciar intento:', err);
+      const message = getErrorMessage(
+        err,
+        'Error al iniciar la evaluación. Por favor, intenta nuevamente.',
+      );
       $q.notify({
         type: 'negative',
         message,
@@ -217,13 +249,9 @@ export function useEvaluationAttempt(
 
     isSaving.value = true;
     try {
-      await evaluationAttemptsService.saveAnswer(
-        evaluacionId.value,
-        attempt.value.id,
-        answerData,
-      );
-    } catch (error: any) {
-      console.error('Error al guardar respuesta:', error);
+      await evaluationAttemptsService.saveAnswer(evaluacionId.value, attempt.value.id, answerData);
+    } catch (err: unknown) {
+      console.error('Error al guardar respuesta:', err);
       // No mostrar notificación para auto-guardado silencioso
       // Solo loguear el error
     } finally {
@@ -272,12 +300,12 @@ export function useEvaluationAttempt(
       });
 
       return result;
-    } catch (error: any) {
-      console.error('Error al finalizar intento:', error);
-      const message =
-        error.response?.data?.message ||
-        error.message ||
-        'Error al finalizar la evaluación. Por favor, intenta nuevamente.';
+    } catch (err: unknown) {
+      console.error('Error al finalizar intento:', err);
+      const message = getErrorMessage(
+        err,
+        'Error al finalizar la evaluación. Por favor, intenta nuevamente.',
+      );
       $q.notify({
         type: 'negative',
         message,
@@ -354,15 +382,17 @@ export function useEvaluationAttempt(
 
     const interval = (options.autoSaveInterval ?? 30) * 1000; // Default 30 segundos
 
-    autoSaveInterval = window.setInterval(async () => {
-      if (autoSaveQueue.value.length > 0 && hasActiveAttempt.value) {
-        const answersToSave = [...autoSaveQueue.value];
-        autoSaveQueue.value = [];
+    autoSaveInterval = window.setInterval(() => {
+      void (async () => {
+        if (autoSaveQueue.value.length > 0 && hasActiveAttempt.value) {
+          const answersToSave = [...autoSaveQueue.value];
+          autoSaveQueue.value = [];
 
-        for (const answer of answersToSave) {
-          await saveAnswer(answer);
+          for (const answer of answersToSave) {
+            await saveAnswer(answer);
+          }
         }
-      }
+      })();
     }, interval);
   }
 
@@ -430,4 +460,3 @@ export function useEvaluationAttempt(
     getInscripcionId,
   };
 }
-

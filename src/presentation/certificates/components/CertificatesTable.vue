@@ -23,13 +23,7 @@
               :label="`Descargar ${localSelected.length}`"
               @click="$emit('bulk-download', localSelected)"
             />
-            <q-btn
-              flat
-              dense
-              icon="download"
-              color="primary"
-              label="Exportar"
-            >
+            <q-btn flat dense icon="download" color="primary" label="Exportar">
               <q-menu>
                 <q-list>
                   <q-item clickable v-close-popup @click="$emit('export-csv', certificates)">
@@ -57,10 +51,7 @@
 
       <template #body-cell-status="props">
         <q-td :props="props">
-          <q-badge
-            :color="props.row.status === 'valid' ? 'positive' : 'negative'"
-            outline
-          >
+          <q-badge :color="props.row.status === 'valid' ? 'positive' : 'negative'" outline>
             {{ props.row.status === 'valid' ? 'Válido' : 'Vencido' }}
           </q-badge>
         </q-td>
@@ -152,7 +143,7 @@ import type { Certificate } from '../../../domain/certificate/models';
 import EmptyState from '../../../shared/components/EmptyState.vue';
 import { formatDate } from '../../../shared/utils/dateFormatter';
 
-const props = defineProps<{
+defineProps<{
   certificates: Certificate[];
   loading: boolean;
   hasActiveFilters: boolean;
@@ -163,18 +154,22 @@ const emit = defineEmits<{
   'export-csv': [certificates: Certificate[]];
   'export-excel': [];
   'copy-code': [code: string];
-  'view': [id: string];
-  'download': [id: string];
-  'share': [id: string];
+  view: [id: string];
+  download: [id: string];
+  share: [id: string];
   'clear-filters': [];
   'update:selected': [certificates: Certificate[]];
 }>();
 
 const localSelected = ref<Certificate[]>([]);
 
-watch(localSelected, (newVal) => {
-  emit('update:selected', newVal);
-}, { deep: true });
+watch(
+  localSelected,
+  (newVal) => {
+    emit('update:selected', newVal);
+  },
+  { deep: true },
+);
 
 const columns: QTableColumn<Certificate>[] = [
   {

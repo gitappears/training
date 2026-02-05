@@ -3,12 +3,15 @@ import { api } from '../../../boot/axios';
 // Tipo local para evitar dependencia de módulo no existente
 export type CertificateFormatType = 'alimentos' | 'sustancias' | 'otros';
 
+/** Configuración JSON por tipo de certificado (estructura definida por el backend) */
+export type CertificateFormatConfig = Record<string, unknown>;
+
 export interface CertificateFormat {
   id?: number;
   tipo: CertificateFormatType;
-  configAlimentos?: any;
-  configSustancias?: any;
-  configOtros?: any;
+  configAlimentos?: CertificateFormatConfig;
+  configSustancias?: CertificateFormatConfig;
+  configOtros?: CertificateFormatConfig;
   fondoAlimentosPath?: string | null;
   fondoSustanciasPath?: string | null;
   fondoGeneralPath?: string | null;
@@ -19,9 +22,9 @@ export interface CertificateFormat {
 
 export interface CreateCertificateFormatDto {
   tipo: CertificateFormatType;
-  configAlimentos?: any;
-  configSustancias?: any;
-  configOtros?: any;
+  configAlimentos?: CertificateFormatConfig;
+  configSustancias?: CertificateFormatConfig;
+  configOtros?: CertificateFormatConfig;
 }
 
 export interface UpdateCertificateFormatDto extends Partial<CreateCertificateFormatDto> {
@@ -29,9 +32,9 @@ export interface UpdateCertificateFormatDto extends Partial<CreateCertificateFor
 }
 
 export interface PdfConfig {
-  alimentos?: any;
-  sustancias?: any;
-  otros?: any;
+  alimentos?: CertificateFormatConfig;
+  sustancias?: CertificateFormatConfig;
+  otros?: CertificateFormatConfig;
 }
 
 class CertificateFormatsService {
@@ -91,8 +94,8 @@ class CertificateFormatsService {
   /**
    * Obtener configuración por tipo
    */
-  async getConfigByType(tipo: CertificateFormatType): Promise<any> {
-    const response = await api.get<any>(`${this.baseUrl}/config/${tipo}`);
+  async getConfigByType(tipo: CertificateFormatType): Promise<PdfConfig | null> {
+    const response = await api.get<PdfConfig | null>(`${this.baseUrl}/config/${tipo}`);
     return response.data;
   }
 

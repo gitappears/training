@@ -1,9 +1,9 @@
 import { ref, computed, watch } from 'vue';
 import { debounce } from 'quasar';
 
-export interface FilterState<T = any> {
+export interface FilterState<T = unknown> {
   search?: string;
-  [key: string]: any;
+  [key: string]: T | string | undefined;
 }
 
 /**
@@ -11,7 +11,7 @@ export interface FilterState<T = any> {
  * Proporciona búsqueda, filtros y debounce
  */
 export function useTableFilters<T extends FilterState>(initialFilters: T) {
-  const filters = ref<T>({ ...initialFilters } as T);
+  const filters = ref<T>({ ...initialFilters });
   const activeFiltersCount = ref(0);
 
   /**
@@ -21,7 +21,7 @@ export function useTableFilters<T extends FilterState>(initialFilters: T) {
     let count = 0;
     for (const [key, value] of Object.entries(filters.value)) {
       if (key === 'search') {
-        if (value && String(value).trim().length > 0) count++;
+        if (value && typeof value === 'string' && value.trim().length > 0) count++;
       } else if (value !== null && value !== undefined && value !== '') {
         count++;
       }
@@ -33,7 +33,7 @@ export function useTableFilters<T extends FilterState>(initialFilters: T) {
    * Limpia todos los filtros
    */
   function clearAllFilters() {
-    filters.value = { ...initialFilters } as T;
+    filters.value = { ...initialFilters };
     calculateActiveFilters();
   }
 
@@ -78,7 +78,7 @@ export function useTableFilters<T extends FilterState>(initialFilters: T) {
     () => {
       calculateActiveFilters();
     },
-    { deep: true }
+    { deep: true },
   );
 
   // Calcular inicialmente
@@ -95,4 +95,3 @@ export function useTableFilters<T extends FilterState>(initialFilters: T) {
     createDebouncedSearch,
   };
 }
-

@@ -16,7 +16,7 @@
             <div class="col-6" v-if="section.fields.includes('x')">
               <q-input
                 :key="`${section.key}-x-${configKey}`"
-                :model-value="getElementValue(section.key, 'x')"
+                :model-value="getNum(section.key, 'x')"
                 type="number"
                 :label="section.xLabel || 'Posición X'"
                 outlined
@@ -30,7 +30,7 @@
             <div class="col-6" v-if="section.fields.includes('y')">
               <q-input
                 :key="`${section.key}-y-${configKey}`"
-                :model-value="getElementValue(section.key, 'y')"
+                :model-value="getNum(section.key, 'y')"
                 type="number"
                 label="Posición Y"
                 outlined
@@ -46,7 +46,7 @@
           <!-- Tamaño de Fuente -->
           <div class="col-6" v-if="section.fields.includes('fontSize')">
             <q-input
-              :model-value="getElementValue(section.key, 'fontSize')"
+              :model-value="getNum(section.key, 'fontSize')"
               type="number"
               label="Tamaño de Fuente"
               outlined
@@ -92,7 +92,7 @@
                 </div>
                 <div class="col">
                   <q-input
-                    :model-value="getElementValue(section.key, 'color.0')"
+                    :model-value="getNum(section.key, 'color.0')"
                     type="number"
                     label="R"
                     outlined
@@ -106,7 +106,7 @@
                 </div>
                 <div class="col">
                   <q-input
-                    :model-value="getElementValue(section.key, 'color.1')"
+                    :model-value="getNum(section.key, 'color.1')"
                     type="number"
                     label="G"
                     outlined
@@ -120,7 +120,7 @@
                 </div>
                 <div class="col">
                   <q-input
-                    :model-value="getElementValue(section.key, 'color.2')"
+                    :model-value="getNum(section.key, 'color.2')"
                     type="number"
                     label="B"
                     outlined
@@ -139,7 +139,7 @@
           <!-- Ancho y Alto (para imágenes) -->
           <div class="col-6" v-if="section.fields.includes('width')">
             <q-input
-              :model-value="getElementValue(section.key, 'width')"
+              :model-value="getNum(section.key, 'width')"
               type="number"
               label="Ancho"
               outlined
@@ -152,7 +152,7 @@
           </div>
           <div class="col-6" v-if="section.fields.includes('height')">
             <q-input
-              :model-value="getElementValue(section.key, 'height')"
+              :model-value="getNum(section.key, 'height')"
               type="number"
               label="Alto"
               outlined
@@ -167,7 +167,7 @@
           <!-- Tamaño (para QR) -->
           <div class="col-6" v-if="section.fields.includes('size')">
             <q-input
-              :model-value="getElementValue(section.key, 'size')"
+              :model-value="getNum(section.key, 'size')"
               type="number"
               label="Tamaño"
               outlined
@@ -182,7 +182,7 @@
           <!-- Espaciado de Línea -->
           <div class="col-6" v-if="section.fields.includes('lineSpacing')">
             <q-input
-              :model-value="getElementValue(section.key, 'lineSpacing')"
+              :model-value="getNum(section.key, 'lineSpacing')"
               type="number"
               label="Espaciado entre Líneas"
               outlined
@@ -202,14 +202,17 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue';
 
+/** Configuración de elementos del certificado (posición, fuente, color, etc. por clave) */
+type CertificateConfig = Record<string, unknown>;
+
 interface Props {
-  config: any;
+  config: CertificateConfig;
   tipo: 'otros' | 'alimentos' | 'sustancias';
-  defaultValues?: any;
+  defaultValues?: CertificateConfig;
 }
 
 interface Emits {
-  (e: 'update:config', config: any): void;
+  (e: 'update:config', config: CertificateConfig): void;
   (e: 'update:pdf'): void;
 }
 
@@ -228,7 +231,7 @@ function cloneConfig(config: Record<string, unknown> | null | undefined): Record
   }
 }
 
-const configElements = ref<any>(cloneConfig(props.config));
+const configElements = ref<CertificateConfig>(cloneConfig(props.config));
 const configKey = ref(0); // Key para forzar re-render cuando cambia la config
 
 /** Campos que se muestran como inputs en el editor (posición, fuente, color, etc.) */
@@ -367,18 +370,20 @@ watch(
   { deep: true },
 );
 
-// Función helper para obtener valores de manera reactiva
+/** Tipo interno para cada elemento (posición, fuente, color, etc.) */
+type ElementEntry = Record<string, unknown>;
+
+// Función helper para obtener valores de manera reactiva (tipos que usan los inputs)
 function getElementValue(
   sectionKey: string,
   field: string,
-  defaultValue: any = 0,
-  category: 'otros' | 'alimentos' | 'sustancias' = 'otros',
-): any {
+  defaultValue: string | number | boolean = 0,
+): string | number | boolean | number[] | null | undefined {
   if (!configElements.value) {
     return defaultValue;
   }
 
-  const elements = configElements.value;
+  const elements = configElements.value as Record<string, ElementEntry>;
   const element = elements[sectionKey];
 
   if (!element) {
@@ -386,38 +391,54 @@ function getElementValue(
   }
 
   if (field.includes('.')) {
-    const [key, index] = field.split('.');
+    const parts = field.split('.');
+    const key = parts[0];
+    const index = parts[1];
+    if (!key || index === undefined) return defaultValue as number;
     const arr = element[key];
-    if (!Array.isArray(arr)) return defaultValue;
-    const idx = parseInt(index);
-    return arr[idx] !== undefined ? arr[idx] : defaultValue;
+    if (!Array.isArray(arr)) return defaultValue as number;
+    const idx = parseInt(index, 10);
+    return (arr[idx] !== undefined ? arr[idx] : defaultValue) as number;
   }
 
   const value = element[field] !== undefined ? element[field] : defaultValue;
 
   // Convertir a número si es un campo numérico
   if (['x', 'y', 'fontSize', 'width', 'height', 'size', 'lineSpacing'].includes(field)) {
-    const numValue = typeof value === 'string' ? parseFloat(value) : value;
-    return !isNaN(numValue) ? numValue : defaultValue;
+    const numValue = typeof value === 'string' ? parseFloat(value) : Number(value);
+    return !Number.isNaN(numValue) ? numValue : (defaultValue as number);
   }
 
-  return value;
+  return value as string | number | boolean | number[];
 }
 
-function setElementValue(sectionKey: string, field: string, value: any) {
-  if (!configElements.value[sectionKey]) {
-    configElements.value[sectionKey] = {};
+/** Para :model-value numéricos en q-input */
+function getNum(sectionKey: string, field: string, def = 0): number {
+  const v = getElementValue(sectionKey, field, def);
+  return typeof v === 'number' && !Number.isNaN(v) ? v : def;
+}
+
+function setElementValue(sectionKey: string, field: string, value: unknown) {
+  const config = configElements.value as Record<string, ElementEntry>;
+  const section = config[sectionKey];
+  if (!section) {
+    config[sectionKey] = {};
   }
+  const target = config[sectionKey]!;
 
   if (field.includes('.')) {
-    const [key, index] = field.split('.');
-    if (!configElements.value[sectionKey][key]) {
-      configElements.value[sectionKey][key] = [0, 0, 0];
+    const parts = field.split('.');
+    const key = parts[0];
+    const index = parts[1];
+    if (!key || index === undefined) return;
+    if (!target[key]) {
+      target[key] = [0, 0, 0];
     }
-    const idx = parseInt(index);
-    configElements.value[sectionKey][key][idx] = value;
+    const arr = target[key] as number[];
+    const idx = parseInt(index, 10);
+    arr[idx] = value as number;
   } else {
-    configElements.value[sectionKey][field] = value;
+    target[field] = value;
   }
   // No emitir aquí: la carga del PDF se hace solo en commitConfig (Enter o blur)
 }
@@ -435,7 +456,8 @@ function getColorHex(sectionKey: string): string {
   const [r, g, b] = color;
   return `#${[r, g, b]
     .map((x) => {
-      const hex = Math.round(x).toString(16);
+      const n = Number(x);
+      const hex = Math.round(n).toString(16);
       return hex.length === 1 ? '0' + hex : hex;
     })
     .join('')}`;
@@ -446,10 +468,12 @@ function updateColorFromPicker(sectionKey: string, hex: string) {
   const g = parseInt(hex.substring(3, 5), 16);
   const b = parseInt(hex.substring(5, 7), 16);
 
-  if (!configElements.value[sectionKey]) {
-    configElements.value[sectionKey] = {};
+  const config = configElements.value as Record<string, ElementEntry>;
+  if (!config[sectionKey]) {
+    config[sectionKey] = {};
   }
-  configElements.value[sectionKey].color = [r, g, b];
+  const section = config[sectionKey];
+  if (section) section.color = [r, g, b];
   // La actualización del PDF se dispara en commitConfig (blur del input color)
 }
 

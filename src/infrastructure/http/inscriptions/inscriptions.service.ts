@@ -357,8 +357,8 @@ export class InscriptionsService implements IInscriptionRepository {
     } catch (error) {
       const axiosError = error as AxiosError<{ message?: string | string[] }>;
       const errorMessage = Array.isArray(axiosError.response?.data?.message)
-        ? axiosError.response.data.message.join(', ')
-        : axiosError.response?.data?.message ?? 'Error al crear la inscripción';
+        ? (axiosError.response?.data?.message?.join(', ') ?? 'Error al crear la inscripción')
+        : (axiosError.response?.data?.message ?? 'Error al crear la inscripción');
       throw new Error(errorMessage);
     }
   }
@@ -454,8 +454,8 @@ export class InscriptionsService implements IInscriptionRepository {
     } catch (error) {
       const axiosError = error as AxiosError<{ message?: string | string[] }>;
       const errorMessage = Array.isArray(axiosError.response?.data?.message)
-        ? axiosError.response.data.message.join(', ')
-        : axiosError.response?.data?.message ?? 'Error al asignar cursos masivamente';
+        ? (axiosError.response?.data?.message?.join(', ') ?? 'Error al asignar cursos masivamente')
+        : (axiosError.response?.data?.message ?? 'Error al asignar cursos masivamente');
       throw new Error(errorMessage);
     }
   }

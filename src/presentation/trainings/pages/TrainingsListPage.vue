@@ -24,7 +24,10 @@
     <q-inner-loading :showing="loading || loadingEnrollments" />
 
     <!-- Empty State -->
-    <div v-if="!loading && !loadingEnrollments && trainings.length === 0" class="text-center q-pa-xl">
+    <div
+      v-if="!loading && !loadingEnrollments && trainings.length === 0"
+      class="text-center q-pa-xl"
+    >
       <q-icon name="school" size="80px" color="grey-4" class="q-mb-md" />
       <div class="text-h6 text-grey-7 q-mb-sm">No hay capacitaciones disponibles</div>
       <div class="text-body2 text-grey-6 q-mb-lg">
@@ -129,7 +132,10 @@
           <!-- Card Content -->
           <q-card-section class="q-pa-md">
             <!-- Title -->
-            <div class="text-subtitle1 text-weight-bold q-mb-xs ellipsis-2-lines" style="min-height: 48px">
+            <div
+              class="text-subtitle1 text-weight-bold q-mb-xs ellipsis-2-lines"
+              style="min-height: 48px"
+            >
               {{ training.title }}
             </div>
 
@@ -141,14 +147,15 @@
             <!-- Metadata Row -->
             <div class="row items-center justify-between q-mb-sm">
               <!-- Rating (solo mostrar si hay reseñas) -->
-              <div v-if="training.averageRating > 0 && training.reviews && training.reviews.length > 0" class="row items-center q-gutter-xs">
+              <div
+                v-if="training.averageRating > 0 && training.reviews && training.reviews.length > 0"
+                class="row items-center q-gutter-xs"
+              >
                 <q-icon name="star" color="amber" size="16px" />
                 <span class="text-caption text-weight-medium">
                   {{ training.averageRating.toFixed(1) }}
                 </span>
-                <span class="text-caption text-grey-6">
-                  ({{ training.studentsCount }})
-                </span>
+                <span class="text-caption text-grey-6"> ({{ training.studentsCount }}) </span>
               </div>
 
               <!-- Modality -->
@@ -203,7 +210,10 @@ import { useQuasar } from 'quasar';
 import { TrainingUseCasesFactory } from '../../../application/training/training.use-cases.factory';
 import { trainingsService } from '../../../infrastructure/http/trainings/trainings.service';
 import type { Training } from '../../../domain/training/models';
-import { useTrainingEvaluation, type TrainingWithEvaluations } from '../../../shared/composables/useTrainingEvaluation';
+import {
+  useTrainingEvaluation,
+  type TrainingWithEvaluations,
+} from '../../../shared/composables/useTrainingEvaluation';
 import { useRole } from '../../../shared/composables/useRole';
 import { useUserEnrolledTrainings } from '../../../shared/composables/useUserEnrolledTrainings';
 import { useMaterialUrl } from '../../../shared/composables/useMaterialUrl';
@@ -215,7 +225,12 @@ const $q = useQuasar();
 const { canManageTrainings, canActivateTrainings, isAlumno } = useRole();
 
 // Composable para gestionar inscripciones del usuario
-const { enrolledTrainingIds, loadEnrollments, loading: loadingEnrollments, isEnrolledIn } = useUserEnrolledTrainings();
+const {
+  enrolledTrainingIds,
+  loadEnrollments,
+  loading: loadingEnrollments,
+  isEnrolledIn,
+} = useUserEnrolledTrainings();
 
 // Composable para construir URLs de materiales
 const { buildFullUrl } = useMaterialUrl();
@@ -268,20 +283,20 @@ function getTypeColor(type: string): string {
  */
 function getStatusColor(status?: string): string {
   if (!status) return 'grey-6';
-  
+
   const statusMap: Record<string, string> = {
-    'published': 'positive',
-    'publicada': 'positive',
-    'en_curso': 'info',
-    'active': 'positive',
-    'borrador': 'grey-6',
-    'draft': 'grey-6',
-    'finalizada': 'primary',
-    'finished': 'primary',
-    'cancelada': 'negative',
-    'cancelled': 'negative',
+    published: 'positive',
+    publicada: 'positive',
+    en_curso: 'info',
+    active: 'positive',
+    borrador: 'grey-6',
+    draft: 'grey-6',
+    finalizada: 'primary',
+    finished: 'primary',
+    cancelada: 'negative',
+    cancelled: 'negative',
   };
-  
+
   return statusMap[status.toLowerCase()] ?? 'grey-6';
 }
 
@@ -290,20 +305,20 @@ function getStatusColor(status?: string): string {
  */
 function getStatusLabel(status?: string): string {
   if (!status) return 'BORRADOR';
-  
+
   const statusMap: Record<string, string> = {
-    'published': 'PUBLICADA',
-    'publicada': 'PUBLICADA',
-    'en_curso': 'EN CURSO',
-    'active': 'ACTIVA',
-    'borrador': 'BORRADOR',
-    'draft': 'BORRADOR',
-    'finalizada': 'FINALIZADA',
-    'finished': 'FINALIZADA',
-    'cancelada': 'CANCELADA',
-    'cancelled': 'CANCELADA',
+    published: 'PUBLICADA',
+    publicada: 'PUBLICADA',
+    en_curso: 'EN CURSO',
+    active: 'ACTIVA',
+    borrador: 'BORRADOR',
+    draft: 'BORRADOR',
+    finalizada: 'FINALIZADA',
+    finished: 'FINALIZADA',
+    cancelada: 'CANCELADA',
+    cancelled: 'CANCELADA',
   };
-  
+
   return statusMap[status.toLowerCase()] ?? status.toUpperCase();
 }
 
@@ -320,7 +335,7 @@ async function loadTrainings() {
       page: pagination.value.page,
       limit: pagination.value.limit,
     });
-    
+
     // Mapear los datos sin sobrescribir el status del backend
     let allTrainings = response.data.map((t) => ({
       ...t,
@@ -329,25 +344,31 @@ async function loadTrainings() {
 
     // Si el usuario es ALUMNO, filtrar solo las capacitaciones donde está inscrito Y que estén publicadas
     if (isAlumno.value) {
-      const enrolledIds = enrolledTrainingIds.value as Set<string>;
+      const enrolledIds = enrolledTrainingIds.value;
       console.log('🔍 Debug - IDs inscritos:', Array.from(enrolledIds));
       console.log('🔍 Debug - Total capacitaciones antes del filtro:', allTrainings.length);
-      
+
       // Estados que se consideran publicados (no borrador)
       const publishedStatuses = ['published', 'publicada', 'en_curso', 'active'];
-      
+
       allTrainings = allTrainings.filter((training) => {
         const isEnrolled = enrolledIds.has(training.id);
-        const isPublished = training.status && publishedStatuses.includes(training.status.toLowerCase());
-        
-        console.log(`🔍 Capacitación ${training.id} (${training.title}): ${isEnrolled ? 'INSCRITO' : 'NO INSCRITO'}, Estado: ${training.status || 'sin estado'}, Publicada: ${isPublished}`);
-        
+        const isPublished =
+          training.status && publishedStatuses.includes(training.status.toLowerCase());
+
+        console.log(
+          `🔍 Capacitación ${training.id} (${training.title}): ${isEnrolled ? 'INSCRITO' : 'NO INSCRITO'}, Estado: ${training.status || 'sin estado'}, Publicada: ${isPublished}`,
+        );
+
         // Solo mostrar si está inscrito Y publicada (no borrador)
         return isEnrolled && isPublished;
       });
-      
-      console.log('🔍 Debug - Total capacitaciones después del filtro (inscritas y publicadas):', allTrainings.length);
-      
+
+      console.log(
+        '🔍 Debug - Total capacitaciones después del filtro (inscritas y publicadas):',
+        allTrainings.length,
+      );
+
       // Actualizar paginación para reflejar el filtro
       pagination.value.total = allTrainings.length;
       pagination.value.totalPages = Math.ceil(allTrainings.length / pagination.value.limit);
@@ -368,12 +389,14 @@ async function loadTrainings() {
       if (errorStr.includes('network') || errorStr.includes('timeout')) {
         errorMessage = 'Error de conexión: Verifique su conexión a internet e intente nuevamente';
       } else if (errorStr.includes('401') || errorStr.includes('unauthorized')) {
-        errorMessage = 'Error de autenticación: Su sesión ha expirado. Por favor, inicie sesión nuevamente';
+        errorMessage =
+          'Error de autenticación: Su sesión ha expirado. Por favor, inicie sesión nuevamente';
         void router.push('/auth/login');
       } else if (errorStr.includes('403') || errorStr.includes('forbidden')) {
         errorMessage = 'Error de permisos: No tiene permisos para ver capacitaciones';
       } else if (errorStr.includes('500') || errorStr.includes('server')) {
-        errorMessage = 'Error del servidor: Por favor, intente más tarde o contacte al administrador';
+        errorMessage =
+          'Error del servidor: Por favor, intente más tarde o contacte al administrador';
       } else {
         errorMessage = error.message;
       }
@@ -447,7 +470,7 @@ function loadingEvaluation(trainingId: string): boolean {
  */
 function isStatusActive(status?: string): boolean {
   if (!status) return false;
-  
+
   const activeStatuses = ['published', 'publicada', 'en_curso', 'active'];
   return activeStatuses.includes(status.toLowerCase());
 }
@@ -469,7 +492,11 @@ function toggleStatus(training: Training): void {
   // Verificar si $q.dialog está disponible, si no usar confirm nativo
   if (typeof $q.dialog !== 'function') {
     // Fallback si dialog no está disponible
-    if (confirm(`¿Está seguro de que desea ${action} la capacitación "${training.title}"? Los certificados ya emitidos no se afectarán (RF-10).`)) {
+    if (
+      confirm(
+        `¿Está seguro de que desea ${action} la capacitación "${training.title}"? Los certificados ya emitidos no se afectarán (RF-10).`,
+      )
+    ) {
       void handleToggleStatusConfirm(training, isActive);
     }
     return;
@@ -491,7 +518,7 @@ function toggleStatus(training: Training): void {
       unelevated: true,
     },
     persistent: true,
-  }).onOk(async () => {
+  }).onOk(() => {
     void handleToggleStatusConfirm(training, isActive);
   });
 }
@@ -499,11 +526,10 @@ function toggleStatus(training: Training): void {
 async function handleToggleStatusConfirm(training: Training, isActive: boolean): Promise<void> {
   try {
     const actionPast = isActive ? 'desactivada' : 'activada';
-    
+
     // Importar servicio de toggle
-    const { trainingsToggleStatusService } = await import(
-      '../../../infrastructure/http/trainings/trainings-toggle-status.service'
-    );
+    const { trainingsToggleStatusService } =
+      await import('../../../infrastructure/http/trainings/trainings-toggle-status.service');
 
     // Llamar al endpoint de toggle
     const updatedTraining = await trainingsToggleStatusService.toggleActivoInactivo(
@@ -526,16 +552,16 @@ async function handleToggleStatusConfirm(training: Training, isActive: boolean):
         }
       }
     }
-    
+
     // Recargar la lista para asegurar que todos los estados estén actualizados
     await loadTrainings();
 
-      $q.notify({
-        type: 'positive',
-        message: `Capacitación ${actionPast} exitosamente`,
-        icon: 'check_circle',
-        position: 'top',
-      });
+    $q.notify({
+      type: 'positive',
+      message: `Capacitación ${actionPast} exitosamente`,
+      icon: 'check_circle',
+      position: 'top',
+    });
   } catch (error) {
     // Mejorar mensajes de error para toggle
     let errorMessage = 'Error al cambiar el estado';

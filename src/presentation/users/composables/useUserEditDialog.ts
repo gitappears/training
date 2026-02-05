@@ -11,16 +11,14 @@ export type UserEditTab = 'user' | 'personal';
  */
 export function useUserEditDialog(user: Ref<User | null> | User | null) {
   const activeTab = ref<UserEditTab>('user');
-  
+
   // Convertir a ref si es necesario para pasarlo a los composables
   const userRef = typeof user === 'object' && 'value' in user ? user : ref(user);
 
   const userForm = useUserEditForm(userRef);
   const personalDataForm = useUserPersonalDataForm(userRef);
 
-  const loading = computed(
-    () => userForm.loading.value || personalDataForm.loading.value,
-  );
+  const loading = computed(() => userForm.loading.value || personalDataForm.loading.value);
 
   function handleClose() {
     userForm.resetForm();
@@ -36,8 +34,7 @@ export function useUserEditDialog(user: Ref<User | null> | User | null) {
       }
       return true;
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : 'Error al actualizar';
+      const errorMessage = error instanceof Error ? error.message : 'Error al actualizar';
       throw new Error(errorMessage);
     }
   }
@@ -47,9 +44,11 @@ export function useUserEditDialog(user: Ref<User | null> | User | null) {
     formData: userForm.formData,
     personalData: personalDataForm.personalData,
     genderOptions: personalDataForm.genderOptions,
+    empresas: personalDataForm.empresas,
+    loadingEmpresas: personalDataForm.loadingEmpresas,
+    isAdmin: personalDataForm.isAdmin,
     loading,
     handleClose,
     handleSubmit,
   };
 }
-

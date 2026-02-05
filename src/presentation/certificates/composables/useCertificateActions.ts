@@ -47,7 +47,7 @@ export function useCertificateActions(
     });
   }
 
-  async function bulkDownload(selectedCertificates: Certificate[]) {
+  function bulkDownload(selectedCertificates: Certificate[]) {
     if (selectedCertificates.length === 0) return;
 
     $q.dialog({
@@ -55,27 +55,29 @@ export function useCertificateActions(
       message: `¿Está seguro de descargar ${selectedCertificates.length} certificado(s)?`,
       cancel: true,
       persistent: true,
-    }).onOk(async () => {
-      try {
-        // Descargar cada certificado
-        for (const cert of selectedCertificates) {
-          await downloadCertificatePDF(cert.id);
-          // Pequeña pausa entre descargas
-          await new Promise((resolve) => setTimeout(resolve, 500));
+    }).onOk(() => {
+      void (async () => {
+        try {
+          // Descargar cada certificado
+          for (const cert of selectedCertificates) {
+            await downloadCertificatePDF(cert.id);
+            // Pequeña pausa entre descargas
+            await new Promise((resolve) => setTimeout(resolve, 500));
+          }
+          $q.notify({
+            type: 'positive',
+            message: `${selectedCertificates.length} certificado(s) descargado(s) exitosamente`,
+            position: 'top',
+          });
+        } catch (error) {
+          console.error('Error en descarga masiva:', error);
+          $q.notify({
+            type: 'negative',
+            message: 'Error al descargar algunos certificados',
+            position: 'top',
+          });
         }
-        $q.notify({
-          type: 'positive',
-          message: `${selectedCertificates.length} certificado(s) descargado(s) exitosamente`,
-          position: 'top',
-        });
-      } catch (error) {
-        console.error('Error en descarga masiva:', error);
-        $q.notify({
-          type: 'negative',
-          message: 'Error al descargar algunos certificados',
-          position: 'top',
-        });
-      }
+      })();
     });
   }
 

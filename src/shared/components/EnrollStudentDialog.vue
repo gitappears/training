@@ -71,7 +71,6 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
 import { usersService } from '../../infrastructure/http/users/users.service';
-import type { User } from '../../domain/user/models';
 
 interface UserOption {
   personaId: string;
@@ -108,7 +107,7 @@ const errorMessage = ref('');
 async function loadUsers() {
   loading.value = true;
   errorMessage.value = '';
-  
+
   try {
     // Cargar usuarios con rol ALUMNO (driver)
     // El backend filtra automáticamente para mostrar solo los alumnos
@@ -122,12 +121,14 @@ async function loadUsers() {
     });
 
     // Convertir a formato UserOption
-    const alumnosList = alumnosResponse.data.map((user) => ({
-      personaId: user.personaId || user.id,
-      name: user.name,
-      document: user.document || 'Sin documento',
-      id: user.id,
-    })).filter((user) => user.personaId); // Filtrar usuarios sin personaId
+    const alumnosList = alumnosResponse.data
+      .map((user) => ({
+        personaId: user.personaId || user.id,
+        name: user.name,
+        document: user.document || 'Sin documento',
+        id: user.id,
+      }))
+      .filter((user) => user.personaId); // Filtrar usuarios sin personaId
 
     allUsers.value = alumnosList;
     filteredUsers.value = allUsers.value;
@@ -137,9 +138,10 @@ async function loadUsers() {
     }
   } catch (error) {
     console.error('Error al cargar usuarios:', error);
-    errorMessage.value = error instanceof Error 
-      ? error.message 
-      : 'Error al cargar la lista de usuarios. Por favor, intenta nuevamente.';
+    errorMessage.value =
+      error instanceof Error
+        ? error.message
+        : 'Error al cargar la lista de usuarios. Por favor, intenta nuevamente.';
     allUsers.value = [];
     filteredUsers.value = [];
   } finally {
@@ -211,4 +213,3 @@ watch(isOpen, (newValue) => {
   }
 });
 </script>
-

@@ -51,7 +51,7 @@ export interface BulkUploadResult {
   errores: Array<{
     fila: number;
     error: string;
-    datos: any;
+    datos: Record<string, unknown>;
   }>;
 }
 
@@ -67,4 +67,3 @@ export interface IPeopleRepository {
    */
   bulkUploadDrivers(file: File): Promise<BulkUploadResult>;
 }
-

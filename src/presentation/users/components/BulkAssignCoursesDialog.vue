@@ -116,7 +116,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { useQuasar } from 'quasar';
 import type { User } from '../../../domain/user/models';
 import { inscriptionsService } from '../../../infrastructure/http/inscriptions/inscriptions.service';
@@ -331,7 +331,7 @@ watch(
   () => props.modelValue,
   (newValue) => {
     if (newValue) {
-      loadCourses();
+      void loadCourses();
       assignmentResult.value = null;
     }
   },

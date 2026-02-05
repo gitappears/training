@@ -47,9 +47,7 @@ export function useSessionTimeout() {
 
   // Use case
   const getActiveConfiguracionSesionUseCase =
-    SesionUseCasesFactory.getGetActiveConfiguracionSesionUseCase(
-      configuracionSesionService,
-    );
+    SesionUseCasesFactory.getGetActiveConfiguracionSesionUseCase(configuracionSesionService);
 
   /**
    * Carga la configuración activa desde el backend
@@ -58,11 +56,11 @@ export function useSessionTimeout() {
     try {
       const config = await getActiveConfiguracionSesionUseCase.execute();
       configuracion.value = config;
-      
+
       // Si hay configuración activa, inicializar los timers
       if (config && config.activo) {
         if (config.tiempoInactividadMinutos) {
-          iniciarTimerInactividad(config.tiempoInactividadMinutos);
+          iniciarTimerInactividad();
         }
         if (config.tiempoMaximoSesionMinutos) {
           iniciarTimerMaximoSesion(config.tiempoMaximoSesionMinutos);
@@ -79,7 +77,7 @@ export function useSessionTimeout() {
    */
   const updateActivity = () => {
     lastActivityTime.value = new Date();
-    
+
     // Si hay un diálogo de inactividad abierto, cerrarlo y reiniciar
     if (showInactivityDialog.value) {
       showInactivityDialog.value = false;
@@ -108,7 +106,7 @@ export function useSessionTimeout() {
     if (timeSinceLastActivity >= inactivityMs - warningMs && !showInactivityDialog.value) {
       warningTime.value = Math.floor(warningMs / 1000 / 60);
       showInactivityDialog.value = true;
-      
+
       // Timer para cerrar después del warning
       inactivityCloseTimer.value = window.setTimeout(() => {
         if (showInactivityDialog.value) {
@@ -116,7 +114,7 @@ export function useSessionTimeout() {
         }
       }, warningMs);
     }
-    
+
     // Si ha pasado el tiempo completo de inactividad
     if (timeSinceLastActivity >= inactivityMs && !showInactivityDialog.value) {
       cerrarSesion('inactividad');
@@ -126,7 +124,7 @@ export function useSessionTimeout() {
   /**
    * Inicia la verificación periódica de inactividad
    */
-  const iniciarTimerInactividad = (minutos: number) => {
+  const iniciarTimerInactividad = () => {
     // Limpiar intervalos anteriores
     if (inactivityCheckInterval.value) {
       clearInterval(inactivityCheckInterval.value);
@@ -145,23 +143,6 @@ export function useSessionTimeout() {
     inactivityCheckInterval.value = window.setInterval(() => {
       checkInactivity();
     }, 30 * 1000);
-  };
-
-  /**
-   * Reinicia el timer de inactividad
-   */
-  const reiniciarTimerInactividad = () => {
-    if (inactivityCheckInterval.value) {
-      clearInterval(inactivityCheckInterval.value);
-      inactivityCheckInterval.value = null;
-    }
-    if (inactivityCloseTimer.value) {
-      clearTimeout(inactivityCloseTimer.value);
-      inactivityCloseTimer.value = null;
-    }
-    if (configuracion.value?.tiempoInactividadMinutos) {
-      iniciarTimerInactividad(configuracion.value.tiempoInactividadMinutos);
-    }
   };
 
   /**
@@ -197,7 +178,7 @@ export function useSessionTimeout() {
     maxSessionWarningTimer.value = window.setTimeout(() => {
       warningTime.value = Math.floor(warningMs / 1000 / 60); // minutos restantes
       showMaxSessionDialog.value = true;
-      
+
       // Timer para cerrar después del warning (5 minutos)
       maxSessionCloseTimer.value = window.setTimeout(() => {
         if (showMaxSessionDialog.value) {
@@ -248,11 +229,11 @@ export function useSessionTimeout() {
       warningTime.value = null;
       lastActivityTime.value = new Date();
       sessionStartTime.value = new Date();
-      
+
       // Reiniciar timers
       if (configuracion.value && configuracion.value.activo) {
         if (configuracion.value.tiempoInactividadMinutos) {
-          iniciarTimerInactividad(configuracion.value.tiempoInactividadMinutos);
+          iniciarTimerInactividad();
         }
         if (configuracion.value.tiempoMaximoSesionMinutos) {
           iniciarTimerMaximoSesion(configuracion.value.tiempoMaximoSesionMinutos);

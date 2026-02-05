@@ -7,7 +7,16 @@ export interface NotificationOptions {
   message: string;
   caption?: string;
   icon?: string;
-  position?: 'top' | 'bottom' | 'left' | 'right' | 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'center';
+  position?:
+    | 'top'
+    | 'bottom'
+    | 'left'
+    | 'right'
+    | 'top-left'
+    | 'top-right'
+    | 'bottom-left'
+    | 'bottom-right'
+    | 'center';
   timeout?: number;
   actions?: Array<{ label: string; color?: string; handler: () => void }>;
 }
@@ -26,11 +35,11 @@ export function useNotifications() {
     $q.notify({
       type: options.type || 'info',
       message: options.message,
-      caption: options.caption,
-      icon: options.icon,
+      caption: options.caption ?? '',
       position: options.position || 'top',
       timeout: options.timeout ?? 3000,
-      actions: options.actions,
+      actions: options.actions ?? [],
+      ...(options.icon != null ? { icon: options.icon } : {}),
     });
   }
 
@@ -122,4 +131,3 @@ export function useNotifications() {
     confirm,
   };
 }
-

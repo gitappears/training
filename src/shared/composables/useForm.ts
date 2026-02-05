@@ -1,13 +1,13 @@
-import { ref, Ref } from 'vue';
+import { ref } from 'vue';
 import { useQuasar } from 'quasar';
 
 /**
  * Composable para manejar lógica común de formularios
  * Proporciona validaciones, manejo de errores y estados de carga
  */
-export function useForm<T extends Record<string, any>>(initialValues: T) {
+export function useForm<T extends object>(initialValues: T) {
   const $q = useQuasar();
-  const form = ref<T>({ ...initialValues } as T);
+  const form = ref<T>({ ...initialValues });
   const loading = ref(false);
   const errors = ref<Partial<Record<keyof T, string>>>({});
 
@@ -15,22 +15,22 @@ export function useForm<T extends Record<string, any>>(initialValues: T) {
    * Resetea el formulario a sus valores iniciales
    */
   function resetForm() {
-    form.value = { ...initialValues } as T;
+    form.value = { ...initialValues };
     errors.value = {};
   }
 
   /**
    * Valida un campo específico
    */
-  function validateField(field: keyof T, validator: (value: any) => string | true): boolean {
+  function validateField(field: keyof T, validator: (value: unknown) => string | true): boolean {
     const value = form.value[field];
     const result = validator(value);
-    
+
     if (result === true) {
       delete errors.value[field];
       return true;
     }
-    
+
     errors.value[field] = result;
     return false;
   }
@@ -38,13 +38,15 @@ export function useForm<T extends Record<string, any>>(initialValues: T) {
   /**
    * Valida todos los campos del formulario
    */
-  function validateForm(validators: Partial<Record<keyof T, (value: any) => string | true>>): boolean {
+  function validateForm(
+    validators: Partial<Record<keyof T, (value: unknown) => string | true>>,
+  ): boolean {
     let isValid = true;
     errors.value = {};
 
     for (const [field, validator] of Object.entries(validators)) {
       const fieldKey = field as keyof T;
-      const result = validateField(fieldKey, validator);
+      const result = validateField(fieldKey, validator as (value: unknown) => string | true);
       if (!result) {
         isValid = false;
       }
@@ -58,7 +60,8 @@ export function useForm<T extends Record<string, any>>(initialValues: T) {
    */
   function validateEmail(email: string): string | true {
     if (!email) return 'El email es requerido';
-    const emailPattern = /^(?=[a-zA-Z0-9@._%+-]{6,254}$)[a-zA-Z0-9._%+-]{1,64}@(?:[a-zA-Z0-9-]{1,63}\.){1,8}[a-zA-Z]{2,63}$/;
+    const emailPattern =
+      /^(?=[a-zA-Z0-9@._%+-]{6,254}$)[a-zA-Z0-9._%+-]{1,64}@(?:[a-zA-Z0-9-]{1,63}\.){1,8}[a-zA-Z]{2,63}$/;
     return emailPattern.test(email) || 'Por favor ingrese un correo válido';
   }
 
@@ -84,7 +87,7 @@ export function useForm<T extends Record<string, any>>(initialValues: T) {
   /**
    * Valida que un campo sea requerido
    */
-  function validateRequired(value: any, fieldName?: string): string | true {
+  function validateRequired(value: unknown, fieldName?: string): string | true {
     if (value === null || value === undefined || value === '') {
       return fieldName ? `${fieldName} es requerido` : 'Este campo es requerido';
     }
@@ -107,7 +110,7 @@ export function useForm<T extends Record<string, any>>(initialValues: T) {
   function validateMinLength(value: string, minLength: number, fieldName?: string): string | true {
     if (!value) return fieldName ? `${fieldName} es requerido` : 'Este campo es requerido';
     if (value.length < minLength) {
-      return fieldName 
+      return fieldName
         ? `${fieldName} debe tener al menos ${minLength} caracteres`
         : `Debe tener al menos ${minLength} caracteres`;
     }
@@ -143,42 +146,43 @@ export function useForm<T extends Record<string, any>>(initialValues: T) {
       successMessage?: string;
       errorMessage?: string;
       onSuccess?: (result: TResult) => void;
-      onError?: (error: any) => void;
-    }
+      onError?: (error: unknown) => void;
+    },
   ): Promise<TResult | null> {
     loading.value = true;
     errors.value = {};
-    
+
     try {
       const result = await submitFn();
-      
+
       if (options?.successMessage) {
         $q.notify({
           type: 'positive',
           message: options.successMessage,
         });
       }
-      
+
       if (options?.onSuccess) {
         options.onSuccess(result);
       }
-      
+
       return result;
     } catch (error) {
       console.error('Form submission error:', error);
-      
-      const errorMessage = options?.errorMessage || 
+
+      const errorMessage =
+        options?.errorMessage ||
         (error instanceof Error ? error.message : 'Error al procesar la solicitud');
-      
+
       $q.notify({
         type: 'negative',
         message: errorMessage,
       });
-      
+
       if (options?.onError) {
         options.onError(error);
       }
-      
+
       return null;
     } finally {
       loading.value = false;
@@ -203,4 +207,3 @@ export function useForm<T extends Record<string, any>>(initialValues: T) {
     submitForm,
   };
 }
-

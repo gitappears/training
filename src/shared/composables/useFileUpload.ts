@@ -21,7 +21,6 @@ export function useFileUpload(options: FileUploadOptions = {}) {
   const {
     accept = '*',
     maxSize = 10 * 1024 * 1024, // 10MB por defecto
-    multiple = false,
   } = options;
 
   /**
@@ -30,18 +29,20 @@ export function useFileUpload(options: FileUploadOptions = {}) {
   function validateFile(fileToValidate: File): { valid: boolean; error?: string } {
     // Validar tipo de archivo
     if (accept !== '*') {
-      const acceptedTypes = accept.split(',').map(t => t.trim());
+      const acceptedTypes = accept.split(',').map((t) => t.trim());
       const fileType = fileToValidate.type.toLowerCase();
       const fileExtension = '.' + fileToValidate.name.split('.').pop()?.toLowerCase();
-      
-      const isAccepted = acceptedTypes.some(type => {
+
+      const isAccepted = acceptedTypes.some((type) => {
         const normalizedType = type.toLowerCase();
         // Verificar por tipo MIME o extensión
-        return fileType.includes(normalizedType) || 
-               normalizedType.includes(fileExtension) ||
-               fileExtension === normalizedType;
+        return (
+          fileType.includes(normalizedType) ||
+          normalizedType.includes(fileExtension) ||
+          fileExtension === normalizedType
+        );
       });
-      
+
       if (!isAccepted) {
         return {
           valid: false,
@@ -122,7 +123,7 @@ export function useFileUpload(options: FileUploadOptions = {}) {
     const k = 1024;
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+    return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
   }
 
   /**
@@ -164,4 +165,3 @@ export function useFileUpload(options: FileUploadOptions = {}) {
     simulateUpload,
   };
 }
-
