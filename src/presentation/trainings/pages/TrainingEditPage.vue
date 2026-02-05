@@ -3,22 +3,14 @@
     <!-- Header con breadcrumb y título -->
     <div class="q-mb-xl">
       <div class="row items-center q-mb-md">
-        <q-btn
-          flat
-          round
-          icon="arrow_back"
-          color="primary"
-          @click="$router.back()"
-          class="q-mr-sm"
-        >
+        <q-btn flat round icon="arrow_back" color="primary" @click="$router.back()" class="q-mr-sm">
           <q-tooltip>Volver</q-tooltip>
         </q-btn>
         <div class="col">
-          <div class="text-h4 text-weight-bold text-primary q-mb-xs">
-            Editar Capacitación
-          </div>
+          <div class="text-h4 text-weight-bold text-primary q-mb-xs">Editar Capacitación</div>
           <div class="text-body1 text-grey-7">
-            Modifica la información de la capacitación. Los cambios se guardarán al enviar el formulario.
+            Modifica la información de la capacitación. Los cambios se guardarán al enviar el
+            formulario.
           </div>
         </div>
       </div>
@@ -66,7 +58,10 @@
 import { ref, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useQuasar } from 'quasar';
-import TrainingForm, { type TrainingFormModel, type InlineEvaluation } from '../components/TrainingForm.vue';
+import TrainingForm, {
+  type TrainingFormModel,
+  type InlineEvaluation,
+} from '../components/TrainingForm.vue';
 import type { Material } from '../../../shared/components/MaterialViewer.vue';
 import { TrainingUseCasesFactory } from '../../../application/training/training.use-cases.factory';
 import { trainingsService } from '../../../infrastructure/http/trainings/trainings.service';
@@ -74,7 +69,10 @@ import { materialsService } from '../../../infrastructure/http/materials/materia
 import { evaluationsService } from '../../../infrastructure/http/evaluations/evaluations.service';
 import type { Training } from '../../../domain/training/models';
 import type { UpdateTrainingDto } from '../../../application/training/training.repository.port';
-import type { CreateMaterialDto, UpdateMaterialDto } from '../../../application/material/material.repository.port';
+import type {
+  CreateMaterialDto,
+  UpdateMaterialDto,
+} from '../../../application/material/material.repository.port';
 import { useMaterialTypeMapper } from '../../../shared/composables/useMaterialTypeMapper';
 import { useMaterialUrl } from '../../../shared/composables/useMaterialUrl';
 import { mapTrainingTypeToId, isValidTrainingType } from '../../../shared/constants/training-types';
@@ -84,7 +82,11 @@ const route = useRoute();
 const $q = useQuasar();
 
 // Composables
-const { mapFromBackend: mapMaterialTypeFromBackend, mapToBackendId: mapMaterialTypeToId, mapFromBackendId: mapMaterialTypeFromBackendId } = useMaterialTypeMapper();
+const {
+  mapFromBackend: mapMaterialTypeFromBackend,
+  mapToBackendId: mapMaterialTypeToId,
+  mapFromBackendId: mapMaterialTypeFromBackendId,
+} = useMaterialTypeMapper();
 const { extractRelativeUrl, isExternalLink } = useMaterialUrl();
 
 const loading = ref(true);
@@ -119,7 +121,7 @@ async function loadTraining() {
           // Priorizar tipoMaterialId (más confiable) sobre código/nombre
           // El ID es constante y no depende de strings que pueden variar
           let materialType: Material['type'];
-          
+
           if (m.tipoMaterialId && m.tipoMaterialId > 0) {
             // Usar el ID directamente (método más confiable)
             materialType = mapMaterialTypeFromBackendId(m.tipoMaterialId);
@@ -127,12 +129,13 @@ async function loadTraining() {
             // Fallback: usar código/nombre si el ID no está disponible
             const tipoMaterialCode = m.tipoMaterial?.codigo?.trim();
             const tipoMaterialName = m.tipoMaterial?.nombre?.trim();
-            const tipoMaterialInput = (tipoMaterialCode && tipoMaterialCode !== '') 
-              ? tipoMaterialCode 
-              : (tipoMaterialName || 'PDF');
+            const tipoMaterialInput =
+              tipoMaterialCode && tipoMaterialCode !== ''
+                ? tipoMaterialCode
+                : tipoMaterialName || 'PDF';
             materialType = mapMaterialTypeFromBackend(tipoMaterialInput);
           }
-          
+
           const material: Material = {
             id: m.id,
             name: m.nombre,
@@ -156,10 +159,15 @@ async function loadTraining() {
     // Usar tipo extendido para incluir evaluations que viene del backend
     type TrainingWithEvaluations = Training & { evaluations?: Array<{ id: string | number }> };
     const trainingWithEvals = training.value as TrainingWithEvaluations;
-    
-    if (trainingWithEvals.evaluations && trainingWithEvals.evaluations.length > 0 && trainingWithEvals.evaluations[0]) {
+
+    if (
+      trainingWithEvals.evaluations &&
+      trainingWithEvals.evaluations.length > 0 &&
+      trainingWithEvals.evaluations[0]
+    ) {
       const evaluationId = trainingWithEvals.evaluations[0].id;
-      const evaluationIdNumber = typeof evaluationId === 'string' ? parseInt(evaluationId) : evaluationId;
+      const evaluationIdNumber =
+        typeof evaluationId === 'string' ? parseInt(evaluationId) : evaluationId;
       trainingEvaluationId.value = evaluationIdNumber;
 
       try {
@@ -195,7 +203,12 @@ async function loadTraining() {
                 orden: number;
               }>;
             } = {
-              tipoPreguntaId: typeof q.type === 'string' ? mapQuestionTypeToTipoPreguntaId(q.type) : (typeof q.type === 'number' ? q.type : 1),
+              tipoPreguntaId:
+                typeof q.type === 'string'
+                  ? mapQuestionTypeToTipoPreguntaId(q.type)
+                  : typeof q.type === 'number'
+                    ? q.type
+                    : 1,
               enunciado: q.text,
               puntaje: q.score !== undefined && q.score !== null ? q.score : 1, // Usar el puntaje del backend o 1 por defecto
               orden: q.order ?? qIdx,
@@ -216,7 +229,11 @@ async function loadTraining() {
                   orden: optIdx,
                 };
                 // Asegurar que imagenUrl se asigne correctamente si existe (puede ser string vacío o null)
-                if (opt.imageUrl !== undefined && opt.imageUrl !== null && String(opt.imageUrl).trim() !== '') {
+                if (
+                  opt.imageUrl !== undefined &&
+                  opt.imageUrl !== null &&
+                  String(opt.imageUrl).trim() !== ''
+                ) {
                   opcion.imagenUrl = String(opt.imageUrl).trim();
                   console.log('✅ Imagen cargada para opción:', {
                     opcionIndex: optIdx,
@@ -245,12 +262,12 @@ async function loadTraining() {
             return pregunta;
           }),
         };
-        
+
         // Agregar tiempoLimiteMinutos solo si existe
         if (evaluation.durationMinutes !== undefined && evaluation.durationMinutes !== null) {
           evaluationInline.tiempoLimiteMinutos = evaluation.durationMinutes;
         }
-        
+
         trainingEvaluationInline.value = evaluationInline;
       } catch (evaluationError) {
         console.warn('Error al cargar evaluación completa:', evaluationError);
@@ -260,7 +277,8 @@ async function loadTraining() {
     }
   } catch (err) {
     console.error('Error al cargar capacitación:', err);
-    const errorMessage = err instanceof Error ? err.message : 'Error desconocido al cargar la capacitación';
+    const errorMessage =
+      err instanceof Error ? err.message : 'Error desconocido al cargar la capacitación';
     error.value = errorMessage;
 
     $q.notify({
@@ -329,7 +347,8 @@ async function handleSubmit(payload: TrainingFormModel, formMaterials: Material[
     }
 
     // Actualizar capacitación
-    const updateTrainingUseCase = TrainingUseCasesFactory.getUpdateTrainingUseCase(trainingsService);
+    const updateTrainingUseCase =
+      TrainingUseCasesFactory.getUpdateTrainingUseCase(trainingsService);
     const updated = await updateTrainingUseCase.execute(parseInt(training.value.id), dto);
 
     // Sincronizar materiales
@@ -337,7 +356,8 @@ async function handleSubmit(payload: TrainingFormModel, formMaterials: Material[
       try {
         await syncMaterials(parseInt(training.value.id), formMaterials);
       } catch (materialError) {
-        const errorMessage = materialError instanceof Error ? materialError.message : String(materialError);
+        const errorMessage =
+          materialError instanceof Error ? materialError.message : String(materialError);
         console.error('Error al sincronizar materiales:', materialError);
         console.error('Materiales que causaron error:', formMaterials);
         $q.notify({
@@ -356,8 +376,16 @@ async function handleSubmit(payload: TrainingFormModel, formMaterials: Material[
         // Mapear preguntas con sus IDs para sincronización
         // Usar los IDs almacenados en el formulario
         // Mapear preguntas con tipos compatibles con UpdateEvaluationDto
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const questionsWithIds = payload.evaluationInline.preguntas.map((p): any => {
+        type MappedQuestion = {
+          id?: number;
+          text: string;
+          type: 'single' | 'multiple' | 'image' | 'true_false' | 'yes_no';
+          options: Array<{ id?: number; text: string; isCorrect: boolean; imageUrl?: string }>;
+          imageUrl?: string;
+          order: number;
+          score?: number;
+        };
+        const questionsWithIds = payload.evaluationInline.preguntas.map((p): MappedQuestion => {
           const questionId = p.id ? (typeof p.id === 'string' ? parseInt(p.id) : p.id) : undefined;
           const question: {
             id?: number;
@@ -376,7 +404,11 @@ async function handleSubmit(payload: TrainingFormModel, formMaterials: Material[
             text: p.enunciado,
             type: mapTipoPreguntaIdToQuestionType(p.tipoPreguntaId),
             options: p.opciones.map((o) => {
-              const optionId = o.id ? (typeof o.id === 'string' ? parseInt(o.id) : o.id) : undefined;
+              const optionId = o.id
+                ? typeof o.id === 'string'
+                  ? parseInt(o.id)
+                  : o.id
+                : undefined;
               // Asegurar que esCorrecta sea un booleano
               let esCorrectaBool = false;
               if (typeof o.esCorrecta === 'boolean') {
@@ -434,7 +466,8 @@ async function handleSubmit(payload: TrainingFormModel, formMaterials: Material[
         const minimoAprobacion = payload.evaluationInline.minimoAprobacion;
         let minimoAprobacionNumero = 70; // Valor por defecto
         if (minimoAprobacion !== undefined && minimoAprobacion !== null) {
-          const parsed = typeof minimoAprobacion === 'string' ? parseFloat(minimoAprobacion) : minimoAprobacion;
+          const parsed =
+            typeof minimoAprobacion === 'string' ? parseFloat(minimoAprobacion) : minimoAprobacion;
           if (!isNaN(parsed) && parsed >= 0 && parsed <= 100) {
             minimoAprobacionNumero = parsed;
           }
@@ -478,27 +511,31 @@ async function handleSubmit(payload: TrainingFormModel, formMaterials: Material[
             order: number;
           }>,
         };
-        
+
         // Agregar durationMinutes solo si existe
         if (payload.evaluationInline.tiempoLimiteMinutos !== undefined) {
           updateDto.durationMinutes = payload.evaluationInline.tiempoLimiteMinutos;
         }
-        
+
         await evaluationsService.update(trainingEvaluationId.value.toString(), updateDto);
       } catch (evaluationError) {
         console.error('Error al actualizar evaluación:', evaluationError);
         $q.notify({
           type: 'warning',
-          message: 'Capacitación actualizada pero la evaluación no se pudo actualizar. Puede editarla manualmente después.',
+          message:
+            'Capacitación actualizada pero la evaluación no se pudo actualizar. Puede editarla manualmente después.',
           position: 'top',
         });
       }
-    } else if (!payload.evaluationInline && payload.evaluationId && payload.evaluationId !== trainingEvaluationId.value) {
+    } else if (
+      !payload.evaluationInline &&
+      payload.evaluationId &&
+      payload.evaluationId !== trainingEvaluationId.value
+    ) {
       // Vincular evaluación diferente si fue seleccionada (RF-09)
       try {
-        const { trainingsLinkEvaluationService } = await import(
-          '../../../infrastructure/http/trainings/trainings-link-evaluation.service'
-        );
+        const { trainingsLinkEvaluationService } =
+          await import('../../../infrastructure/http/trainings/trainings-link-evaluation.service');
         await trainingsLinkEvaluationService.linkEvaluation(
           parseInt(training.value.id),
           payload.evaluationId,
@@ -507,7 +544,8 @@ async function handleSubmit(payload: TrainingFormModel, formMaterials: Material[
         console.error('Error al vincular evaluación:', evaluationError);
         $q.notify({
           type: 'warning',
-          message: 'Capacitación actualizada pero la evaluación no se pudo vincular. Puede vincularla manualmente después.',
+          message:
+            'Capacitación actualizada pero la evaluación no se pudo vincular. Puede vincularla manualmente después.',
           position: 'top',
         });
       }
@@ -532,26 +570,37 @@ async function handleSubmit(payload: TrainingFormModel, formMaterials: Material[
 
       // Mensajes específicos según el tipo de error
       if (errorStr.includes('evaluación') || errorStr.includes('evaluation')) {
-        errorMessage = 'Error: Debe vincular una evaluación antes de actualizar la capacitación (RF-09)';
+        errorMessage =
+          'Error: Debe vincular una evaluación antes de actualizar la capacitación (RF-09)';
       } else if (errorStr.includes('validación') || errorStr.includes('validation')) {
         // Intentar extraer detalles del error de validación
         const validationDetails = extractValidationErrors(err);
-        errorMessage = validationDetails || 'Error de validación: Verifique que todos los campos requeridos estén completos correctamente';
+        errorMessage =
+          validationDetails ||
+          'Error de validación: Verifique que todos los campos requeridos estén completos correctamente';
       } else if (errorStr.includes('network') || errorStr.includes('timeout')) {
         errorMessage = 'Error de conexión: Verifique su conexión a internet e intente nuevamente';
       } else if (errorStr.includes('401') || errorStr.includes('unauthorized')) {
-        errorMessage = 'Error de autenticación: Su sesión ha expirado. Por favor, inicie sesión nuevamente';
+        errorMessage =
+          'Error de autenticación: Su sesión ha expirado. Por favor, inicie sesión nuevamente';
       } else if (errorStr.includes('403') || errorStr.includes('forbidden')) {
         errorMessage = 'Error de permisos: No tiene permisos para actualizar capacitaciones';
-      } else if (errorStr.includes('404') || errorStr.includes('not found') || errorStr.includes('no encontrada')) {
+      } else if (
+        errorStr.includes('404') ||
+        errorStr.includes('not found') ||
+        errorStr.includes('no encontrada')
+      ) {
         // Verificar si el problema es al cargar o al actualizar
         if (training.value) {
-          errorMessage = 'Error: La capacitación no fue encontrada en el servidor. Puede que haya sido eliminada.';
+          errorMessage =
+            'Error: La capacitación no fue encontrada en el servidor. Puede que haya sido eliminada.';
         } else {
-          errorMessage = 'Error: No se pudo cargar la capacitación. Verifique que el ID sea correcto.';
+          errorMessage =
+            'Error: No se pudo cargar la capacitación. Verifique que el ID sea correcto.';
         }
       } else if (errorStr.includes('500') || errorStr.includes('server')) {
-        errorMessage = 'Error del servidor: Por favor, intente más tarde o contacte al administrador';
+        errorMessage =
+          'Error del servidor: Por favor, intente más tarde o contacte al administrador';
       } else {
         errorMessage = err.message;
       }
@@ -579,9 +628,7 @@ async function syncMaterials(capacitacionId: number, newMaterials: Material[]) {
   const currentMaterials = await materialsService.findByCapacitacion(capacitacionId);
 
   // Crear un Set con los IDs reales de materiales existentes en el backend
-  const currentMaterialIds = new Set(
-    currentMaterials.map((m) => parseInt(m.id)),
-  );
+  const currentMaterialIds = new Set(currentMaterials.map((m) => parseInt(m.id)));
 
   // IDs de materiales nuevos que realmente existen en el backend
   type MaterialWithId = Omit<Material, 'id'> & { id: string };
@@ -616,22 +663,22 @@ async function syncMaterials(capacitacionId: number, newMaterials: Material[]) {
         errors.push(`Material sin nombre`);
         continue;
       }
-      
+
       if (!material.url || !material.url.trim()) {
         console.warn(`Material "${material.name}" sin URL, saltando:`, material);
         errors.push(`Material "${material.name}" sin URL`);
         continue;
       }
-      
+
       // Extraer URL relativa si es un archivo local, o mantener URL completa si es enlace externo
       let materialUrl = material.url.trim();
-      
+
       // Tipo extendido para incluir URL relativa temporal
       interface MaterialWithRelativeUrl extends Material {
         _relativeUrl?: string;
       }
       const materialWithRelative = material as MaterialWithRelativeUrl;
-      
+
       // Si el material tiene _relativeUrl (archivo subido), usar esa
       // Si no, verificar si es un enlace externo o extraer la URL relativa
       if (materialWithRelative._relativeUrl) {
@@ -643,18 +690,21 @@ async function syncMaterials(capacitacionId: number, newMaterials: Material[]) {
         // Para archivos locales, extraer la URL relativa
         materialUrl = extractRelativeUrl(material.url).trim();
       }
-      
+
       // Validar que la URL final no esté vacía
       if (!materialUrl) {
-        console.warn(`Material "${material.name}" tiene URL inválida después de procesamiento:`, material);
+        console.warn(
+          `Material "${material.name}" tiene URL inválida después de procesamiento:`,
+          material,
+        );
         errors.push(`Material "${material.name}" tiene URL inválida`);
         continue;
       }
-      
+
       // Verificar si el ID realmente existe en el backend (no es un ID temporal)
       const materialId = material.id ? parseInt(material.id) : null;
       const existsInBackend = materialId !== null && currentMaterialIds.has(materialId);
-      
+
       if (existsInBackend) {
         // Actualizar material existente (tiene ID real del backend)
         const updateDto: UpdateMaterialDto = {
@@ -682,14 +732,15 @@ async function syncMaterials(capacitacionId: number, newMaterials: Material[]) {
         await materialsService.create(createDto);
       }
     } catch (materialError) {
-      const errorMessage = materialError instanceof Error ? materialError.message : String(materialError);
+      const errorMessage =
+        materialError instanceof Error ? materialError.message : String(materialError);
       console.error(`Error al sincronizar material "${material.name}":`, materialError);
       errors.push(`Material "${material.name}": ${errorMessage}`);
       // Continuar con el siguiente material en lugar de lanzar el error
       // Esto permite que otros materiales se sincronicen correctamente
     }
   }
-  
+
   // Si hubo errores, lanzar un error con todos los mensajes
   if (errors.length > 0) {
     throw new Error(`Errores al sincronizar materiales: ${errors.join('; ')}`);
@@ -718,7 +769,9 @@ function mapModalityToId(modality: string | null): number {
 /**
  * Mapea el ID del tipo de pregunta del backend al tipo del dominio
  */
-function mapTipoPreguntaIdToQuestionType(tipoPreguntaId: number): 'single' | 'multiple' | 'image' | 'true_false' | 'yes_no' {
+function mapTipoPreguntaIdToQuestionType(
+  tipoPreguntaId: number,
+): 'single' | 'multiple' | 'image' | 'true_false' | 'yes_no' {
   const map: Record<number, 'single' | 'multiple' | 'image' | 'true_false' | 'yes_no'> = {
     1: 'single',
     2: 'multiple',
@@ -729,16 +782,19 @@ function mapTipoPreguntaIdToQuestionType(tipoPreguntaId: number): 'single' | 'mu
   return map[tipoPreguntaId] ?? 'single';
 }
 
+type QuestionTypeForMap = 'single' | 'multiple' | 'image' | 'true_false' | 'yes_no' | 'open_text';
+
 /**
  * Mapea el tipo de pregunta del dominio al ID del tipo en el backend
  */
-function mapQuestionTypeToTipoPreguntaId(type: 'single' | 'multiple' | 'image' | 'true_false' | 'yes_no'): number {
-  const map: Record<'single' | 'multiple' | 'image' | 'true_false' | 'yes_no', number> = {
+function mapQuestionTypeToTipoPreguntaId(type: QuestionTypeForMap): number {
+  const map: Record<QuestionTypeForMap, number> = {
     single: 1,
     multiple: 2,
     image: 3,
     true_false: 4,
     yes_no: 5,
+    open_text: 6,
   };
   return map[type] ?? 1;
 }
@@ -760,4 +816,3 @@ function extractValidationErrors(error: Error): string | null {
   return null;
 }
 </script>
-

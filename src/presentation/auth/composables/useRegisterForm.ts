@@ -56,7 +56,7 @@ export function useRegisterForm() {
     validateRequired,
     validateNumeric,
     validateMinLength,
-  } = useForm(initialForm);
+  } = useForm<RegisterDto>(initialForm);
 
   // Computed para verificar si el tipo de documento es NIT
   const isNIT = computed(() => form.value.tipoDocumento === 'NIT');
@@ -127,7 +127,7 @@ export function useRegisterForm() {
       numeroDocumento: (val) => {
         const required = validateRequired(val, 'Número de documento');
         if (required !== true) return required;
-        return validateNumeric(val);
+        return validateNumeric(typeof val === 'string' ? val : '');
       },
       nombres: (val) => {
         // Si es NIT, nombres es opcional
@@ -146,14 +146,15 @@ export function useRegisterForm() {
       username: (val) => {
         const required = validateRequired(val, 'Usuario');
         if (required !== true) return required;
-        const minLength = validateMinLength(val, 3, 'Usuario');
+        const str = typeof val === 'string' ? val : '';
+        const minLength = validateMinLength(str, 3, 'Usuario');
         if (minLength !== true) return minLength;
-        if (/\s/.test(val)) {
+        if (/\s/.test(str)) {
           return 'El usuario no puede contener espacios';
         }
         return true;
       },
-      password: (val) => validatePassword(val, 6),
+      password: (val) => validatePassword(typeof val === 'string' ? val : '', 6),
     });
 
     if (!isValid) {

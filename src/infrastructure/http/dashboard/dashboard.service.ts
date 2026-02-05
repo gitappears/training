@@ -50,8 +50,8 @@ export interface DashboardStats {
   upcomingTrainings: UpcomingTraining[];
   areaProgress: AreaProgress[];
   completionTrend: CompletionTrend[];
-  notifications: any[];
-  recentActivity: any[];
+  notifications: unknown[];
+  recentActivity: unknown[];
 }
 
 export class DashboardService {

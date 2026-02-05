@@ -5,9 +5,7 @@
  * Responsabilidad única: Validar datos del formulario de capacitación
  */
 
-import { type Ref } from 'vue';
-import type { TrainingFormModel, InlineEvaluation } from '../../presentation/trainings/components/TrainingForm.vue';
-import type { TrainingType } from './useTrainingType';
+import type { TrainingFormModel } from '../../presentation/trainings/components/TrainingForm.vue';
 
 /**
  * Resultado de validación de un paso
@@ -174,7 +172,7 @@ export function useTrainingFormValidation(): UseTrainingFormValidationReturn {
           // Para evaluaciones (no encuestas), validar que haya al menos una opción correcta
           if (!isSurvey) {
             const tieneOpcionCorrecta = pregunta.opciones.some(
-              (o) => o.esCorrecta && o.texto && o.texto.trim().length > 0
+              (o) => o.esCorrecta && o.texto && o.texto.trim().length > 0,
             );
             if (!tieneOpcionCorrecta) {
               errors.push(`La pregunta ${preguntaNum} debe tener al menos una opción correcta`);
@@ -185,7 +183,9 @@ export function useTrainingFormValidation(): UseTrainingFormValidationReturn {
         // Para evaluaciones, validar puntaje
         if (!isSurvey) {
           if (pregunta.puntaje === null || pregunta.puntaje === undefined || pregunta.puntaje < 0) {
-            errors.push(`La pregunta ${preguntaNum} debe tener un puntaje válido (mayor o igual a 0)`);
+            errors.push(
+              `La pregunta ${preguntaNum} debe tener un puntaje válido (mayor o igual a 0)`,
+            );
           }
         }
       });
@@ -213,10 +213,7 @@ export function useTrainingFormValidation(): UseTrainingFormValidationReturn {
       }
 
       // Validar que el puntaje total sea mayor a 0
-      const puntajeTotal = evaluation.preguntas.reduce(
-        (sum, p) => sum + (p.puntaje || 0),
-        0
-      );
+      const puntajeTotal = evaluation.preguntas.reduce((sum, p) => sum + (p.puntaje || 0), 0);
       if (puntajeTotal <= 0) {
         errors.push('El puntaje total debe ser mayor a 0');
       }
@@ -258,4 +255,3 @@ export function useTrainingFormValidation(): UseTrainingFormValidationReturn {
     validateCompleteForm,
   };
 }
-

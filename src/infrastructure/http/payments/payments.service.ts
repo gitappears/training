@@ -3,7 +3,11 @@
 
 import { api } from '../../../boot/axios';
 import type { AxiosError } from 'axios';
-import type { IPaymentsRepository } from '../../../application/payments/payments.repository.port';
+import type {
+  IPaymentsRepository,
+  CreatePaymentDto,
+  Payment,
+} from '../../../application/payments/payments.repository.port';
 
 /**
  * Tipos para las respuestas del backend
@@ -27,7 +31,7 @@ interface BackendPago {
 export class PaymentsService implements IPaymentsRepository {
   private readonly baseUrl = '/payments';
 
-  async createPayment(dto: IPaymentsRepository['CreatePaymentDto']): Promise<IPaymentsRepository['Payment']> {
+  async createPayment(dto: CreatePaymentDto): Promise<Payment> {
     try {
       const createDto = {
         estudianteId: dto.estudianteId,
@@ -46,10 +50,14 @@ export class PaymentsService implements IPaymentsRepository {
         fechaPago: new Date(response.data.fechaPago),
         monto: response.data.monto,
         metodoPago: response.data.metodoPago,
-        numeroComprobante: response.data.numeroComprobante,
-        observaciones: response.data.observaciones,
         registradoPorId: response.data.registradoPorId,
         fechaCreacion: new Date(response.data.fechaCreacion),
+        ...(response.data.numeroComprobante !== undefined && {
+          numeroComprobante: response.data.numeroComprobante,
+        }),
+        ...(response.data.observaciones !== undefined && {
+          observaciones: response.data.observaciones,
+        }),
       };
     } catch (error) {
       const axiosError = error as AxiosError<{ message?: string }>;

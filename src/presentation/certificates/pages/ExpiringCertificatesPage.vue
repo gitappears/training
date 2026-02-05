@@ -80,12 +80,7 @@
               @click="aplicarFiltros"
               :disable="cargando"
             />
-            <q-btn
-              flat
-              label="Limpiar"
-              @click="limpiarFiltros"
-              class="q-ml-sm"
-            />
+            <q-btn flat label="Limpiar" @click="limpiarFiltros" class="q-ml-sm" />
             <q-space />
             <q-btn
               color="green"
@@ -121,17 +116,9 @@
           <template v-slot:body-cell-diasRestantes="props">
             <q-td :props="props">
               <div
-                :class="[
-                  'text-weight-bold',
-                  'text-center',
-                  getDiasClass(props.row.diasRestantes),
-                ]"
+                :class="['text-weight-bold', 'text-center', getDiasClass(props.row.diasRestantes)]"
               >
-                {{
-                  props.row.diasRestantes < 0
-                    ? 'VENCIDO'
-                    : `${props.row.diasRestantes} días`
-                }}
+                {{ props.row.diasRestantes < 0 ? 'VENCIDO' : `${props.row.diasRestantes} días` }}
               </div>
             </q-td>
           </template>
@@ -153,10 +140,22 @@ import { ref, onMounted } from 'vue';
 import { api } from 'boot/axios';
 import { useQuasar } from 'quasar';
 
+/** Fila del reporte de certificados por vencer (respuesta del backend) */
+interface ExpiringCertificateRow {
+  numeroCertificado?: string;
+  fechaVencimiento?: string;
+  diasRestantes?: number;
+  estado?: string;
+  inscripcion?: {
+    alumno?: { persona?: { nombres?: string; apellidos?: string } };
+    capacitacion?: { titulo?: string };
+  };
+}
+
 const $q = useQuasar();
 
 const cargando = ref(false);
-const certificados = ref([]);
+const certificados = ref<ExpiringCertificateRow[]>([]);
 
 const filtros = ref({
   busqueda: '',
@@ -188,15 +187,15 @@ const columns = [
   {
     name: 'alumno',
     label: 'Alumno',
-    field: (row: any) =>
-      `${row.inscripcion?.alumno?.persona?.nombres || ''} ${row.inscripcion?.alumno?.persona?.apellidos || ''}`,
+    field: (row: ExpiringCertificateRow) =>
+      `${row.inscripcion?.alumno?.persona?.nombres ?? ''} ${row.inscripcion?.alumno?.persona?.apellidos ?? ''}`.trim(),
     align: 'left',
     sortable: true,
   },
   {
     name: 'curso',
     label: 'Curso',
-    field: (row: any) => row.inscripcion?.capacitacion?.titulo || '',
+    field: (row: ExpiringCertificateRow) => row.inscripcion?.capacitacion?.titulo ?? '',
     align: 'left',
     sortable: true,
   },
@@ -229,7 +228,7 @@ onMounted(() => {
 const cargarDatos = async () => {
   cargando.value = true;
   try {
-    const params: any = {
+    const params: Record<string, number | string | undefined> = {
       pagina: paginacion.value.page,
       limite: paginacion.value.rowsPerPage,
     };
@@ -268,7 +267,7 @@ const limpiarFiltros = () => {
   aplicarFiltros();
 };
 
-const onPaginacionChange = (props: any) => {
+const onPaginacionChange = (props: { pagination: { page: number; rowsPerPage: number } }) => {
   paginacion.value.page = props.pagination.page;
   paginacion.value.rowsPerPage = props.pagination.rowsPerPage;
   cargarDatos();

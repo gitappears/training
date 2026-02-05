@@ -141,7 +141,7 @@ export function useTrainingFormStepper(): UseTrainingFormStepperReturn {
     if (!result.isValid && result.errors.length > 0) {
       $q.notify({
         type: 'warning',
-        message: result.errors[0],
+        message: result.errors[0] || '',
         position: 'top',
         timeout: 4000,
       });
@@ -153,7 +153,7 @@ export function useTrainingFormStepper(): UseTrainingFormStepperReturn {
   /**
    * Avanza al siguiente paso si es válido
    */
-  async function nextStep(form: TrainingFormModel): Promise<boolean> {
+  function nextStep(form: TrainingFormModel): boolean {
     // Validar paso actual antes de avanzar
     const isValid = validateCurrentStep(form);
 
@@ -206,11 +206,10 @@ export function useTrainingFormStepper(): UseTrainingFormStepperReturn {
     isLastStep,
     isFirstStep,
     currentStepValidation,
-    nextStep,
+    nextStep: (form: TrainingFormModel) => Promise.resolve(nextStep(form)),
     previousStep,
     goToStep,
     validateCurrentStep,
     reset,
   };
 }
-

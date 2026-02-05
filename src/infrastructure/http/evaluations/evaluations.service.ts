@@ -99,71 +99,75 @@ function mapBackendToDomain(backendData: BackendEvaluacion): Evaluation {
     courseName: '',
     title: backendData.titulo ?? '',
     description: backendData.descripcion ?? '',
-    questions: backendData.preguntas?.map((q: BackendPregunta) => {
-      const question: {
-        id: string;
-        text: string;
-        type: QuestionType;
-        options: Array<{
+    questions:
+      backendData.preguntas?.map((q: BackendPregunta) => {
+        const question: {
           id: string;
           text: string;
-          isCorrect: boolean;
-          imageUrl?: string;
-        }>;
-        order: number;
-        imageUrl?: string;
-        score?: number;
-      } = {
-        id: q.id?.toString() ?? '',
-        text: q.enunciado ?? '',
-        type: mapTipoPreguntaToQuestionType(q.tipoPregunta),
-        options: q.opciones?.map((opt: BackendOpcionRespuesta) => {
-          const option: {
+          type: QuestionType;
+          options: Array<{
             id: string;
             text: string;
             isCorrect: boolean;
             imageUrl?: string;
-          } = {
-            id: opt.id?.toString() ?? '',
-            text: opt.texto ?? '',
-            isCorrect: opt.esCorrecta ?? false,
-          };
-          // Manejar ambos formatos: imagenUrl (camelCase) o imagen_url (snake_case)
-          // TypeORM puede devolver los nombres de las columnas (snake_case) en lugar de las propiedades (camelCase)
-          // cuando se serializa a JSON, dependiendo de la configuración
-          const imagenUrl = opt.imagenUrl || opt.imagen_url;
-          if (imagenUrl && String(imagenUrl).trim() !== '') {
-            option.imageUrl = String(imagenUrl).trim();
-            console.log('✅ Imagen mapeada desde backend:', {
-              opcionId: opt.id,
-              texto: opt.texto,
-              imagenUrl: option.imageUrl,
-              formatoRecibido: opt.imagenUrl ? 'camelCase (imagenUrl)' : 'snake_case (imagen_url)',
-            });
-          } else {
-            // Log detallado para debugging
-            const optAny = opt as unknown as Record<string, unknown>;
-            console.log('⚠️ No hay imagen en opción del backend:', {
-              opcionId: opt.id,
-              texto: opt.texto,
-              tieneImagenUrl: !!opt.imagenUrl,
-              tieneImagen_url: !!opt.imagen_url,
-              todasLasPropiedades: Object.keys(optAny),
-            });
-          }
-          return option;
-        }) ?? [],
-        order: q.orden ?? 0,
-      };
-      if (q.imagenUrl) {
-        question.imageUrl = q.imagenUrl;
-      }
-      // Mapear el puntaje de la pregunta desde el backend
-      if (q.puntaje !== undefined && q.puntaje !== null) {
-        question.score = q.puntaje;
-      }
-      return question;
-    }) ?? [],
+          }>;
+          order: number;
+          imageUrl?: string;
+          score?: number;
+        } = {
+          id: q.id?.toString() ?? '',
+          text: q.enunciado ?? '',
+          type: mapTipoPreguntaToQuestionType(q.tipoPregunta),
+          options:
+            q.opciones?.map((opt: BackendOpcionRespuesta) => {
+              const option: {
+                id: string;
+                text: string;
+                isCorrect: boolean;
+                imageUrl?: string;
+              } = {
+                id: opt.id?.toString() ?? '',
+                text: opt.texto ?? '',
+                isCorrect: opt.esCorrecta ?? false,
+              };
+              // Manejar ambos formatos: imagenUrl (camelCase) o imagen_url (snake_case)
+              // TypeORM puede devolver los nombres de las columnas (snake_case) en lugar de las propiedades (camelCase)
+              // cuando se serializa a JSON, dependiendo de la configuración
+              const imagenUrl = opt.imagenUrl || opt.imagen_url;
+              if (imagenUrl && String(imagenUrl).trim() !== '') {
+                option.imageUrl = String(imagenUrl).trim();
+                console.log('✅ Imagen mapeada desde backend:', {
+                  opcionId: opt.id,
+                  texto: opt.texto,
+                  imagenUrl: option.imageUrl,
+                  formatoRecibido: opt.imagenUrl
+                    ? 'camelCase (imagenUrl)'
+                    : 'snake_case (imagen_url)',
+                });
+              } else {
+                // Log detallado para debugging
+                const optAny = opt as unknown as Record<string, unknown>;
+                console.log('⚠️ No hay imagen en opción del backend:', {
+                  opcionId: opt.id,
+                  texto: opt.texto,
+                  tieneImagenUrl: !!opt.imagenUrl,
+                  tieneImagen_url: !!opt.imagen_url,
+                  todasLasPropiedades: Object.keys(optAny),
+                });
+              }
+              return option;
+            }) ?? [],
+          order: q.orden ?? 0,
+        };
+        if (q.imagenUrl) {
+          question.imageUrl = q.imagenUrl;
+        }
+        // Mapear el puntaje de la pregunta desde el backend
+        if (q.puntaje !== undefined && q.puntaje !== null) {
+          question.score = q.puntaje;
+        }
+        return question;
+      }) ?? [],
     questionsCount: backendData.preguntas?.length ?? 0,
     durationMinutes: backendData.tiempoLimiteMinutos ?? 0,
     minimumScore: backendData.minimoAprobacion ?? 70,
@@ -195,18 +199,43 @@ function mapTipoPreguntaToQuestionType(tipoPregunta: BackendTipoPregunta): Quest
       return idMap[tipoPregunta.id];
     }
   }
-  
+
   // Fallback: usar el código o nombre si el ID no está disponible
   const codigo = tipoPregunta?.codigo?.toUpperCase() ?? '';
   if (codigo === 'OPEN_TEXT') return 'open_text';
-  
+
   const nombre = tipoPregunta?.nombre?.toLowerCase() ?? '';
-  if (nombre.includes('única') || nombre.includes('unica') || nombre.includes('single')) return 'single';
+  if (nombre.includes('única') || nombre.includes('unica') || nombre.includes('single'))
+    return 'single';
   if (nombre.includes('múltiple') || nombre.includes('multiple')) return 'multiple';
-  if (nombre.includes('imagen') || nombre.includes('image') || nombre.includes('selección de imagen') || nombre.includes('seleccion de imagen')) return 'image';
-  if (nombre.includes('falso') || nombre.includes('verdadero') || nombre.includes('true') || nombre.includes('false')) return 'true_false';
-  if (nombre.includes('sí') || nombre.includes('no') || nombre.includes('yes') || nombre.includes('no')) return 'yes_no';
-  if (nombre.includes('abierta') || nombre.includes('texto') || nombre.includes('open') || nombre.includes('text')) return 'open_text';
+  if (
+    nombre.includes('imagen') ||
+    nombre.includes('image') ||
+    nombre.includes('selección de imagen') ||
+    nombre.includes('seleccion de imagen')
+  )
+    return 'image';
+  if (
+    nombre.includes('falso') ||
+    nombre.includes('verdadero') ||
+    nombre.includes('true') ||
+    nombre.includes('false')
+  )
+    return 'true_false';
+  if (
+    nombre.includes('sí') ||
+    nombre.includes('no') ||
+    nombre.includes('yes') ||
+    nombre.includes('no')
+  )
+    return 'yes_no';
+  if (
+    nombre.includes('abierta') ||
+    nombre.includes('texto') ||
+    nombre.includes('open') ||
+    nombre.includes('text')
+  )
+    return 'open_text';
   return 'single' as QuestionType;
 }
 
@@ -241,18 +270,26 @@ export class EvaluationsService implements IEvaluationRepository {
         throw new Error('Usuario no autenticado');
       }
 
-      const profile = JSON.parse(storedProfile) as { id: number; personaId?: number; persona?: { id: number } };
-      
+      const profile = JSON.parse(storedProfile) as {
+        id: number;
+        personaId?: number;
+        persona?: { id: number };
+      };
+
       // Obtener el ID de la persona del usuario
       // Primero intentar desde personaId (nuevo campo del backend)
       // Luego desde persona.id (estructura antigua)
       // Finalmente desde el endpoint de perfil
       let personaId = profile.personaId || profile.persona?.id;
-      
+
       if (!personaId) {
         // Intentar obtener el perfil completo desde el backend
         try {
-          const profileResponse = await api.get<{ id: number; personaId?: number; persona?: { id: number } }>('/auth/profile');
+          const profileResponse = await api.get<{
+            id: number;
+            personaId?: number;
+            persona?: { id: number };
+          }>('/auth/profile');
           personaId = profileResponse.data.personaId || profileResponse.data.persona?.id;
         } catch (error) {
           console.error('Error al obtener perfil desde backend:', error);
@@ -261,7 +298,9 @@ export class EvaluationsService implements IEvaluationRepository {
       }
 
       if (!personaId) {
-        throw new Error('No se pudo obtener el ID de la persona del usuario. Por favor, inicia sesión nuevamente.');
+        throw new Error(
+          'No se pudo obtener el ID de la persona del usuario. Por favor, inicia sesión nuevamente.',
+        );
       }
 
       // Obtener las inscripciones del usuario
@@ -293,7 +332,7 @@ export class EvaluationsService implements IEvaluationRepository {
 
       // Obtener todas las evaluaciones de las capacitaciones inscritas
       const evaluacionesMap = new Map<string, Evaluation>();
-      
+
       // Primero, obtener todas las evaluaciones únicas
       const evaluacionesIds = new Set<number>();
       const inscripciones = inscripcionesResponse.data?.data ?? [];
@@ -311,11 +350,11 @@ export class EvaluationsService implements IEvaluationRepository {
         this.findOne(id.toString()).catch((error) => {
           console.error(`Error al obtener evaluación ${id}:`, error);
           return null;
-        })
+        }),
       );
 
       const evaluacionesCompletas = await Promise.all(evaluacionesPromises);
-      
+
       // Crear un mapa de evaluaciones por ID
       evaluacionesCompletas.forEach((evaluation) => {
         if (evaluation) {
@@ -336,32 +375,36 @@ export class EvaluationsService implements IEvaluationRepository {
             // Actualizar información del curso
             evaluation.courseId = cap.id.toString();
             evaluation.courseName = cap.titulo;
-              
-              // Obtener intentos de esta evaluación para esta inscripción
-              const intentos = inscripcion.intentosEvaluacion?.filter(
-                (intento) => intento.evaluacion?.id === evaluacionRef.id
+
+            // Obtener intentos de esta evaluación para esta inscripción
+            const intentos =
+              inscripcion.intentosEvaluacion?.filter(
+                (intento) => intento.evaluacion?.id === evaluacionRef.id,
               ) || [];
-              
-              if (intentos.length > 0) {
-                // Ordenar por fecha para obtener el último intento
-                const intentosOrdenados = intentos.sort((a, b) => {
-                  const fechaA = new Date(a.fechaFinalizacion || a.fechaInicio).getTime();
-                  const fechaB = new Date(b.fechaFinalizacion || b.fechaInicio).getTime();
-                  return fechaB - fechaA;
-                });
-                
-                const ultimoIntento = intentosOrdenados[0];
-                evaluation.status = ultimoIntento.aprobado ? 'passed' : 'failed';
-                evaluation.lastAttempt = {
-                  date: ultimoIntento.fechaFinalizacion || ultimoIntento.fechaInicio,
-                  score: ultimoIntento.porcentaje || ultimoIntento.puntajeObtenido,
-                  passed: ultimoIntento.aprobado ?? false,
-                };
-                evaluation.attemptsRemaining = Math.max(0, evaluation.attemptsAllowed - intentos.length);
-              } else {
-                evaluation.status = 'pending';
-                evaluation.attemptsRemaining = evaluation.attemptsAllowed;
-              }
+
+            if (intentos.length > 0) {
+              // Ordenar por fecha para obtener el último intento
+              const intentosOrdenados = intentos.sort((a, b) => {
+                const fechaA = new Date(a.fechaFinalizacion || a.fechaInicio).getTime();
+                const fechaB = new Date(b.fechaFinalizacion || b.fechaInicio).getTime();
+                return fechaB - fechaA;
+              });
+
+              const ultimoIntento = intentosOrdenados[0];
+              evaluation.status = ultimoIntento.aprobado ? 'passed' : 'failed';
+              evaluation.lastAttempt = {
+                date: ultimoIntento.fechaFinalizacion || ultimoIntento.fechaInicio,
+                score: ultimoIntento.porcentaje || ultimoIntento.puntajeObtenido,
+                passed: ultimoIntento.aprobado ?? false,
+              };
+              evaluation.attemptsRemaining = Math.max(
+                0,
+                evaluation.attemptsAllowed - intentos.length,
+              );
+            } else {
+              evaluation.status = 'pending';
+              evaluation.attemptsRemaining = evaluation.attemptsAllowed;
+            }
           }
         }
       }
@@ -375,20 +418,16 @@ export class EvaluationsService implements IEvaluationRepository {
         evaluationsArray = evaluationsArray.filter(
           (e) =>
             e.courseName.toLowerCase().includes(search) ||
-            e.description.toLowerCase().includes(search)
+            e.description.toLowerCase().includes(search),
         );
       }
 
       if (params.filters?.courseId) {
-        evaluationsArray = evaluationsArray.filter(
-          (e) => e.courseId === params.filters.courseId
-        );
+        evaluationsArray = evaluationsArray.filter((e) => e.courseId === params.filters.courseId);
       }
 
       if (params.filters?.status) {
-        evaluationsArray = evaluationsArray.filter(
-          (e) => e.status === params.filters.status
-        );
+        evaluationsArray = evaluationsArray.filter((e) => e.status === params.filters.status);
       }
 
       // Aplicar paginación
@@ -410,19 +449,20 @@ export class EvaluationsService implements IEvaluationRepository {
       console.error('Error completo en findAll:', error);
       console.error('Error response:', axiosError.response);
       console.error('Error message:', axiosError.message);
-      
+
       // Proporcionar un mensaje más descriptivo
       let errorMessage = 'Error al obtener la lista de evaluaciones';
-      
+
       if (axiosError.response) {
-        errorMessage = axiosError.response.data?.message || 
+        errorMessage =
+          axiosError.response.data?.message ||
           `Error del servidor: ${axiosError.response.status} ${axiosError.response.statusText}`;
       } else if (axiosError.request) {
         errorMessage = 'No se pudo conectar con el servidor. Verifica tu conexión.';
       } else {
         errorMessage = axiosError.message || errorMessage;
       }
-      
+
       throw new Error(errorMessage);
     }
   }
@@ -468,7 +508,8 @@ export class EvaluationsService implements IEvaluationRepository {
         return null;
       }
       throw new Error(
-        axiosError.response?.data?.message ?? `Error al obtener la evaluación del curso ${courseId}`,
+        axiosError.response?.data?.message ??
+          `Error al obtener la evaluación del curso ${courseId}`,
       );
     }
   }
@@ -523,9 +564,7 @@ export class EvaluationsService implements IEvaluationRepository {
       return mapBackendToDomain(mockEvaluation);
     } catch (error) {
       const axiosError = error as AxiosError<{ message?: string }>;
-      throw new Error(
-        axiosError.response?.data?.message ?? 'Error al crear la evaluación',
-      );
+      throw new Error(axiosError.response?.data?.message ?? 'Error al crear la evaluación');
     }
   }
 
@@ -576,8 +615,7 @@ export class EvaluationsService implements IEvaluationRepository {
         backendDto.preguntas = dto.questions.map((q) => {
           // Tipo extendido para permitir id opcional en actualización
           type QuestionWithId = CreateQuestionDto & { id?: string | number };
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const questionWithId = q as any as QuestionWithId;
+          const questionWithId = q as QuestionWithId;
 
           // Validar y convertir puntaje
           let puntajeNum = 1; // Valor por defecto
@@ -612,8 +650,7 @@ export class EvaluationsService implements IEvaluationRepository {
             opciones: q.options.map((opt, idx) => {
               // Tipo extendido para permitir id opcional en actualización
               type OptionWithId = CreateQuestionOptionDto & { id?: string | number };
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              const optionWithId = opt as any as OptionWithId;
+              const optionWithId = opt as OptionWithId;
 
               // Asegurar que esCorrecta sea un booleano
               let esCorrectaBool = false;
@@ -646,7 +683,8 @@ export class EvaluationsService implements IEvaluationRepository {
 
               // Si la opción tiene id válido, incluirlo para actualización
               if (optionWithId.id !== undefined) {
-                const optionIdNum = typeof optionWithId.id === 'string' ? parseInt(optionWithId.id) : optionWithId.id;
+                const optionIdNum =
+                  typeof optionWithId.id === 'string' ? parseInt(optionWithId.id) : optionWithId.id;
                 if (!isNaN(optionIdNum) && optionIdNum > 0) {
                   opcion.id = optionIdNum;
                 }
@@ -658,7 +696,10 @@ export class EvaluationsService implements IEvaluationRepository {
 
           // Si la pregunta tiene id válido, incluirla para actualización
           if (questionWithId.id !== undefined) {
-            const questionIdNum = typeof questionWithId.id === 'string' ? parseInt(questionWithId.id) : questionWithId.id;
+            const questionIdNum =
+              typeof questionWithId.id === 'string'
+                ? parseInt(questionWithId.id)
+                : questionWithId.id;
             if (!isNaN(questionIdNum) && questionIdNum > 0) {
               pregunta.id = questionIdNum;
             }
@@ -697,7 +738,7 @@ export class EvaluationsService implements IEvaluationRepository {
     try {
       // Mock: Calificación automática (RF-18)
       // Cuando el backend esté listo: const response = await api.post(`${this.baseUrl}/${dto.evaluationId}/submit`, dto);
-      
+
       // Simular calificación
       const evaluation = await this.findOne(dto.evaluationId);
       const totalQuestions = evaluation.questions.length;
@@ -707,7 +748,9 @@ export class EvaluationsService implements IEvaluationRepository {
         const userAnswer = dto.answers[question.id];
         if (question.type === 'multiple') {
           const userAnswers = Array.isArray(userAnswer) ? userAnswer : [];
-          const correctOptions = question.options.filter((opt) => opt.isCorrect).map((opt) => opt.id);
+          const correctOptions = question.options
+            .filter((opt) => opt.isCorrect)
+            .map((opt) => opt.id);
           if (
             userAnswers.length === correctOptions.length &&
             userAnswers.every((ans) => correctOptions.includes(ans))
@@ -737,9 +780,7 @@ export class EvaluationsService implements IEvaluationRepository {
       };
     } catch (error) {
       const axiosError = error as AxiosError<{ message?: string }>;
-      throw new Error(
-        axiosError.response?.data?.message ?? 'Error al enviar la evaluación',
-      );
+      throw new Error(axiosError.response?.data?.message ?? 'Error al enviar la evaluación');
     }
   }
 
@@ -783,4 +824,3 @@ export class EvaluationsService implements IEvaluationRepository {
 
 // Exportar instancia singleton
 export const evaluationsService = new EvaluationsService();
-

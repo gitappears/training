@@ -1,8 +1,18 @@
-import { ref, computed } from 'vue';
+import { computed } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useQuasar } from 'quasar';
 import { useAuthStore } from '../../stores/auth.store';
 import type { LoginDto, RegisterDto } from '../../application/auth/auth.repository.port';
+
+/** Error con forma de respuesta API/axios para extraer mensaje y datos */
+interface AuthErrorLike {
+  code?: string;
+  message?: string;
+  requiereAceptacionTerminos?: boolean;
+  response?: {
+    data?: { message?: string | string[]; error?: string; requiereAceptacionTerminos?: boolean };
+  };
+}
 
 /**
  * Composable para manejar la lógica de autenticación
@@ -26,12 +36,13 @@ export function useAuth() {
         type: 'positive',
         message: 'Sesión iniciada exitosamente',
       });
-      
+
       // Redirigir a la ruta original o al home
       const redirect = (route.query.redirect as string) || '/';
       void router.push(redirect);
-    } catch (error: any) {
-      console.error('Login error:', error);
+    } catch (err: unknown) {
+      const error = err as AuthErrorLike;
+      console.error('Login error:', err);
       console.log('🔍 Error details:', {
         code: error?.code,
         message: error?.message,
@@ -39,28 +50,26 @@ export function useAuth() {
         response: error?.response,
         responseData: error?.response?.data,
       });
-      
+
       let errorMessage = 'Error al iniciar sesión';
-      let errorData = null;
+      type ErrorResponseData = NonNullable<AuthErrorLike['response']>['data'];
+      let errorData: ErrorResponseData | null = null;
 
       // Extraer mensaje y datos del error
       if (error?.response?.data) {
         errorData = error.response.data;
-        if (errorData.message) {
+        if (errorData?.message) {
           errorMessage = Array.isArray(errorData.message)
             ? errorData.message.join(', ')
-            : errorData.message;
-        } else if (errorData.error) {
+            : String(errorData.message);
+        } else if (errorData?.error) {
           errorMessage = errorData.error;
         }
-      } else if (error instanceof Error) {
-        errorMessage = error.message;
+      } else if (err instanceof Error) {
+        errorMessage = err.message;
       }
 
       // Verificar si el error es TERMS_NOT_ACCEPTED
-      // Buscar en el string del mensaje o en el código de error específico del backend
-      // También verificar en el error original de axios si está disponible
-      const axiosError = error as { response?: { data?: { error?: string; requiereAceptacionTerminos?: boolean } } };
       const isTermsNotAccepted =
         error?.code === 'TERMS_NOT_ACCEPTED' ||
         error?.requiereAceptacionTerminos === true ||
@@ -69,8 +78,8 @@ export function useAuth() {
         errorMessage.includes('Debe aceptar los términos') ||
         (errorData && errorData.error === 'TERMS_NOT_ACCEPTED') ||
         (errorData && errorData.requiereAceptacionTerminos === true) ||
-        (axiosError?.response?.data?.error === 'TERMS_NOT_ACCEPTED') ||
-        (axiosError?.response?.data?.requiereAceptacionTerminos === true);
+        error?.response?.data?.error === 'TERMS_NOT_ACCEPTED' ||
+        error?.response?.data?.requiereAceptacionTerminos === true;
 
       console.log('🔍 isTermsNotAccepted:', isTermsNotAccepted, {
         code: error?.code,
@@ -78,7 +87,7 @@ export function useAuth() {
         errorMessage,
         errorDataError: errorData?.error,
         errorDataRequiere: errorData?.requiereAceptacionTerminos,
-        axiosErrorData: axiosError?.response?.data,
+        axiosErrorData: error?.response?.data,
       });
 
       if (isTermsNotAccepted) {
@@ -87,14 +96,13 @@ export function useAuth() {
         // Usar sessionStorage para que se limpie al cerrar la sesión del navegador
         sessionStorage.setItem('pendingLogin', JSON.stringify(credentials));
         console.log('💾 Credenciales guardadas en sessionStorage');
-        
+
         // Redirigir a la página de aceptación de términos
         // Limpiar el redirect para evitar redirecciones anidadas
         // Si ya estamos en login o terms-acceptance, usar '/' como redirect
-        const currentPath = route.path;
         const currentQuery = route.query;
         let redirect = '/';
-        
+
         // Solo usar el redirect si no viene de una ruta de términos o login
         if (currentQuery.redirect && typeof currentQuery.redirect === 'string') {
           const redirectPath = currentQuery.redirect;
@@ -103,13 +111,13 @@ export function useAuth() {
             redirect = redirectPath;
           }
         }
-        
+
         const targetRoute = {
           name: 'terms-acceptance',
           query: { redirect, fromLogin: 'true' },
         };
         console.log('🔀 Navegando a:', targetRoute);
-        
+
         // Usar replace para evitar que el usuario pueda volver atrás al login
         void router.replace(targetRoute).catch((err) => {
           console.error('❌ Error al redirigir:', err);
@@ -118,12 +126,13 @@ export function useAuth() {
         });
         return;
       }
-      
-      // Manejar PASSWORD_CHANGE_REQUIRED si es necesario (generalmente lo maneja el backend via header o body, 
+
+      // Manejar PASSWORD_CHANGE_REQUIRED si es necesario (generalmente lo maneja el backend via header o body,
       // pero si el login falla con este error, podemos redirigir aquí o mostrar un mensaje específico)
       if (errorData && errorData.error === 'PASSWORD_CHANGE_REQUIRED') {
-         // Aquí podrías redirigir a cambio de contraseña, pero por ahora mostramos el mensaje
-         errorMessage = 'Debe cambiar su contraseña. Por favor contacte al administrador o use la opción de recuperación.';
+        // Aquí podrías redirigir a cambio de contraseña, pero por ahora mostramos el mensaje
+        errorMessage =
+          'Debe cambiar su contraseña. Por favor contacte al administrador o use la opción de recuperación.';
       }
 
       $q.notify({
@@ -133,11 +142,17 @@ export function useAuth() {
         icon: 'warning',
         timeout: 6000,
         actions: [
-          { label: 'Cerrar', color: 'white', handler: () => { /* dismiss */ } }
-        ]
+          {
+            label: 'Cerrar',
+            color: 'white',
+            handler: () => {
+              /* dismiss */
+            },
+          },
+        ],
       });
-      
-      throw error;
+
+      throw err instanceof Error ? err : new Error(String(err));
     }
   }
 
@@ -149,13 +164,15 @@ export function useAuth() {
       await authStore.register(data);
       $q.notify({
         color: 'positive',
-        message: 'Registro exitoso. Espere aprobación del administrador. Su cuenta está deshabilitada temporalmente.',
+        message:
+          'Registro exitoso. Espere aprobación del administrador. Su cuenta está deshabilitada temporalmente.',
         icon: 'check',
         timeout: 5000,
       });
       await router.push({ name: 'login' });
-    } catch (error: any) {
-      console.error('Registration error:', error);
+    } catch (err: unknown) {
+      const error = err as AuthErrorLike;
+      console.error('Registration error:', err);
       let errorMessage = 'Error al registrar usuario';
 
       if (error?.response?.data) {
@@ -163,12 +180,12 @@ export function useAuth() {
         if (data.message) {
           errorMessage = Array.isArray(data.message)
             ? data.message.join(', ')
-            : data.message;
+            : String(data.message);
         } else if (data.error) {
           errorMessage = data.error;
         }
-      } else if (error instanceof Error) {
-        errorMessage = error.message;
+      } else if (err instanceof Error) {
+        errorMessage = err.message;
       }
 
       $q.notify({
@@ -176,8 +193,8 @@ export function useAuth() {
         message: errorMessage,
         timeout: 5000,
       });
-      
-      throw error;
+
+      throw err;
     }
   }
 
@@ -225,4 +242,3 @@ export function useAuth() {
     isAuthenticated: computed(() => authStore.isAuthenticated),
   };
 }
-

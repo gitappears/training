@@ -9,21 +9,8 @@
         </div>
       </div>
       <div class="row q-gutter-sm">
-        <q-btn
-          flat
-          dense
-          icon="refresh"
-          color="primary"
-          label="Actualizar"
-          @click="refreshData"
-        />
-        <q-btn
-          flat
-          dense
-          icon="download"
-          color="primary"
-          @click="showExportMenu"
-        >
+        <q-btn flat dense icon="refresh" color="primary" label="Actualizar" @click="refreshData" />
+        <q-btn flat dense icon="download" color="primary" @click="showExportMenu">
           <q-tooltip>Exportar</q-tooltip>
         </q-btn>
       </div>
@@ -68,28 +55,14 @@
         </q-select>
       </div>
       <div class="col-12 col-md-2">
-        <q-input
-          v-model="filters.dateFrom"
-          outlined
-          dense
-          type="date"
-          label="Desde"
-          clearable
-        >
+        <q-input v-model="filters.dateFrom" outlined dense type="date" label="Desde" clearable>
           <template #prepend>
             <q-icon name="event" />
           </template>
         </q-input>
       </div>
       <div class="col-12 col-md-2">
-        <q-input
-          v-model="filters.dateTo"
-          outlined
-          dense
-          type="date"
-          label="Hasta"
-          clearable
-        >
+        <q-input v-model="filters.dateTo" outlined dense type="date" label="Hasta" clearable>
           <template #prepend>
             <q-icon name="event" />
           </template>
@@ -168,7 +141,10 @@
                 <div class="text-h5 text-weight-bold">{{ kpis.approvalRate }}%</div>
               </div>
             </div>
-            <div class="text-caption" :class="kpis.approvalRateVariation >= 0 ? 'text-positive' : 'text-negative'">
+            <div
+              class="text-caption"
+              :class="kpis.approvalRateVariation >= 0 ? 'text-positive' : 'text-negative'"
+            >
               <q-icon
                 :name="kpis.approvalRateVariation >= 0 ? 'arrow_upward' : 'arrow_downward'"
                 size="14px"
@@ -299,11 +275,7 @@
                 <q-card-section>
                   <div class="text-subtitle1 q-mb-md text-weight-medium">Cursos Más Asignados</div>
                   <div class="column q-gutter-md">
-                    <div
-                      v-for="course in topCourses"
-                      :key="course.id"
-                      class="course-item"
-                    >
+                    <div v-for="course in topCourses" :key="course.id" class="course-item">
                       <div class="row items-center justify-between q-mb-xs">
                         <div class="row items-center q-gutter-sm">
                           <q-avatar :color="course.color" text-color="white" size="32px">
@@ -311,7 +283,9 @@
                           </q-avatar>
                           <div>
                             <div class="text-body2 text-weight-medium">{{ course.name }}</div>
-                            <div class="text-caption text-grey-6">{{ course.assignments }} asignaciones</div>
+                            <div class="text-caption text-grey-6">
+                              {{ course.assignments }} asignaciones
+                            </div>
                           </div>
                         </div>
                         <q-badge :color="course.color" outline>
@@ -335,13 +309,11 @@
             <div class="col-12 col-md-4">
               <q-card flat bordered class="full-height">
                 <q-card-section>
-                  <div class="text-subtitle1 q-mb-md text-weight-medium">Tasa de Aprobación por Curso</div>
+                  <div class="text-subtitle1 q-mb-md text-weight-medium">
+                    Tasa de Aprobación por Curso
+                  </div>
                   <div class="column q-gutter-sm">
-                    <div
-                      v-for="course in approvalByCourse"
-                      :key="course.id"
-                      class="approval-item"
-                    >
+                    <div v-for="course in approvalByCourse" :key="course.id" class="approval-item">
                       <div class="row items-center justify-between q-mb-xs">
                         <div class="text-body2">{{ course.name }}</div>
                         <div class="text-caption text-grey-7">{{ course.rate }}%</div>
@@ -380,7 +352,9 @@
             <div class="col-12">
               <q-card flat bordered>
                 <q-card-section>
-                  <div class="text-subtitle1 q-mb-md text-weight-medium">Tendencia de Finalización (Últimos 6 Meses)</div>
+                  <div class="text-subtitle1 q-mb-md text-weight-medium">
+                    Tendencia de Finalización (Últimos 6 Meses)
+                  </div>
                   <div class="trend-chart">
                     <div class="row items-end q-gutter-xs" style="height: 200px">
                       <div
@@ -392,7 +366,12 @@
                           class="bar"
                           :style="{
                             height: `${month.value}%`,
-                            backgroundColor: getProgressColor(month.value) === 'positive' ? '#21ba45' : getProgressColor(month.value) === 'warning' ? '#f2c037' : '#c10015',
+                            backgroundColor:
+                              getProgressColor(month.value) === 'positive'
+                                ? '#21ba45'
+                                : getProgressColor(month.value) === 'warning'
+                                  ? '#f2c037'
+                                  : '#c10015',
                           }"
                         >
                           <q-tooltip>{{ month.label }}: {{ month.value }}%</q-tooltip>
@@ -413,7 +392,9 @@
             <div class="col-12">
               <q-card flat bordered>
                 <q-card-section>
-                  <div class="text-subtitle1 q-mb-md text-weight-medium">Evolución de Certificados Emitidos</div>
+                  <div class="text-subtitle1 q-mb-md text-weight-medium">
+                    Evolución de Certificados Emitidos
+                  </div>
                   <div class="trend-chart">
                     <div class="row items-end q-gutter-xs" style="height: 250px">
                       <div
@@ -475,7 +456,9 @@
 
         <!-- Certificates Tab -->
         <q-tab-panel name="certificates">
-          <div class="text-subtitle1 q-mb-md text-weight-medium">Certificados Próximos a Vencer</div>
+          <div class="text-subtitle1 q-mb-md text-weight-medium">
+            Certificados Próximos a Vencer
+          </div>
           <DataTable
             :rows="expiringCertificates"
             :columns="certificateColumns"
@@ -537,7 +520,10 @@ import type { QTableColumn } from 'quasar';
 import VueApexCharts from 'vue3-apexcharts';
 import FiltersPanel from '../../../shared/components/FiltersPanel.vue';
 import DataTable from '../../../shared/components/DataTable.vue';
-import { reportsService, type ReportsStats } from '../../../infrastructure/http/reports/reports.service';
+import {
+  reportsService,
+  type ReportsStats,
+} from '../../../infrastructure/http/reports/reports.service';
 
 const $q = useQuasar();
 
@@ -592,7 +578,7 @@ const comparisonOptions = [
 const clientChartSeries = ref<number[]>([]);
 const clientChartOptions = ref({
   chart: {
-    type: 'donut',
+    type: 'donut' as const,
     fontFamily: 'inherit',
   },
   labels: [] as string[],
@@ -601,19 +587,19 @@ const clientChartOptions = ref({
     enabled: false,
   },
   legend: {
-    position: 'bottom',
+    position: 'bottom' as const,
   },
   plotOptions: {
     pie: {
       donut: {
-        size: '65%',
+        size: '65%' as const,
         labels: {
           show: true,
           total: {
             show: true,
             label: 'Total',
             formatter: function (w: { globals: { seriesTotals: number[] } }) {
-              return w.globals.seriesTotals.reduce((a: number, b: number) => a + b, 0);
+              return String(w.globals.seriesTotals.reduce((a: number, b: number) => a + b, 0));
             },
           },
         },
@@ -641,12 +627,13 @@ const expiringCertificates = ref<ReportsStats['expiringCertificates']>([]);
 async function loadReportsData() {
   loading.value = true;
   try {
-    const data: ReportsStats = await reportsService.getStats({
-      dateFrom: filters.value.dateFrom || undefined,
-      dateTo: filters.value.dateTo || undefined,
-      courseId: filters.value.course || undefined,
-      status: filters.value.status || undefined,
-    });
+    const filtersParam: Parameters<typeof reportsService.getStats>[0] = {};
+    if (filters.value.dateFrom) filtersParam.dateFrom = filters.value.dateFrom;
+    if (filters.value.dateTo) filtersParam.dateTo = filters.value.dateTo;
+    if (filters.value.course) filtersParam.courseId = filters.value.course;
+    if (filters.value.status) filtersParam.status = filters.value.status;
+
+    const data: ReportsStats = await reportsService.getStats(filtersParam);
 
     // Actualizar KPIs
     kpis.value = data.kpis;
@@ -655,7 +642,7 @@ async function loadReportsData() {
     clientChartSeries.value = data.clientDistribution.series;
     clientChartOptions.value = {
       ...clientChartOptions.value,
-      labels: data.clientDistribution.labels
+      labels: data.clientDistribution.labels,
     };
 
     // Actualizar Listas y Tablas
@@ -671,9 +658,8 @@ async function loadReportsData() {
       type: 'positive',
       message: 'Datos actualizados',
       position: 'top',
-      timeout: 1000
+      timeout: 1000,
     });
-
   } catch (error) {
     console.error('Error loading reports:', error);
     $q.notify({
@@ -688,7 +674,7 @@ async function loadReportsData() {
 
 // Inicializar
 onMounted(() => {
-    void loadReportsData();
+  void loadReportsData();
 });
 
 const courseColumns: QTableColumn[] = [
@@ -696,22 +682,64 @@ const courseColumns: QTableColumn[] = [
   { name: 'enrolled', field: 'enrolled', label: 'Inscritos', align: 'center', sortable: true },
   { name: 'completed', field: 'completed', label: 'Completados', align: 'center', sortable: true },
   { name: 'approved', field: 'approved', label: 'Aprobados', align: 'center', sortable: true },
-  { name: 'completionRate', field: 'completionRate', label: 'Tasa de finalización', align: 'left', sortable: true },
+  {
+    name: 'completionRate',
+    field: 'completionRate',
+    label: 'Tasa de finalización',
+    align: 'left',
+    sortable: true,
+  },
 ];
 
 const userColumns: QTableColumn[] = [
   { name: 'userName', field: 'userName', label: 'Usuario', align: 'left', sortable: true },
-  { name: 'coursesAssigned', field: 'coursesAssigned', label: 'Cursos asignados', align: 'center', sortable: true },
-  { name: 'coursesCompleted', field: 'coursesCompleted', label: 'Completados', align: 'center', sortable: true },
-  { name: 'certificatesObtained', field: 'certificatesObtained', label: 'Certificados', align: 'center', sortable: true },
-  { name: 'avgScore', field: 'avgScore', label: 'Puntuación promedio', align: 'center', sortable: true },
+  {
+    name: 'coursesAssigned',
+    field: 'coursesAssigned',
+    label: 'Cursos asignados',
+    align: 'center',
+    sortable: true,
+  },
+  {
+    name: 'coursesCompleted',
+    field: 'coursesCompleted',
+    label: 'Completados',
+    align: 'center',
+    sortable: true,
+  },
+  {
+    name: 'certificatesObtained',
+    field: 'certificatesObtained',
+    label: 'Certificados',
+    align: 'center',
+    sortable: true,
+  },
+  {
+    name: 'avgScore',
+    field: 'avgScore',
+    label: 'Puntuación promedio',
+    align: 'center',
+    sortable: true,
+  },
 ];
 
 const certificateColumns: QTableColumn[] = [
   { name: 'userName', field: 'userName', label: 'Usuario', align: 'left', sortable: true },
   { name: 'courseName', field: 'courseName', label: 'Curso', align: 'left', sortable: true },
-  { name: 'expiryDate', field: 'expiryDate', label: 'Fecha de vencimiento', align: 'left', sortable: true },
-  { name: 'daysUntilExpiry', field: 'daysUntilExpiry', label: 'Días restantes', align: 'center', sortable: true },
+  {
+    name: 'expiryDate',
+    field: 'expiryDate',
+    label: 'Fecha de vencimiento',
+    align: 'left',
+    sortable: true,
+  },
+  {
+    name: 'daysUntilExpiry',
+    field: 'daysUntilExpiry',
+    label: 'Días restantes',
+    align: 'center',
+    sortable: true,
+  },
   { name: 'status', field: 'status', label: 'Estado', align: 'center' },
 ];
 
@@ -824,7 +852,9 @@ body.body--dark .reports-page {
 }
 
 .kpi-card {
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .kpi-card:hover {

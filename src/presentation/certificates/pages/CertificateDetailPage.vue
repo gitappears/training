@@ -6,13 +6,7 @@
     <div v-if="certificate" class="row items-center justify-between q-mb-xl">
       <div class="col">
         <div class="row items-center q-gutter-md q-mb-sm">
-          <q-btn
-            flat
-            round
-            icon="arrow_back"
-            color="primary"
-            @click="goBack"
-          >
+          <q-btn flat round icon="arrow_back" color="primary" @click="goBack">
             <q-tooltip>Volver</q-tooltip>
           </q-btn>
           <div>
@@ -26,7 +20,6 @@
         </div>
       </div>
       <div class="row q-gutter-sm lt-md">
-
         <q-btn
           color="primary"
           unelevated
@@ -47,107 +40,112 @@
           <q-card-section class="q-pa-none">
             <!-- PDF Viewer -->
             <div v-if="certificate" class="certificate-viewer-container">
-                <!-- HTML Certificate View (Fixed Size 792x612 matching PDFKit Letter Landscape) -->
-                <div class="certificate-scaler">
-                  <div class="certificate-html-view" :style="{ backgroundImage: `url(${certificateBg})` }">
-                    <div class="certificate-content">
+              <!-- HTML Certificate View (Fixed Size 792x612 matching PDFKit Letter Landscape) -->
+              <div class="certificate-scaler">
+                <div
+                  class="certificate-html-view"
+                  :style="{ backgroundImage: `url(${certificateBg})` }"
+                >
+                  <div class="certificate-content">
+                    <!-- 1. Student Name (Y ~230 based on code flow doc.y+=90 etc) -->
+                    <!-- doc.y starts at 140. moves down. name is roughly at 230-240px -->
+                    <div class="cert-element cert-student-name">
+                      {{ certificate.studentName.toUpperCase() }}
+                    </div>
 
-                      <!-- 1. Student Name (Y ~230 based on code flow doc.y+=90 etc) -->
-                      <!-- doc.y starts at 140. moves down. name is roughly at 230-240px -->
-                      <div class="cert-element cert-student-name">
-                        {{ certificate.studentName.toUpperCase() }}
-                      </div>
-                      
-                      <div 
-                        class="cert-element cert-document-id" 
-                        :style="{ 
-                          top: isCesaroto ? '304px' : '301px', 
-                          left: isCesaroto ? '455px' : '85px',
-                          textAlign: isCesaroto ? 'left' : 'center',
-                          width: isCesaroto ? 'auto' : '100%'
-                        }"
-                      >
-                        {{ certificate.documentNumber }}
-                      </div>
+                    <div
+                      class="cert-element cert-document-id"
+                      :style="{
+                        top: isCesaroto ? '304px' : '301px',
+                        left: isCesaroto ? '455px' : '85px',
+                        textAlign: isCesaroto ? 'left' : 'center',
+                        width: isCesaroto ? 'auto' : '100%',
+                      }"
+                    >
+                      {{ certificate.documentNumber }}
+                    </div>
 
-                      <!-- 3. Course Name (Blue Box) Y ~350 -->
-                      <!-- doc.y is calculated. Box is manually placed. -->
-                      <div 
-                        ref="courseBoxRef"
-                        class="cert-element cert-course-box"
-                        :style="{ fontSize: currentFontSize + 'pt' }"
-                      >
-                        <span ref="courseTextRef">{{ (certificate.courseName || '').toUpperCase() }}</span>
-                      </div>
+                    <!-- 3. Course Name (Blue Box) Y ~350 -->
+                    <!-- doc.y is calculated. Box is manually placed. -->
+                    <div
+                      ref="courseBoxRef"
+                      class="cert-element cert-course-box"
+                      :style="{ fontSize: currentFontSize + 'pt' }"
+                    >
+                      <span ref="courseTextRef">{{
+                        (certificate.courseName || '').toUpperCase()
+                      }}</span>
+                    </div>
 
-                    
-                      <div 
-                        class="cert-element cert-duration"
-                        :style="{ left: isCesaroto ? '416px' : '418px', top: '406px' }"
-                      >
-                        {{ computedDuration }}
-                      </div>
+                    <div
+                      class="cert-element cert-duration"
+                      :style="{ left: isCesaroto ? '416px' : '418px', top: '406px' }"
+                    >
+                      {{ computedDuration }}
+                    </div>
 
-                      <!-- 5. Dates -->
-                      <!-- Emission: X=-80, align center. Center shift left by 80. Real position ~316px -->
-                      <div class="cert-element cert-date-mission">
-                        {{ formattedIssuedDate }}
-                      </div>
+                    <!-- 5. Dates -->
+                    <!-- Emission: X=-80, align center. Center shift left by 80. Real position ~316px -->
+                    <div class="cert-element cert-date-mission">
+                      {{ formattedIssuedDate }}
+                    </div>
 
-                      <!-- Expiration: X=186, align center. Center shift right by 186. Real position ~582px -->
-                      <div v-if="formattedExpiryDate" class="cert-element cert-date-expiry">
-                        {{ formattedExpiryDate }}.
-                      </div>
+                    <!-- Expiration: X=186, align center. Center shift right by 186. Real position ~582px -->
+                    <div v-if="formattedExpiryDate" class="cert-element cert-date-expiry">
+                      {{ formattedExpiryDate }}.
+                    </div>
 
-                      <!-- 6. Signatures (Footer Y = 500) -->
-                      <!-- Instructor (Col1 X = Center - 145 = 251) -->
-                      <div class="cert-element cert-sig-instructor-image">
-                          <!-- Image handling logic matching backend -->
-                         <img :src="instructorDetails.signatureImage" style="max-height: 80px; max-width: 190px;" />
-                      </div>
-                      <div class="cert-element cert-sig-instructor-name">
-                        {{ instructorDetails.name }}
-                      </div>
-                      <div class="cert-element cert-sig-instructor-role">
-                        <span style="white-space: pre-line">{{ instructorDetails.role }}</span>
-                      </div>
-                    
+                    <!-- 6. Signatures (Footer Y = 500) -->
+                    <!-- Instructor (Col1 X = Center - 145 = 251) -->
+                    <div class="cert-element cert-sig-instructor-image">
+                      <!-- Image handling logic matching backend -->
+                      <img
+                        :src="instructorDetails.signatureImage"
+                        style="max-height: 80px; max-width: 190px"
+                      />
+                    </div>
+                    <div class="cert-element cert-sig-instructor-name">
+                      {{ instructorDetails.name }}
+                    </div>
+                    <div class="cert-element cert-sig-instructor-role">
+                      <span style="white-space: pre-line">{{ instructorDetails.role }}</span>
+                    </div>
 
-                      <!-- Representative (Col2 X = Center + 115 = 511) -->
-                      <div class="cert-element cert-sig-rep-image">
-                          <img :src="representativeDetails.signatureImage" style="max-height: 61px; max-width: 145px;" />
-                      </div>
-                      <div class="cert-element cert-sig-rep-name">
-                        {{ representativeDetails.name }}
-                      </div>
-                      <div class="cert-element cert-sig-rep-role">
-                        Representante Legal
-                      </div>
-                   
+                    <!-- Representative (Col2 X = Center + 115 = 511) -->
+                    <div class="cert-element cert-sig-rep-image">
+                      <img
+                        :src="representativeDetails.signatureImage"
+                        style="max-height: 61px; max-width: 145px"
+                      />
+                    </div>
+                    <div class="cert-element cert-sig-rep-name">
+                      {{ representativeDetails.name }}
+                    </div>
+                    <div class="cert-element cert-sig-rep-role">Representante Legal</div>
 
-                      <!-- 7. QR Code (X=688, Y=448.5) -->
-                      <div class="cert-element cert-qr-code">
-                         <QRCodeDisplay
-                            v-if="getQRValue"
-                            :value="getQRValue"
-                            :size="70"
-                            :show-border="false"
-                            :show-background="false"
-                            :show-info="false"
-                            :show-actions="false"
-                          />
-                      </div>
+                    <!-- 7. QR Code (X=688, Y=448.5) -->
+                    <div class="cert-element cert-qr-code">
+                      <QRCodeDisplay
+                        v-if="getQRValue"
+                        :value="getQRValue"
+                        :size="70"
+                        :show-border="false"
+                        :show-background="false"
+                        :show-info="false"
+                        :show-actions="false"
+                      />
+                    </div>
 
-                      <!-- 8. Footer Text (Y=576) -->
-                      <div class="cert-element cert-footer-text">
-                        Certificado emitido por <b>FORMAR360</b> en alianza con <b>{{ allianceCompany }}</b> La autenticidad de este documento puede verificarse escaneando el código QR.
-                      </div>
-
+                    <!-- 8. Footer Text (Y=576) -->
+                    <div class="cert-element cert-footer-text">
+                      Certificado emitido por <b>FORMAR360</b> en alianza con
+                      <b>{{ allianceCompany }}</b> La autenticidad de este documento puede
+                      verificarse escaneando el código QR.
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
-
           </q-card-section>
         </q-card>
 
@@ -173,7 +171,9 @@
               <q-tab-panel name="info">
                 <div class="row q-col-gutter-lg">
                   <div class="col-12 col-md-6">
-                    <div class="text-subtitle2 q-mb-sm text-weight-medium">Información del Curso</div>
+                    <div class="text-subtitle2 q-mb-sm text-weight-medium">
+                      Información del Curso
+                    </div>
                     <q-list bordered separator class="rounded-borders">
                       <q-item>
                         <q-item-section avatar>
@@ -199,14 +199,20 @@
                         </q-item-section>
                         <q-item-section>
                           <q-item-label caption>Duración</q-item-label>
-                          <q-item-label>{{ certificate.durationHours ? certificate.durationHours + ' horas' : 'No especificada' }}</q-item-label>
+                          <q-item-label>{{
+                            certificate.durationHours
+                              ? certificate.durationHours + ' horas'
+                              : 'No especificada'
+                          }}</q-item-label>
                         </q-item-section>
                       </q-item>
                     </q-list>
                   </div>
 
                   <div class="col-12 col-md-6">
-                    <div class="text-subtitle2 q-mb-sm text-weight-medium">Información del Certificado</div>
+                    <div class="text-subtitle2 q-mb-sm text-weight-medium">
+                      Información del Certificado
+                    </div>
                     <q-list bordered separator class="rounded-borders">
                       <q-item>
                         <q-item-section avatar>
@@ -251,7 +257,11 @@
                           <q-item-label caption>Puntuación Obtenida</q-item-label>
                           <q-item-label>
                             <q-badge
-                              :color="certificate.score >= certificate.minimumScore ? 'positive' : 'negative'"
+                              :color="
+                                certificate.score >= certificate.minimumScore
+                                  ? 'positive'
+                                  : 'negative'
+                              "
                               outline
                             >
                               {{ certificate.score }}% (Mínimo: {{ certificate.minimumScore }}%)
@@ -264,7 +274,9 @@
                 </div>
 
                 <div class="q-mt-lg">
-                  <div class="text-subtitle2 q-mb-sm text-weight-medium">Información del Estudiante</div>
+                  <div class="text-subtitle2 q-mb-sm text-weight-medium">
+                    Información del Estudiante
+                  </div>
                   <q-list bordered separator class="rounded-borders">
                     <q-item>
                       <q-item-section avatar>
@@ -303,8 +315,8 @@
                         color="primary"
                         @click="copyVerificationCode"
                       >
-                          <q-tooltip>Copiar código</q-tooltip>
-                        </q-btn>
+                        <q-tooltip>Copiar código</q-tooltip>
+                      </q-btn>
                     </div>
                     <div v-else class="text-caption text-grey-6 text-center q-pa-sm">
                       Código de verificación no disponible
@@ -314,11 +326,7 @@
                   <div class="text-subtitle1 text-weight-medium q-mt-lg">Código QR</div>
                   <q-card flat bordered class="q-pa-lg">
                     <div class="row justify-center">
-                      <QRCodeDisplay
-                        v-if="getQRValue"
-                        :value="getQRValue"
-                        :size="250"
-                      />
+                      <QRCodeDisplay v-if="getQRValue" :value="getQRValue" :size="250" />
                       <div v-else class="text-negative text-center q-pa-md">
                         <q-icon name="error_outline" size="48px" class="q-mb-sm" />
                         <div class="text-caption">Error al generar el código QR.</div>
@@ -328,34 +336,34 @@
                       Escanea este código para verificar el certificado
                     </div>
                     <div class="row q-col-gutter-sm justify-center q-mt-md no-print">
-                    <div class="col-12 col-sm-auto">
-                      <q-btn
-                        color="primary"
-                        icon="download"
-                        label="Descargar PDF"
-                        :loading="isDownloading"
-                        @click="downloadPDF"
-                        unelevated
-                      />
+                      <div class="col-12 col-sm-auto">
+                        <q-btn
+                          color="primary"
+                          icon="download"
+                          label="Descargar PDF"
+                          :loading="isDownloading"
+                          @click="downloadPDF"
+                          unelevated
+                        />
+                      </div>
+                      <div class="col-12 col-sm-auto">
+                        <q-btn
+                          outline
+                          color="primary"
+                          icon="qr_code"
+                          label="Verificar"
+                          @click="showQrDialog = true"
+                        />
+                      </div>
                     </div>
-                    <div class="col-12 col-sm-auto">
-                      <q-btn
-                        outline
-                        color="primary"
-                        icon="qr_code"
-                        label="Verificar"
-                        @click="showQrDialog = true"
-                      />
-                    </div>
-                  </div>
                   </q-card>
 
                   <div class="text-body2 text-grey-7 q-mt-md text-center">
-                    Comparte este código o escanea el QR para verificar la autenticidad del certificado
+                    Comparte este código o escanea el QR para verificar la autenticidad del
+                    certificado
                   </div>
 
                   <div class="row q-gutter-sm q-mt-md">
-
                     <q-btn
                       flat
                       color="primary"
@@ -369,7 +377,9 @@
 
               <!-- History Tab -->
               <q-tab-panel name="history">
-                <div class="text-subtitle1 q-mb-md text-weight-medium">Historial de Verificaciones</div>
+                <div class="text-subtitle1 q-mb-md text-weight-medium">
+                  Historial de Verificaciones
+                </div>
                 <div v-if="verificationHistory.length === 0" class="q-mt-lg">
                   <EmptyState
                     icon="history"
@@ -439,9 +449,11 @@
                 <div class="col">
                   <div class="text-body1 text-weight-medium">
                     {{
-                      certificate.status === 'valid' ? 'Certificado Válido' :
-                      certificate.status === 'revoked' ? 'Certificado Revocado' :
-                      'Certificado Vencido'
+                      certificate.status === 'valid'
+                        ? 'Certificado Válido'
+                        : certificate.status === 'revoked'
+                          ? 'Certificado Revocado'
+                          : 'Certificado Vencido'
                     }}
                   </div>
                   <div class="text-caption text-grey-6">
@@ -477,7 +489,9 @@
                 </q-item-section>
                 <q-item-section>
                   <q-item-label caption>Fecha Retroactiva</q-item-label>
-                  <q-item-label>{{ formatDate(certificate.retroactiveDate || certificate.issuedDate) }}</q-item-label>
+                  <q-item-label>{{
+                    formatDate(certificate.retroactiveDate || certificate.issuedDate)
+                  }}</q-item-label>
                 </q-item-section>
               </q-item>
               <q-item v-if="certificate.digitalSignature">
@@ -505,24 +519,20 @@
         </q-card-section>
 
         <q-card-section class="column items-center">
-            <QRCodeDisplay
-              v-if="getQRValue"
-              :value="getQRValue"
-              :size="250"
-            />
-            <div class="text-caption text-grey-6 q-mt-md text-center">
-              Escanea este código con tu celular para verificar la autenticidad del certificado.
-            </div>
+          <QRCodeDisplay v-if="getQRValue" :value="getQRValue" :size="250" />
+          <div class="text-caption text-grey-6 q-mt-md text-center">
+            Escanea este código con tu celular para verificar la autenticidad del certificado.
+          </div>
 
-            <q-btn
-              outline
-              color="primary"
-              label="Abrir enlace directo"
-              icon="open_in_new"
-              class="q-mt-md full-width"
-              @click="openPublicVerification"
-              v-close-popup
-            />
+          <q-btn
+            outline
+            color="primary"
+            label="Abrir enlace directo"
+            icon="open_in_new"
+            class="q-mt-md full-width"
+            @click="openPublicVerification"
+            v-close-popup
+          />
         </q-card-section>
       </q-card>
     </q-dialog>
@@ -549,7 +559,7 @@
           <div class="text-subtitle1 text-white opacity-80 q-mt-sm text-center">
             Preparando material de capacitación profesional
           </div>
-          
+
           <div class="progress-bar-container q-mt-xl">
             <q-linear-progress indeterminate color="white" rounded size="12px" />
           </div>
@@ -577,8 +587,10 @@ import type { CertificateVerificationHistory } from '../../../domain/certificate
 import EmptyState from '../../../shared/components/EmptyState.vue';
 import QRCodeDisplay from '../../../shared/components/QRCodeDisplay.vue';
 import { useCertificates } from '../../../shared/composables/useCertificates';
-import { certificateFormatsService, type PdfConfig } from '../../../infrastructure/http/certificate-formats/certificate-formats.service';
-
+import {
+  certificateFormatsService,
+  type PdfConfig,
+} from '../../../infrastructure/http/certificate-formats/certificate-formats.service';
 
 const route = useRoute();
 const router = useRouter();
@@ -615,16 +627,16 @@ const currentFontSize = ref(20); // Base size in pt
 
 const adjustFontSize = () => {
   if (!courseBoxRef.value || !courseTextRef.value) return;
-  
+
   // Volvemos a 20pt como base
   currentFontSize.value = 18;
-  
+
   setTimeout(() => {
     if (!courseBoxRef.value || !courseTextRef.value) return;
-    
+
     let fontSize = 18;
     const maxWidth = 640; // Aumentamos el límite para que no se encoja tanto
-    
+
     // Mientras el texto sea más ancho que el espacio permitido, se reduce la letra
     // Pero ponemos un límite mínimo de 10pt para que siga siendo legible
     while (courseTextRef.value.scrollWidth > maxWidth && fontSize > 12) {
@@ -637,7 +649,11 @@ const adjustFontSize = () => {
 const isCesaroto = computed(() => {
   if (!certificate.value) return false;
   const title = (certificate.value.courseName || '').toLowerCase().trim();
-  return (title.includes('transporte') && (title.includes('mercancias') || title.includes('mercancías')) && title.includes('peligrosas'));
+  return (
+    title.includes('transporte') &&
+    (title.includes('mercancias') || title.includes('mercancías')) &&
+    title.includes('peligrosas')
+  );
 });
 
 // BACKGROUND DINAMICO
@@ -649,18 +665,19 @@ const certificateBg = computed(() => {
   // Logic: Alimentos -> Fondo Alimentos
   // Logic: Alimentos -> Fondo Alimentos
   if (
-      ((title.includes('manipulacion') || title.includes('manipulación')) && title.includes('alimentos')) ||
-      (title.includes('primeros') && title.includes('auxilios'))
+    ((title.includes('manipulacion') || title.includes('manipulación')) &&
+      title.includes('alimentos')) ||
+    (title.includes('primeros') && title.includes('auxilios'))
   ) {
-      return fondoAlimentos;
+    return fondoAlimentos;
   }
   // Logic: Sustancias / Mercancías Peligrosas -> Fondo Sustancias
   else if (
-      title.includes('transporte') &&
-      (title.includes('mercancias') || title.includes('mercancías')) &&
-      title.includes('peligrosas')
+    title.includes('transporte') &&
+    (title.includes('mercancias') || title.includes('mercancías')) &&
+    title.includes('peligrosas')
   ) {
-       return fondoSustanciasP;
+    return fondoSustanciasP;
   }
 
   return fondoGeneral;
@@ -671,7 +688,8 @@ const isAlimentos = computed(() => {
   if (!certificate.value) return false;
   const title = (certificate.value.courseName || '').toLowerCase().trim();
   return (
-    ((title.includes('manipulacion') || title.includes('manipulación')) && title.includes('alimentos')) ||
+    ((title.includes('manipulacion') || title.includes('manipulación')) &&
+      title.includes('alimentos')) ||
     (title.includes('primeros') && title.includes('auxilios'))
   );
 });
@@ -679,7 +697,7 @@ const isAlimentos = computed(() => {
 // Obtener la configuración dinámica según el tipo de curso
 const dynamicData = computed(() => {
   if (!certificateConfig.value) return null;
-  
+
   if (isAlimentos.value && certificateConfig.value.alimentos?.dataDinamica) {
     return certificateConfig.value.alimentos.dataDinamica;
   } else if (isCesaroto.value && certificateConfig.value.sustancias?.dataDinamica) {
@@ -702,18 +720,22 @@ const allianceCompany = computed(() => {
   const title = (certificate.value.courseName || '').toLowerCase().trim();
 
   if (
-      ((title.includes('manipulacion') || title.includes('manipulación')) && title.includes('alimentos')) ||
-      (title.includes('primeros') && title.includes('auxilios'))
+    ((title.includes('manipulacion') || title.includes('manipulación')) &&
+      title.includes('alimentos')) ||
+    (title.includes('primeros') && title.includes('auxilios'))
   ) {
-      return 'IPS CONFIANZA.';
+    return 'IPS CONFIANZA.';
   } else if (
-      (title.includes('curso') && (title.includes('basico') || title.includes('básico')) && title.includes('transporte') &&
+    (title.includes('curso') &&
+      (title.includes('basico') || title.includes('básico')) &&
+      title.includes('transporte') &&
       (title.includes('mercancias') || title.includes('mercancías')) &&
-      title.includes('peligrosas')) || (title.includes('transporte') &&
+      title.includes('peligrosas')) ||
+    (title.includes('transporte') &&
       (title.includes('mercancias') || title.includes('mercancías')) &&
       title.includes('peligrosas'))
   ) {
-      return 'CEASAROTO.';
+    return 'CEASAROTO.';
   }
   return 'ANDAR DEL LLANO.';
 });
@@ -727,101 +749,103 @@ const signatureImages: Record<string, string> = {
 };
 
 const instructorDetails = computed(() => {
-    // Valores por defecto según el tipo de curso
-    let defaultName = 'Viviana Paola Rojas Hincapie';
-    let defaultRole = 'Instructor / Entrenador\nTSA REG 48207\nLicencia SST';
-    let defaultSignatureImage = firmaVivianaRojas;
+  // Valores por defecto según el tipo de curso
+  let defaultName = 'Viviana Paola Rojas Hincapie';
+  let defaultRole = 'Instructor / Entrenador\nTSA REG 48207\nLicencia SST';
+  let defaultSignatureImage = firmaVivianaRojas;
 
-    if (isAlimentos.value) {
-      defaultName = 'Nini Johana Peña Vanegaz';
-      defaultRole = 'Instructor / Entrenador\nTSA RM 30937322\nLicencia SST';
-      defaultSignatureImage = firmaNiniPena;
-    }
+  if (isAlimentos.value) {
+    defaultName = 'Nini Johana Peña Vanegaz';
+    defaultRole = 'Instructor / Entrenador\nTSA RM 30937322\nLicencia SST';
+    defaultSignatureImage = firmaNiniPena;
+  }
 
-    // Usar datos dinámicos si están disponibles
-    if (dynamicData.value?.instructor) {
-      const { nombre, rol, firmaImagen } = dynamicData.value.instructor;
-      return {
-        name: nombre || defaultName,
-        role: rol || defaultRole,
-        signatureImage: firmaImagen && signatureImages[firmaImagen] 
-          ? signatureImages[firmaImagen] 
+  // Usar datos dinámicos si están disponibles
+  if (dynamicData.value?.instructor) {
+    const { nombre, rol, firmaImagen } = dynamicData.value.instructor;
+    return {
+      name: nombre || defaultName,
+      role: rol || defaultRole,
+      signatureImage:
+        firmaImagen && signatureImages[firmaImagen]
+          ? signatureImages[firmaImagen]
           : defaultSignatureImage,
-      };
-    }
-
-    return { 
-      name: defaultName, 
-      role: defaultRole, 
-      signatureImage: defaultSignatureImage 
     };
+  }
+
+  return {
+    name: defaultName,
+    role: defaultRole,
+    signatureImage: defaultSignatureImage,
+  };
 });
 
 const representativeDetails = computed(() => {
-    // Valores por defecto según el tipo de curso
-    let defaultName = 'Alfonso Alejandro Velasco Reyes';
-    let defaultSignatureImage = firmaAlfonsoVelasco;
+  // Valores por defecto según el tipo de curso
+  let defaultName = 'Alfonso Alejandro Velasco Reyes';
+  let defaultSignatureImage = firmaAlfonsoVelasco;
 
-    if (isAlimentos.value) {
-      defaultName = 'Francy Dayany Gonzalez Galindo';
-      defaultSignatureImage = firmaFrancyGonzalez;
-    }
+  if (isAlimentos.value) {
+    defaultName = 'Francy Dayany Gonzalez Galindo';
+    defaultSignatureImage = firmaFrancyGonzalez;
+  }
 
-    // Usar datos dinámicos si están disponibles
-    if (dynamicData.value?.representante) {
-      const { nombre, firmaImagen } = dynamicData.value.representante;
-      return {
-        name: nombre || defaultName,
-        signatureImage: firmaImagen && signatureImages[firmaImagen] 
-          ? signatureImages[firmaImagen] 
+  // Usar datos dinámicos si están disponibles
+  if (dynamicData.value?.representante) {
+    const { nombre, firmaImagen } = dynamicData.value.representante;
+    return {
+      name: nombre || defaultName,
+      signatureImage:
+        firmaImagen && signatureImages[firmaImagen]
+          ? signatureImages[firmaImagen]
           : defaultSignatureImage,
-      };
-    }
-
-    return { 
-      name: defaultName, 
-      signatureImage: defaultSignatureImage 
     };
+  }
+
+  return {
+    name: defaultName,
+    signatureImage: defaultSignatureImage,
+  };
 });
 
 const computedDuration = computed(() => {
-    // Usar datos dinámicos si están disponibles
-    if (dynamicData.value?.duracionHoras) {
-      return dynamicData.value.duracionHoras;
-    }
+  // Usar datos dinámicos si están disponibles
+  if (dynamicData.value?.duracionHoras) {
+    return dynamicData.value.duracionHoras;
+  }
 
-    // Fallback a valores por defecto
-    if (!certificate.value) return '20';
-    const tituloForDuration = (certificate.value.courseName || '').toLowerCase().trim();
+  // Fallback a valores por defecto
+  if (!certificate.value) return '20';
+  const tituloForDuration = (certificate.value.courseName || '').toLowerCase().trim();
 
-    if (
-        tituloForDuration.includes('curso') &&
-        (tituloForDuration.includes('basico') || tituloForDuration.includes('básico')) &&
-        tituloForDuration.includes('transporte') &&
-        (tituloForDuration.includes('mercancias') || tituloForDuration.includes('mercancías')) &&
-        tituloForDuration.includes('peligrosas')
-    ) {
-        return '60';
-    } else if (
-        (tituloForDuration.includes('manipulacion') || tituloForDuration.includes('manipulación')) &&
-        tituloForDuration.includes('alimentos')
-    ) {
-        return '10';
-    }
-    return '20';
+  if (
+    tituloForDuration.includes('curso') &&
+    (tituloForDuration.includes('basico') || tituloForDuration.includes('básico')) &&
+    tituloForDuration.includes('transporte') &&
+    (tituloForDuration.includes('mercancias') || tituloForDuration.includes('mercancías')) &&
+    tituloForDuration.includes('peligrosas')
+  ) {
+    return '60';
+  } else if (
+    (tituloForDuration.includes('manipulacion') || tituloForDuration.includes('manipulación')) &&
+    tituloForDuration.includes('alimentos')
+  ) {
+    return '10';
+  }
+  return '20';
 });
 
 const formattedIssuedDate = computed(() => {
-    if (!certificate.value?.issuedDate) return '';
-    const date = new Date(certificate.value.issuedDate);
-    // Locale 'es-ES' with options specific to PDF
-    return date.toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: '2-digit' });
+  if (!certificate.value?.issuedDate) return '';
+  const date = new Date(certificate.value.issuedDate);
+  // Locale 'es-ES' with options specific to PDF
+  return date.toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: '2-digit' });
 });
 
 const formattedExpiryDate = computed(() => {
-    if (!certificate.value?.expiryDate) return '';
-    const date = new Date(certificate.value.expiryDate);
-    return date.toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: '2-digit' });
+  if (!certificate.value?.expiryDate) return '';
+  const date = new Date(certificate.value.expiryDate);
+  return date.toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: '2-digit' });
 });
 
 // Funciones
@@ -832,7 +856,6 @@ const formatDate = (date: string) => {
     day: 'numeric',
   });
 };
-
 
 function formatDateTime(dateString: string): string {
   try {
@@ -848,8 +871,6 @@ function formatDateTime(dateString: string): string {
     return dateString;
   }
 }
-
-
 
 /**
  * Determina la URL base correcta.
@@ -874,9 +895,6 @@ function getBaseUrl(): string {
 
   return window.location.origin;
 }
-
-
-
 
 async function downloadPDF() {
   if (!certificate.value) {
@@ -912,10 +930,6 @@ async function downloadPDF() {
   }
 }
 
-
-
-
-
 function copyVerificationCode() {
   if (!certificate.value) return;
   void navigator.clipboard.writeText(certificate.value.verificationCode);
@@ -926,8 +940,6 @@ function copyVerificationCode() {
   });
 }
 
-
-
 function openPublicVerification() {
   if (!certificate.value) return;
 
@@ -935,15 +947,15 @@ function openPublicVerification() {
   const code = certificate.value.verificationCode;
 
   if (!code && certificate.value.publicVerificationUrl?.startsWith('http')) {
-      window.open(certificate.value.publicVerificationUrl, '_blank');
-      return;
+    window.open(certificate.value.publicVerificationUrl, '_blank');
+    return;
   }
 
   // SOLUCIÓN REAL: Limpieza radical con Regex para asegurar formato BASE_URL/#/verify/TOKEN
   // Eliminamos TODO lo que sea # o / al final de la URL base
   const cleanBaseUrl = baseUrl.replace(/#.*$/, '').replace(/\/+$/, '');
   const url = `${cleanBaseUrl}/#/verify/${code}`;
-  
+
   console.log('� [SOLUCIÓN REAL] Abriendo URL:', url);
   window.open(url, '_blank');
 }
@@ -953,66 +965,68 @@ onMounted(async () => {
   await loadCertificate(certificateId);
   adjustFontSize();
 });
-  
 
 function getValidityStatus(expiryDate?: string) {
   if (!expiryDate) return 'Sin fecha';
-  
+
   const expiry = new Date(expiryDate);
   const now = new Date();
-  
+
   if (expiry < now) return 'Vencido';
-  
+
   const days = Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-  
+
   if (days < 30) return 'Por Vencer';
   return 'Vigente';
 }
-  
+
 function getValidityMessage(expiryDate?: string) {
   if (!expiryDate) return 'Sin fecha de vencimiento';
-  
+
   const expiry = new Date(expiryDate);
   const now = new Date();
-  
+
   if (expiry < now) return `Venció el ${formatDate(expiryDate)}`;
-  
+
   const days = Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
   return `Vence en ${days} días (${formatDate(expiryDate)})`;
 }
 
 function getValidityColor(expiryDate?: string) {
   if (!expiryDate) return 'grey';
-  
+
   const expiry = new Date(expiryDate);
   const now = new Date();
-  
+
   if (expiry < now) return 'negative';
-  
+
   const days = Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-  
+
   if (days < 30) return 'warning';
   return 'positive';
 }
 
 function getValidityProgress(expiryDate?: string) {
   if (!expiryDate) return 0;
-  
+
   // Logic: 100% is newly issued (e.g. 1 year ago), 0% is expired.
   // Ideally we need start date, but let's assume 1 year validity if not provided, or logic based on current date.
   // For now simpler: Status logic.
   // Let's rely on remaining days vs 365.
-  
+
   const expiry = new Date(expiryDate);
   const now = new Date();
-  
+
   if (expiry < now) return 1; // Full bar but red? Or 1 to show complete?
-                              // If expired, maybe return 1 (100% time used)
-  
-  const daysRemaining = Math.max(0, Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
+  // If expired, maybe return 1 (100% time used)
+
+  const daysRemaining = Math.max(
+    0,
+    Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)),
+  );
   const totalDays = 365; // Assumption
-  
-  const progress = Math.max(0, 1 - (daysRemaining / totalDays));
+
+  const progress = Math.max(0, 1 - daysRemaining / totalDays);
   return progress;
 }
 
@@ -1031,22 +1045,23 @@ const getQRValue = computed(() => {
 
   // PRIORIDAD 1: Construcción Dinámica (Blindada contra doble hash)
   if (certificate.value.verificationCode) {
-      const code = certificate.value.verificationCode;
-      const rawBase = getBaseUrl();
+    const code = certificate.value.verificationCode;
+    const rawBase = getBaseUrl();
 
-      try {
-        // Regex /#.*$/ elimina el primer # y todo lo que le sigue
-        // Regex /\/+$/ elimina slashes finales
-        const cleanBase = rawBase.replace(/#.*$/, '').replace(/\/+$/, '');
-        const finalUrl = `${cleanBase}/#/verify/${code}`;
+    try {
+      // Regex /#.*$/ elimina el primer # y todo lo que le sigue
+      // Regex /\/+$/ elimina slashes finales
+      const cleanBase = rawBase.replace(/#.*$/, '').replace(/\/+$/, '');
+      const finalUrl = `${cleanBase}/#/verify/${code}`;
 
-        console.log('🎯 [QR DINÁMICO] URL Final:', finalUrl);
-        return finalUrl;
-      } catch (e) {
-         console.error('❌ Error construyendo QR:', e);
-         const fallback = getBaseUrl().split('#')[0].replace(/\/+$/, '');
-         return `${fallback}/#/verify/${code}`;
-      }
+      console.log('🎯 [QR DINÁMICO] URL Final:', finalUrl);
+      return finalUrl;
+    } catch (e) {
+      console.error('❌ Error construyendo QR:', e);
+      const base = getBaseUrl();
+      const fallback = (base.split('#')[0] ?? base).replace(/\/+$/, '');
+      return `${fallback}/#/verify/${code}`;
+    }
   }
 
   // PRIORIDAD 2: Solo si falla lo anterior, usamos la imagen del backend
@@ -1057,8 +1072,6 @@ const getQRValue = computed(() => {
 
   return certificate.value.publicVerificationUrl || null;
 });
-
-
 
 // Cargar configuración dinámica de certificados
 async function loadCertificateConfig() {
@@ -1084,22 +1097,22 @@ onMounted(async () => {
 
     // Mock History Data for testing
     if (verificationHistory.value.length === 0 && certificateId) {
-       verificationHistory.value = [
-         {
-           id: 'VER-' + Math.random().toString(36).substring(7).toUpperCase(),
-           certificateId: certificateId,
-           verifiedAt: new Date(Date.now() - 3600000).toISOString(),
-           verifiedBy: '192.168.1.10',
-           userAgent: 'Chrome on Windows',
-         },
-         {
-           id: 'VER-' + Math.random().toString(36).substring(7).toUpperCase(),
-           certificateId: certificateId,
-           verifiedAt: new Date(Date.now() - 86400000).toISOString(),
-           verifiedBy: '10.0.0.5',
-           userAgent: 'Safari on iPhone',
-         }
-       ];
+      verificationHistory.value = [
+        {
+          id: 'VER-' + Math.random().toString(36).substring(7).toUpperCase(),
+          certificateId: certificateId,
+          verifiedAt: new Date(Date.now() - 3600000).toISOString(),
+          verifiedBy: '192.168.1.10',
+          userAgent: 'Chrome on Windows',
+        },
+        {
+          id: 'VER-' + Math.random().toString(36).substring(7).toUpperCase(),
+          certificateId: certificateId,
+          verifiedAt: new Date(Date.now() - 86400000).toISOString(),
+          verifiedBy: '10.0.0.5',
+          userAgent: 'Safari on iPhone',
+        },
+      ];
     }
 
     // Cargar el PDF después de cargar el certificado
@@ -1210,7 +1223,7 @@ body.body--dark code {
   background-position: center;
   background-repeat: no-repeat;
   position: relative;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
   color: #292561 !important;
   font-family: 'Montserrat', sans-serif !important;
   overflow: hidden;
@@ -1260,7 +1273,7 @@ body.body--dark code {
 .cert-main-title {
   font-size: 30px;
   font-weight: bold;
-  color: #0D47A1;
+  color: #0d47a1;
   margin-top: 15px;
   margin-bottom: 20px;
 }
@@ -1294,16 +1307,16 @@ body.body--dark code {
 
 /* Logo Styles */
 .cert-logos-row {
-    position: absolute;
-    top: 40px;   /* Adjusted to match PDF Y=30 (High Position for Confianza) */
-    right: 33px; /* Match PDF rightAnchorX 767 */
-    display: flex;
-    justify-content: flex-end;
-    align-items: flex-start; /* Permite alinear independientemente verticalmente */
-    width: auto;
-    margin: 0;
-    padding: 0;
-    z-index: 10;
+  position: absolute;
+  top: 40px; /* Adjusted to match PDF Y=30 (High Position for Confianza) */
+  right: 33px; /* Match PDF rightAnchorX 767 */
+  display: flex;
+  justify-content: flex-end;
+  align-items: flex-start; /* Permite alinear independientemente verticalmente */
+  width: auto;
+  margin: 0;
+  padding: 0;
+  z-index: 10;
 }
 
 /* Version Indicator */
@@ -1311,13 +1324,13 @@ body.body--dark code {
   position: fixed;
   bottom: 0px;
   right: 0px;
-  background: rgba(0,0,0,0.5);
+  background: rgba(0, 0, 0, 0.5);
   color: white;
   font-size: 8px;
   padding: 2px 5px;
   z-index: 9999;
   pointer-events: none;
-  content: "v2026.01.21 - LAYOUT TWEAK 2";
+  content: 'v2026.01.21 - LAYOUT TWEAK 2';
 }
 
 /* Scoped styles for fixed layout */
@@ -1350,14 +1363,14 @@ body.body--dark code {
 
 /* The Fixed Canvas - Matches PDFKit Letter Landscape EXACTLY */
 .certificate-html-view {
-  width: 792px;  /* 11 inches * 72 points */
+  width: 792px; /* 11 inches * 72 points */
   height: 612px; /* 8.5 inches * 72 points */
   position: relative;
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
   background-color: white;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
   /* Ensure fonts match PDF */
   font-family: 'Montserrat', sans-serif;
   color: #292561; /* Default blue color from backend */
@@ -1374,20 +1387,20 @@ body.body--dark code {
 /* --- Coordinates Matching pdf-generator.service.ts --- */
 
 /* Student Name: Y ~ 230px (Approximation based on flow)
-   Backend: Y=140 + something. 
+   Backend: Y=140 + something.
    Let's approximate visual placement or calculate precisely?
    PDF Header Y=140. Main Title.
    Then "Certifica Que".
-   Then Name (Y += 90). So Name ~ 280-300? 
+   Then Name (Y += 90). So Name ~ 280-300?
    Let's use visual placement from existing PDF or fine tune.
    Assuming Y=260px for Name based on "center" visual.
 */
 /* Student Name: Y ~ 230px (Approximation based on flow)
-   Backend: Y=140 + something. 
+   Backend: Y=140 + something.
    Let's approximate visual placement or calculate precisely?
    PDF Header Y=140. Main Title.
    Then "Certifica Que".
-   Then Name (Y += 90). So Name ~ 280-300? 
+   Then Name (Y += 90). So Name ~ 280-300?
    Let's use visual placement from existing PDF or fine tune.
    Assuming Y=260px for Name based on "center" visual.
 */
@@ -1406,10 +1419,10 @@ body.body--dark code {
   width: 100%;
   font-family: 'Montserrat', sans-serif;
   font-weight: 700;
-  font-size: 14.5pt; 
+  font-size: 14.5pt;
 }
 
-/* Course Name Box 
+/* Course Name Box
    Backend: Y = doc.y - 68.5. Variable.
    Roughly halfway down? ~340px.
 */
@@ -1417,11 +1430,11 @@ body.body--dark code {
   top: 366px; /* Bajado 10px desde la posición anterior (358px) */
   left: 50%;
   transform: translateX(-50%);
-  color: white; 
+  color: white;
   font-family: 'Montserrat', sans-serif;
   font-weight: 700;
   white-space: nowrap;
-  
+
   /* Sin fondo ni sombra para usar el del SVG */
   width: 680px;
   height: 44px; /* Aumentado un poco el alto para dar aire a la letra de 20pt */
@@ -1432,13 +1445,13 @@ body.body--dark code {
   box-sizing: border-box;
 }
 
-/* Duration 
+/* Duration
    Backend: Y center - 3.5? No doc.y.
    Let's place it roughly. Y ~ 400px.
    Offset Right 47px from center.
-   Center = 396. Left = 443. 
+   Center = 396. Left = 443.
    Use left: 50%; margin-left: 47px; transform: translateX(-50%);
-   
+
    Wait, if we use text-align center on width 100%, we can just shift content?
    Better: Left = 50% + 47px ? No.
    Center point is at 396 + 47 = 443px.
@@ -1477,12 +1490,12 @@ body.body--dark code {
 .cert-sig-instructor-image {
   top: 450px; /* footerY - 45 + yOffset(-10) = 445 ~ 450 */
   left: 251px;
-  transform: translateX(-50%); 
-  /* Visual adjustment: viviana shifts 50px right? 
-     Backend: ((col1X - 30) - (w/2)) + 50. 
+  transform: translateX(-50%);
+  /* Visual adjustment: viviana shifts 50px right?
+     Backend: ((col1X - 30) - (w/2)) + 50.
      Center of image is shifted 50px right from col1 center?
      Let's handle specific offsets in computed props if needed or just center col1.
-     User said "positions indicated". 
+     User said "positions indicated".
      I'll center on 251px for now.
   */
   display: flex;
@@ -1497,10 +1510,9 @@ body.body--dark code {
   font-family: 'Montserrat', sans-serif;
   font-weight: 700;
   font-size: 10pt; /* Backend default? Font size not explicitly 22 here. 12? */
- 
+
   padding-top: 3px;
 }
-
 
 .cert-sig-instructor-role {
   top: 513px; /* footerY + 20 */
@@ -1519,7 +1531,7 @@ body.body--dark code {
 /* Rep Col2 X = 511px */
 .cert-sig-rep-image {
   top: 455px; /* footerY - 45 */
-  left: 571px; /* Backend: (col2X + 60) ... wait. 
+  left: 571px; /* Backend: (col2X + 60) ... wait.
      Backend: "Adjust X to center over the name text box (col2X - 70 + 260/2 = col2X + 60)"
      Col2X = 511.
      Center of Rep Block = 511 + 60 = 571px.
@@ -1541,8 +1553,6 @@ body.body--dark code {
   padding-top: 3px;
 }
 
-
-
 .cert-sig-rep-role {
   top: 513px;
   left: 571px;
@@ -1554,7 +1564,7 @@ body.body--dark code {
 .cert-qr-code {
   top: 432.5px;
   left: 671px;
-  /* No transform translate because X is top-left corner in PDFKit usually? 
+  /* No transform translate because X is top-left corner in PDFKit usually?
      "doc.image(..., qrX, qrY)". Yes, top-left.
      So left: 688px is correct.
   */
@@ -1608,8 +1618,14 @@ body.body--dark code {
 }
 
 @keyframes graduate {
-  0%, 100% { transform: translateY(0) rotate(0deg) scale(1); }
-  50% { transform: translateY(-30px) rotate(8deg) scale(1.15); filter: drop-shadow(0 10px 15px rgba(255,255,255,0.3)); }
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg) scale(1);
+  }
+  50% {
+    transform: translateY(-30px) rotate(8deg) scale(1.15);
+    filter: drop-shadow(0 10px 15px rgba(255, 255, 255, 0.3));
+  }
 }
 
 .book-loader {
@@ -1625,19 +1641,32 @@ body.body--dark code {
   animation: flip 1.2s infinite ease-in-out;
 }
 
-.book-page:nth-child(2) { animation-delay: 0.15s; }
-.book-page:nth-child(3) { animation-delay: 0.3s; }
+.book-page:nth-child(2) {
+  animation-delay: 0.15s;
+}
+.book-page:nth-child(3) {
+  animation-delay: 0.3s;
+}
 
 @keyframes flip {
-  0%, 100% { transform: scaleY(1); opacity: 0.3; }
-  50% { transform: scaleY(1.8); opacity: 1; }
+  0%,
+  100% {
+    transform: scaleY(1);
+    opacity: 0.3;
+  }
+  50% {
+    transform: scaleY(1.8);
+    opacity: 1;
+  }
 }
 
 /* Vue Transitions */
-.fade-enter-active, .fade-leave-active {
+.fade-enter-active,
+.fade-leave-active {
   transition: opacity 0.5s ease;
 }
-.fade-enter-from, .fade-leave-to {
+.fade-enter-from,
+.fade-leave-to {
   opacity: 0;
 }
 </style>

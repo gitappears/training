@@ -37,10 +37,7 @@ export const evaluationAttemptsService: IEvaluationAttemptRepository = {
   /**
    * Finalizar un intento de evaluación
    */
-  async finishAttempt(
-    evaluacionId: number,
-    intentoId: number,
-  ): Promise<EvaluationAttemptResult> {
+  async finishAttempt(evaluacionId: number, intentoId: number): Promise<EvaluationAttemptResult> {
     const response = await api.post<EvaluationAttempt>(
       `/evaluaciones/${evaluacionId}/intentos/${intentoId}/finish`,
     );
@@ -62,12 +59,9 @@ export const evaluationAttemptsService: IEvaluationAttemptRepository = {
    * Obtener todos los intentos de un estudiante para una evaluación
    */
   async getAttempts(evaluacionId: number, inscripcionId: number): Promise<EvaluationAttempt[]> {
-    const response = await api.get<EvaluationAttempt[]>(
-      `/evaluaciones/${evaluacionId}/intentos`,
-      {
-        params: { inscripcionId },
-      },
-    );
+    const response = await api.get<EvaluationAttempt[]>(`/evaluaciones/${evaluacionId}/intentos`, {
+      params: { inscripcionId },
+    });
     return response.data.map(mapBackendToDomain);
   },
 
@@ -85,23 +79,42 @@ export const evaluationAttemptsService: IEvaluationAttemptRepository = {
   },
 };
 
+/** Forma del intento tal como viene del backend */
+interface BackendAttemptLike {
+  id: number;
+  evaluacionId?: number;
+  evaluacion?: { id: number };
+  inscripcionId?: number;
+  inscripcion?: { id: number };
+  numeroIntento: number;
+  fechaInicio: string;
+  fechaFinalizacion?: string;
+  puntajeObtenido?: number;
+  puntajeTotal?: number;
+  porcentaje?: number;
+  aprobado?: boolean;
+  tiempoUtilizadoMinutos?: number;
+  estado?: string;
+}
+
 /**
  * Mapea los datos del backend al modelo de dominio
  */
-function mapBackendToDomain(backendData: any): EvaluationAttempt {
+function mapBackendToDomain(backendData: BackendAttemptLike): EvaluationAttempt {
   return {
     id: backendData.id,
-    evaluacionId: backendData.evaluacion?.id ?? backendData.evaluacionId,
-    inscripcionId: backendData.inscripcion?.id ?? backendData.inscripcionId,
+    evaluacionId: backendData.evaluacion?.id ?? backendData.evaluacionId ?? 0,
+    inscripcionId: backendData.inscripcion?.id ?? backendData.inscripcionId ?? 0,
     numeroIntento: backendData.numeroIntento,
     fechaInicio: backendData.fechaInicio,
     fechaFinalizacion: backendData.fechaFinalizacion,
     puntajeObtenido: Number(backendData.puntajeObtenido ?? 0),
     puntajeTotal: Number(backendData.puntajeTotal ?? 0),
-    porcentaje: backendData.porcentaje ? Number(backendData.porcentaje) : undefined,
+    porcentaje: backendData.porcentaje != null ? Number(backendData.porcentaje) : undefined,
     aprobado: backendData.aprobado ?? undefined,
     tiempoUtilizadoMinutos: backendData.tiempoUtilizadoMinutos ?? undefined,
-    estado: backendData.estado ?? 'en_progreso',
+    estado: (backendData.estado === 'completado' || backendData.estado === 'abandonado'
+      ? backendData.estado
+      : 'en_progreso') as EvaluationAttempt['estado'],
   };
 }
-

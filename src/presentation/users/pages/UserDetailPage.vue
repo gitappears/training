@@ -433,11 +433,11 @@
       </q-tab-panels>
     </q-card>
 
-    <!-- Diálogo para asignar curso -->
+    <!-- Diálogo para asignar curso (personaId solo se pasa si está definido, por exactOptionalPropertyTypes) -->
     <AssignCourseDialog
       v-model:open="assignCourseDialogOpen"
       :user-id="userId"
-      :persona-id="user.personaId"
+      v-bind="user.personaId != null ? { personaId: user.personaId } : {}"
       :assigned-course-ids="assignedCourses.map((c) => c.id)"
       @assigned="handleCourseAssigned"
     />

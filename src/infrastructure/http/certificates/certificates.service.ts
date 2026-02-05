@@ -491,6 +491,7 @@ export class CertificatesService implements ICertificateRepository {
           numeroDocumento: string;
           nombreCurso: string;
           estado: string;
+          idCapacitacion?: number | string;
         };
       }>(`/public/verify/${token}`);
 
@@ -499,7 +500,7 @@ export class CertificatesService implements ICertificateRepository {
         certificate: response.data.certificado
           ? {
               id: '',
-              courseId: (response.data.certificado as any).idCapacitacion || '',
+              courseId: String(response.data.certificado.idCapacitacion ?? ''),
               courseName: response.data.certificado.nombreCurso,
               studentId: '',
               studentName: response.data.certificado.nombreCompleto,

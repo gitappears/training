@@ -3,23 +3,14 @@
     <!-- Header con breadcrumb y título -->
     <div class="q-mb-xl">
       <div class="row items-center q-mb-md">
-        <q-btn
-          flat
-          round
-          icon="arrow_back"
-          color="primary"
-          @click="$router.back()"
-          class="q-mr-sm"
-        >
+        <q-btn flat round icon="arrow_back" color="primary" @click="$router.back()" class="q-mr-sm">
           <q-tooltip>Volver</q-tooltip>
         </q-btn>
         <div class="col">
-          <div class="text-h4 text-weight-bold text-primary q-mb-xs">
-            Crear Nueva Capacitación
-          </div>
+          <div class="text-h4 text-weight-bold text-primary q-mb-xs">Crear Nueva Capacitación</div>
           <div class="text-body1 text-grey-7">
-            Completa el formulario con la información de la capacitación que estará disponible para tus usuarios.
-            Puedes guardar como borrador y completar más tarde.
+            Completa el formulario con la información de la capacitación que estará disponible para
+            tus usuarios. Puedes guardar como borrador y completar más tarde.
           </div>
         </div>
       </div>
@@ -39,6 +30,11 @@ import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 import TrainingForm, { type TrainingFormModel } from '../components/TrainingForm.vue';
+
+/** Ref del formulario con métodos expuestos por defineExpose */
+interface TrainingFormRefInstance {
+  resetSubmitting(): void;
+}
 import type { Material } from '../../../shared/components/MaterialViewer.vue';
 import { TrainingUseCasesFactory } from '../../../application/training/training.use-cases.factory';
 import { trainingsService } from '../../../infrastructure/http/trainings/trainings.service';
@@ -61,7 +57,7 @@ const { extractRelativeUrl, isExternalLink } = useMaterialUrl();
 
 // Estado para prevenir doble submit
 const isSubmitting = ref(false);
-const trainingFormRef = ref<InstanceType<typeof TrainingForm> | null>(null);
+const trainingFormRef = ref<TrainingFormRefInstance | null>(null);
 
 async function handleSubmit(payload: TrainingFormModel, formMaterials: Material[]) {
   // Protección adicional contra doble submit
@@ -70,7 +66,7 @@ async function handleSubmit(payload: TrainingFormModel, formMaterials: Material[
   }
 
   isSubmitting.value = true;
-  
+
   try {
     // FAL-002: Validar tipo de capacitación antes de enviar
     if (!payload.type || !isValidTrainingType(payload.type)) {
@@ -85,7 +81,8 @@ async function handleSubmit(payload: TrainingFormModel, formMaterials: Material[
     }
 
     // Obtener el usuario actual para usuario_creacion
-    const usuarioCreacion = authStore.profile?.persona?.email || authStore.profile?.username || 'system';
+    const usuarioCreacion =
+      authStore.profile?.persona?.email || authStore.profile?.username || 'system';
 
     // Mapear el formulario al DTO del backend
     const dto: CreateTrainingDto = {
@@ -217,14 +214,18 @@ async function handleSubmit(payload: TrainingFormModel, formMaterials: Material[
       if (payload.evaluationInline.descripcion) {
         evaluacionDto.descripcion = payload.evaluationInline.descripcion;
       }
-      if (payload.evaluationInline.tiempoLimiteMinutos !== undefined && payload.evaluationInline.tiempoLimiteMinutos !== null) {
+      if (
+        payload.evaluationInline.tiempoLimiteMinutos !== undefined &&
+        payload.evaluationInline.tiempoLimiteMinutos !== null
+      ) {
         evaluacionDto.tiempoLimiteMinutos = payload.evaluationInline.tiempoLimiteMinutos;
       }
 
       dto.evaluacion = evaluacionDto;
     }
 
-    const createTrainingUseCase = TrainingUseCasesFactory.getCreateTrainingUseCase(trainingsService);
+    const createTrainingUseCase =
+      TrainingUseCasesFactory.getCreateTrainingUseCase(trainingsService);
     const created = await createTrainingUseCase.execute(dto);
 
     // Vincular evaluación existente si fue seleccionada (RF-09) - solo si no hay evaluación inline
@@ -238,7 +239,8 @@ async function handleSubmit(payload: TrainingFormModel, formMaterials: Material[
         console.error('Error al vincular evaluación:', evaluationError);
         $q.notify({
           type: 'warning',
-          message: 'Capacitación creada pero la evaluación no se pudo vincular. Puede vincularla manualmente después.',
+          message:
+            'Capacitación creada pero la evaluación no se pudo vincular. Puede vincularla manualmente después.',
         });
       }
     }
@@ -249,13 +251,13 @@ async function handleSubmit(payload: TrainingFormModel, formMaterials: Material[
         const materialPromises = formMaterials.map((material) => {
           // Extraer URL relativa si es un archivo local, o mantener URL completa si es enlace externo
           let materialUrl = material.url;
-          
+
           // Tipo extendido para incluir URL relativa temporal
           interface MaterialWithRelativeUrl extends Material {
             _relativeUrl?: string;
           }
           const materialWithRelative = material as MaterialWithRelativeUrl;
-          
+
           // Si el material tiene _relativeUrl (archivo subido), usar esa
           // Si no, verificar si es un enlace externo o extraer la URL relativa
           if (materialWithRelative._relativeUrl) {
@@ -267,7 +269,7 @@ async function handleSubmit(payload: TrainingFormModel, formMaterials: Material[
             // Para archivos locales, extraer la URL relativa
             materialUrl = extractRelativeUrl(material.url);
           }
-          
+
           const materialDto: CreateMaterialDto = {
             capacitacionId: parseInt(created.id),
             tipoMaterialId: mapMaterialTypeToId(material.type),
@@ -301,9 +303,7 @@ async function handleSubmit(payload: TrainingFormModel, formMaterials: Material[
   } catch (error) {
     // Resetear estado de submitting en caso de error
     isSubmitting.value = false;
-    if (trainingFormRef.value && typeof (trainingFormRef.value as any).resetSubmitting === 'function') {
-      (trainingFormRef.value as any).resetSubmitting();
-    }
+    trainingFormRef.value?.resetSubmitting();
     // Mejorar mensajes de error con más contexto
     let errorMessage = 'Error al crear la capacitación';
 
@@ -314,15 +314,18 @@ async function handleSubmit(payload: TrainingFormModel, formMaterials: Material[
       if (errorStr.includes('evaluación') || errorStr.includes('evaluation')) {
         errorMessage = 'Error: Debe vincular una evaluación antes de crear la capacitación (RF-09)';
       } else if (errorStr.includes('validación') || errorStr.includes('validation')) {
-        errorMessage = 'Error de validación: Verifique que todos los campos requeridos estén completos correctamente';
+        errorMessage =
+          'Error de validación: Verifique que todos los campos requeridos estén completos correctamente';
       } else if (errorStr.includes('network') || errorStr.includes('timeout')) {
         errorMessage = 'Error de conexión: Verifique su conexión a internet e intente nuevamente';
       } else if (errorStr.includes('401') || errorStr.includes('unauthorized')) {
-        errorMessage = 'Error de autenticación: Su sesión ha expirado. Por favor, inicie sesión nuevamente';
+        errorMessage =
+          'Error de autenticación: Su sesión ha expirado. Por favor, inicie sesión nuevamente';
       } else if (errorStr.includes('403') || errorStr.includes('forbidden')) {
         errorMessage = 'Error de permisos: No tiene permisos para crear capacitaciones';
       } else if (errorStr.includes('500') || errorStr.includes('server')) {
-        errorMessage = 'Error del servidor: Por favor, intente más tarde o contacte al administrador';
+        errorMessage =
+          'Error del servidor: Por favor, intente más tarde o contacte al administrador';
       } else {
         errorMessage = error.message;
       }
@@ -344,9 +347,7 @@ async function handleSubmit(payload: TrainingFormModel, formMaterials: Material[
   } finally {
     // Asegurar que siempre se resetee el estado
     isSubmitting.value = false;
-    if (trainingFormRef.value && typeof (trainingFormRef.value as any).resetSubmitting === 'function') {
-      (trainingFormRef.value as any).resetSubmitting();
-    }
+    trainingFormRef.value?.resetSubmitting();
   }
 }
 

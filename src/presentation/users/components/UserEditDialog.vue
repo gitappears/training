@@ -260,8 +260,18 @@ const localOpen = computed({
   set: (value) => emit('update:modelValue', value),
 });
 
-const { activeTab, formData, personalData, genderOptions, empresas, loadingEmpresas, isAdmin, loading, handleClose, handleSubmit } =
-  useUserEditDialog(toRef(props, 'user'));
+const {
+  activeTab,
+  formData,
+  personalData,
+  genderOptions,
+  empresas,
+  loadingEmpresas,
+  isAdmin,
+  loading,
+  handleClose,
+  handleSubmit,
+} = useUserEditDialog(toRef(props, 'user'));
 
 // Cargar roles desde el backend
 const { roleOptionsForEdit, roles } = useRoles();

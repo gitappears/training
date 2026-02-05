@@ -21,7 +21,7 @@
       :active-filters-count="activeFiltersCount"
       @update-search="handleSearchUpdate"
       @update-course="(v) => updateFilters({ courseId: v })"
-      @update-status="(v) => updateFilters({ status: v as any })"
+      @update-status="(v) => updateFilters({ status: (v as CertificateStatus | null) ?? null })"
       @clear-filters="clearAllFilters"
       @open-qr-scanner="openQRScanner"
     />
@@ -86,7 +86,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { useQuasar } from 'quasar';
-import type { Certificate } from '../../../domain/certificate/models';
+import type { Certificate, CertificateStatus } from '../../../domain/certificate/models';
 import EmptyState from '../../../shared/components/EmptyState.vue';
 import { useCertificates } from '../../../shared/composables/useCertificates';
 import {
@@ -127,13 +127,8 @@ const selectedCertificates = ref<Certificate[]>([]);
 const hoveredCertificate = ref<string | null>(null);
 
 // Composable para filtros
-const {
-  searchInput,
-  courseOptions,
-  statusOptions,
-  onSearchInput,
-  loadCoursesForFilter,
-} = useCertificatesFilters(updateFilters);
+const { searchInput, courseOptions, statusOptions, onSearchInput, loadCoursesForFilter } =
+  useCertificatesFilters(updateFilters);
 
 // Composable para estadísticas
 const { statistics } = useCertificatesStatistics(() => certificates.value);
@@ -142,13 +137,8 @@ const { statistics } = useCertificatesStatistics(() => certificates.value);
 const { exportToCSV, exportToExcel } = useCertificatesExport(formatDate);
 
 // Composable para acciones
-const {
-  viewCertificate,
-  downloadCertificate,
-  shareCertificate,
-  copyCode,
-  bulkDownload,
-} = useCertificateActions(downloadCertificatePDF, () => certificates.value);
+const { viewCertificate, downloadCertificate, shareCertificate, copyCode, bulkDownload } =
+  useCertificateActions(downloadCertificatePDF, () => certificates.value);
 
 // Computed
 const filteredCertificates = computed(() => certificates.value);

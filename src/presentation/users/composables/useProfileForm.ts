@@ -80,18 +80,31 @@ export function useProfileForm() {
     return `${api.defaults.baseURL}${form.fotoUrl}`;
   });
 
+  /** Perfil que puede tener campos en raíz o en persona (compatibilidad API) */
+  type ProfileWithPersona = UserProfile & {
+    nombres?: string;
+    apellidos?: string;
+    email?: string;
+    telefono?: string;
+    direccion?: string;
+    fechaNacimiento?: string;
+    genero?: string;
+    biografia?: string;
+    fotoUrl?: string;
+  };
+
   function populateForm() {
     if (profile.value) {
-      const p = profile.value as any;
-      form.nombres = p.nombres || p.persona?.nombres || '';
-      form.apellidos = p.apellidos || p.persona?.apellidos || '';
-      form.email = p.email || p.persona?.email || '';
-      form.telefono = p.telefono || p.persona?.telefono || '';
-      form.direccion = p.direccion || p.persona?.direccion || '';
-      form.fechaNacimiento = p.fechaNacimiento || p.persona?.fechaNacimiento || '';
-      form.genero = p.genero || p.persona?.genero || '';
-      form.biografia = p.biografia || p.persona?.biografia || '';
-      form.fotoUrl = p.fotoUrl || p.persona?.fotoUrl || '';
+      const p = profile.value as ProfileWithPersona;
+      form.nombres = p.nombres ?? p.persona?.nombres ?? '';
+      form.apellidos = p.apellidos ?? p.persona?.apellidos ?? '';
+      form.email = p.email ?? p.persona?.email ?? '';
+      form.telefono = p.telefono ?? p.persona?.telefono ?? '';
+      form.direccion = p.direccion ?? p.persona?.direccion ?? '';
+      form.fechaNacimiento = p.fechaNacimiento ?? p.persona?.fechaNacimiento ?? '';
+      form.genero = p.genero ?? p.persona?.genero ?? '';
+      form.biografia = p.biografia ?? p.persona?.biografia ?? '';
+      form.fotoUrl = p.fotoUrl ?? p.persona?.fotoUrl ?? '';
       // Limpiar campos de contraseña
       form.currentPassword = '';
       form.newPassword = '';
@@ -143,7 +156,8 @@ export function useProfileForm() {
         }
       } catch (error) {
         isCurrentPasswordValid.value = false;
-        const errorMessage = error instanceof Error ? error.message : 'Error al validar la contraseña';
+        const errorMessage =
+          error instanceof Error ? error.message : 'Error al validar la contraseña';
         $q.notify({
           type: 'negative',
           message: errorMessage,
@@ -165,10 +179,10 @@ export function useProfileForm() {
     try {
       // Usar el servicio de autenticación para subir la foto
       const { fotoUrl } = await authService.uploadProfilePhoto(file, false);
-      
+
       // Actualizar el formulario con la nueva URL
       form.fotoUrl = fotoUrl;
-      
+
       // Refrescar el perfil desde el backend para obtener los datos actualizados
       await authStore.fetchProfile();
 
@@ -179,7 +193,8 @@ export function useProfileForm() {
         timeout: 3000,
       });
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Error al subir la foto de perfil';
+      const errorMessage =
+        error instanceof Error ? error.message : 'Error al subir la foto de perfil';
       $q.notify({
         type: 'negative',
         message: errorMessage,
@@ -327,4 +342,3 @@ export function useProfileForm() {
     validateCurrentPassword,
   };
 }
-

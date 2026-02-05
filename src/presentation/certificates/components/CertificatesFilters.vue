@@ -1,5 +1,9 @@
 <template>
-  <FiltersPanel :active-filters-count="activeFiltersCount" @clear="$emit('clear-filters')" class="q-mb-lg">
+  <FiltersPanel
+    :active-filters-count="activeFiltersCount"
+    @clear="$emit('clear-filters')"
+    class="q-mb-lg"
+  >
     <div class="col-12 col-md-4">
       <q-input
         :model-value="searchInput"
@@ -7,7 +11,9 @@
         dense
         placeholder="Buscar por curso, nombre, código..."
         clearable
-        @update:model-value="(v) => $emit('update-search', v ?? '')"
+        @update:model-value="
+          (v) => $emit('update-search', typeof v === 'string' ? v : v != null ? String(v) : '')
+        "
       >
         <template #prepend>
           <q-icon name="search" />
@@ -53,13 +59,7 @@
       </q-select>
     </div>
     <div class="col-12 col-md-1">
-      <q-btn
-        flat
-        dense
-        icon="qr_code_scanner"
-        color="primary"
-        @click="$emit('open-qr-scanner')"
-      >
+      <q-btn flat dense icon="qr_code_scanner" color="primary" @click="$emit('open-qr-scanner')">
         <q-tooltip>Escanear código QR</q-tooltip>
       </q-btn>
     </div>
