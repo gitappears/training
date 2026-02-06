@@ -4,8 +4,13 @@
     "moduleResolution": "bundler",
     "module": "esnext",
     "strict": true,
+    "noEmit": true,
+    "types": ["node"],
+
     "noImplicitAny": true,
     "strictNullChecks": true,
-    "noEmit": true
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "forceConsistentCasingInFileNames": true
   }
 }
