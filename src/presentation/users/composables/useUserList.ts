@@ -47,6 +47,9 @@ export function useUserList() {
     bulkDisable,
     acceptTermsForUser,
     acceptingTerms,
+    completeUserTrainings,
+    bulkCompleteUserTrainings,
+    completingTrainings,
     exportToCSV,
     exportToExcel,
   } = useUserActions();
@@ -132,21 +135,28 @@ export function useUserList() {
     await loadUsers();
   }
 
-  async function handleToggleUserStatus(user: User) {
-    await toggleUserStatus(user, toggleUserStatusUseCase, () => {
+  function handleToggleUserStatus(user: User) {
+    toggleUserStatus(user, toggleUserStatusUseCase, () => {
       void loadUsers();
     });
   }
 
-  async function handleBulkEnable() {
-    await bulkEnable(selectedUsers.value, bulkEnableUseCase, () => {
+  function handleBulkEnable() {
+    bulkEnable(selectedUsers.value, bulkEnableUseCase, () => {
       clearSelection();
       void loadUsers();
     });
   }
 
-  async function handleBulkDisable() {
-    await bulkDisable(selectedUsers.value, bulkDisableUseCase, () => {
+  function handleBulkDisable() {
+    bulkDisable(selectedUsers.value, bulkDisableUseCase, () => {
+      clearSelection();
+      void loadUsers();
+    });
+  }
+
+  function handleBulkCompleteTrainings() {
+    bulkCompleteUserTrainings(selectedUsers.value, () => {
       clearSelection();
       void loadUsers();
     });
@@ -160,8 +170,14 @@ export function useUserList() {
     exportToExcel();
   }
 
-  async function handleAcceptTerms(user: User) {
-    await acceptTermsForUser(user, () => {
+  function handleAcceptTerms(user: User) {
+    acceptTermsForUser(user, () => {
+      void loadUsers();
+    });
+  }
+
+  function handleCompleteTrainings(user: User) {
+    completeUserTrainings(user, () => {
       void loadUsers();
     });
   }
@@ -211,8 +227,11 @@ export function useUserList() {
     handleToggleUserStatus,
     handleBulkEnable,
     handleBulkDisable,
+    handleBulkCompleteTrainings,
     handleAcceptTerms,
     acceptingTerms,
+    handleCompleteTrainings,
+    completingTrainings,
     viewUser,
     editUser,
     createUser,

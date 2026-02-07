@@ -151,7 +151,11 @@
             <template #no-option>
               <q-item>
                 <q-item-section class="text-grey">
-                  {{ loadingInstructors ? 'Cargando instructores...' : 'No se encontraron instructores' }}
+                  {{
+                    loadingInstructors
+                      ? 'Cargando instructores...'
+                      : 'No se encontraron instructores'
+                  }}
                 </q-item-section>
               </q-item>
             </template>
@@ -246,23 +250,24 @@
       <div class="row q-col-gutter-md">
         <div class="col-12 col-md-6">
           <div class="q-mb-sm">
-            <div class="text-subtitle2 text-weight-medium q-mb-xs">
-              Imagen de Portada *
-            </div>
+            <div class="text-subtitle2 text-weight-medium q-mb-xs">Imagen de Portada *</div>
             <div class="text-caption text-grey-7 q-mb-sm">
               Imagen que se mostrará como portada del curso (recomendado: 1200x675px, máximo 2MB)
             </div>
           </div>
 
           <!-- Vista previa de la imagen -->
-          <div v-if="coverImagePreview || form.coverImageUrl" class="cover-image-preview-container q-mb-md">
+          <div
+            v-if="coverImagePreview || form.coverImageUrl"
+            class="cover-image-preview-container q-mb-md"
+          >
             <div class="cover-image-preview">
               <q-img
                 :src="getCoverImageUrl"
                 :alt="'Imagen de portada'"
                 fit="contain"
                 class="cover-image-thumbnail"
-                :ratio="16/9"
+                :ratio="16 / 9"
               >
                 <template #loading>
                   <div class="absolute-full flex flex-center">
@@ -385,9 +390,16 @@
                   <!-- Mostrar iframe si es posible, sino mostrar ícono -->
                   <div v-if="getVideoEmbedUrl(video.url)" class="video-preview">
                     <iframe
-                      :src="getVideoEmbedUrl(video.url)"
+                      :src="getVideoEmbedUrl(video.url) ?? undefined"
                       frameborder="0"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allow="
+                        accelerometer;
+                        autoplay;
+                        clipboard-write;
+                        encrypted-media;
+                        gyroscope;
+                        picture-in-picture;
+                      "
                       allowfullscreen
                       class="video-iframe"
                     />
@@ -486,7 +498,7 @@
                       fit="cover"
                       loading="lazy"
                       class="image-thumbnail"
-                      :ratio="16/9"
+                      :ratio="16 / 9"
                       @click="viewImage(file.url)"
                     >
                       <template #loading>
@@ -502,7 +514,11 @@
                     </q-img>
                   </div>
                   <!-- Para PDFs, mostrar preview con overlay -->
-                  <div v-else-if="file.type === 'PDF'" class="pdf-preview" @click="openPdfModal(file)">
+                  <div
+                    v-else-if="file.type === 'PDF'"
+                    class="pdf-preview"
+                    @click="openPdfModal(file)"
+                  >
                     <div class="pdf-preview-content">
                       <q-icon name="picture_as_pdf" size="64px" color="negative" />
                       <div class="text-caption text-grey-7 q-mt-sm">PDF</div>
@@ -511,17 +527,15 @@
                       <div class="pdf-overlay-content">
                         <q-icon name="visibility" size="32px" color="white" />
                         <div class="text-body2 text-white q-mt-sm text-weight-medium">Ver PDF</div>
-                        <div class="text-caption text-white q-mt-xs opacity-60">Click para abrir</div>
+                        <div class="text-caption text-white q-mt-xs opacity-60">
+                          Click para abrir
+                        </div>
                       </div>
                     </div>
                   </div>
                   <!-- Para otros tipos, mostrar ícono -->
                   <div v-else class="file-icon-container">
-                    <q-icon
-                      name="insert_drive_file"
-                      size="48px"
-                      color="grey-6"
-                    />
+                    <q-icon name="insert_drive_file" size="48px" color="grey-6" />
                   </div>
                 </div>
                 <div class="col material-info">
@@ -589,199 +603,201 @@
 
       <!-- Formulario de evaluación inline -->
       <div class="q-mt-md">
-          <q-banner dense class="bg-info-1 text-info q-mb-md" rounded>
-            <template #avatar>
-              <q-icon name="info" color="info" />
-            </template>
-            <div class="text-body2">
+        <q-banner dense class="bg-info-1 text-info q-mb-md" rounded>
+          <template #avatar>
+            <q-icon name="info" color="info" />
+          </template>
+          <div class="text-body2">
             Cree una evaluación completa con preguntas y opciones. La evaluación se creará junto con
             la capacitación.
+          </div>
+        </q-banner>
+
+        <!-- Formulario de evaluación -->
+        <div class="q-gutter-md" v-if="form.evaluationInline">
+          <q-input
+            v-model="form.evaluationInline.titulo"
+            filled
+            label="Título de la evaluación *"
+            hint="Nombre descriptivo de la evaluación"
+            :rules="[(val) => !!val || 'El título es obligatorio']"
+            :dense="false"
+          >
+            <template #prepend>
+              <q-icon name="title" />
+            </template>
+          </q-input>
+
+          <q-input
+            v-model="form.evaluationInline.descripcion"
+            filled
+            type="textarea"
+            label="Descripción"
+            hint="Descripción opcional de la evaluación"
+            :dense="false"
+            rows="3"
+          />
+
+          <div class="row q-col-gutter-md q-mt-sm">
+            <div class="col-12 col-md-6">
+              <q-input
+                v-model.number="form.evaluationInline.tiempoLimiteMinutos"
+                filled
+                type="number"
+                label="Tiempo límite (minutos)"
+                hint="Deje vacío para sin límite"
+                :dense="false"
+                min="1"
+              >
+                <template #prepend>
+                  <q-icon name="schedule" />
+                </template>
+              </q-input>
             </div>
-          </q-banner>
-
-          <!-- Formulario de evaluación -->
-          <div class="q-gutter-md" v-if="form.evaluationInline">
-            <q-input
-              v-model="form.evaluationInline.titulo"
-              filled
-              label="Título de la evaluación *"
-              hint="Nombre descriptivo de la evaluación"
-              :rules="[(val) => !!val || 'El título es obligatorio']"
-              :dense="false"
-            >
-              <template #prepend>
-                <q-icon name="title" />
-              </template>
-            </q-input>
-
-            <q-input
-              v-model="form.evaluationInline.descripcion"
-              filled
-              type="textarea"
-              label="Descripción"
-              hint="Descripción opcional de la evaluación"
-              :dense="false"
-              rows="3"
-            />
-
-            <div class="row q-col-gutter-md q-mt-sm">
-              <div class="col-12 col-md-6">
-                <q-input
-                  v-model.number="form.evaluationInline.tiempoLimiteMinutos"
-                  filled
-                  type="number"
-                  label="Tiempo límite (minutos)"
-                  hint="Deje vacío para sin límite"
-                  :dense="false"
-                  min="1"
-                >
-                  <template #prepend>
-                    <q-icon name="schedule" />
-                  </template>
-                </q-input>
-              </div>
-              <div class="col-12 col-md-6">
-                <q-input
-                  v-model.number="form.evaluationInline.intentosPermitidos"
-                  filled
-                  type="number"
-                  label="Intentos permitidos *"
-                  hint="Número de veces que se puede intentar"
-                  :dense="false"
-                  min="1"
-                >
-                  <template #prepend>
-                    <q-icon name="repeat" />
-                  </template>
-                </q-input>
-              </div>
+            <div class="col-12 col-md-6">
+              <q-input
+                v-model.number="form.evaluationInline.intentosPermitidos"
+                filled
+                type="number"
+                label="Intentos permitidos *"
+                hint="Número de veces que se puede intentar"
+                :dense="false"
+                min="1"
+              >
+                <template #prepend>
+                  <q-icon name="repeat" />
+                </template>
+              </q-input>
             </div>
+          </div>
 
-            <div class="row q-col-gutter-md">
-              <div class="col-12 col-md-6">
-                <q-input
-                  :model-value="calculatedPuntajeTotal"
-                  filled
-                  type="number"
-                  label="Puntaje total *"
+          <div class="row q-col-gutter-md">
+            <div class="col-12 col-md-6">
+              <q-input
+                :model-value="calculatedPuntajeTotal"
+                filled
+                type="number"
+                label="Puntaje total *"
                 hint="Siempre será 100 (calculado automáticamente según porcentajes de preguntas)"
-                  :dense="false"
-                  readonly
-                  class="readonly-field"
-                >
-                  <template #prepend>
-                    <q-icon name="calculate" />
-                  </template>
-                </q-input>
-              </div>
-              <div class="col-12 col-md-6">
-                <q-input
-                  v-model.number="form.evaluationInline.minimoAprobacion"
-                  filled
-                  type="number"
-                  label="Mínimo para aprobar (%) *"
-                  hint="Porcentaje mínimo para aprobar"
-                  :dense="false"
-                  min="0"
-                  max="100"
-                  step="0.01"
-                >
-                  <template #prepend>
-                    <q-icon name="check_circle" />
-                  </template>
-                </q-input>
-              </div>
+                :dense="false"
+                readonly
+                class="readonly-field"
+              >
+                <template #prepend>
+                  <q-icon name="calculate" />
+                </template>
+              </q-input>
             </div>
-
-            <div class="row q-col-gutter-md q-mt-sm">
-              <div class="col-12 col-md-6">
-                <q-toggle
-                  v-model="form.evaluationInline.mostrarResultados"
-                  label="Mostrar resultados al finalizar"
-                  color="primary"
-                />
-              </div>
-              <div class="col-12 col-md-6">
-                <q-toggle
-                  v-model="form.evaluationInline.mostrarRespuestasCorrectas"
-                  label="Mostrar respuestas correctas"
-                  color="primary"
-                />
-              </div>
+            <div class="col-12 col-md-6">
+              <q-input
+                v-model.number="form.evaluationInline.minimoAprobacion"
+                filled
+                type="number"
+                label="Mínimo para aprobar (%) *"
+                hint="Porcentaje mínimo para aprobar"
+                :dense="false"
+                min="0"
+                max="100"
+                step="0.01"
+              >
+                <template #prepend>
+                  <q-icon name="check_circle" />
+                </template>
+              </q-input>
             </div>
+          </div>
 
-            <!-- Sección de preguntas -->
-            <q-separator class="q-my-md" />
-            <div class="text-subtitle1 text-weight-medium q-mb-md">
-              <q-icon name="help" class="q-mr-xs" />
+          <div class="row q-col-gutter-md q-mt-sm">
+            <div class="col-12 col-md-6">
+              <q-toggle
+                v-model="form.evaluationInline.mostrarResultados"
+                label="Mostrar resultados al finalizar"
+                color="primary"
+              />
+            </div>
+            <div class="col-12 col-md-6">
+              <q-toggle
+                v-model="form.evaluationInline.mostrarRespuestasCorrectas"
+                label="Mostrar respuestas correctas"
+                color="primary"
+              />
+            </div>
+          </div>
+
+          <!-- Sección de preguntas -->
+          <q-separator class="q-my-md" />
+          <div class="text-subtitle1 text-weight-medium q-mb-md">
+            <q-icon name="help" class="q-mr-xs" />
             Preguntas (mínimo 1)
-            </div>
+          </div>
 
-            <div
-              v-for="(pregunta, preguntaIndex) in form.evaluationInline.preguntas"
-              :key="preguntaIndex"
-              class="q-mb-lg"
-            >
-              <q-card flat bordered class="q-pa-md">
-                <div class="row items-center q-mb-md">
-                  <div class="text-subtitle2 text-weight-medium">
-                    Pregunta {{ preguntaIndex + 1 }}
-                  </div>
-                  <q-space />
-                  <q-btn
-                    v-if="form.evaluationInline.preguntas.length > 1"
-                    flat
-                    dense
-                    round
-                    color="negative"
-                    icon="delete"
-                    size="sm"
-                    @click="removeQuestion(preguntaIndex)"
-                  />
+          <div
+            v-for="(pregunta, preguntaIndex) in form.evaluationInline.preguntas"
+            :key="preguntaIndex"
+            class="q-mb-lg"
+          >
+            <q-card flat bordered class="q-pa-md">
+              <div class="row items-center q-mb-md">
+                <div class="text-subtitle2 text-weight-medium">
+                  Pregunta {{ preguntaIndex + 1 }}
                 </div>
+                <q-space />
+                <q-btn
+                  v-if="form.evaluationInline.preguntas.length > 1"
+                  flat
+                  dense
+                  round
+                  color="negative"
+                  icon="delete"
+                  size="sm"
+                  @click="removeQuestion(preguntaIndex)"
+                />
+              </div>
 
-                <div class="q-gutter-md">
-                  <q-select
-                    v-model.number="pregunta.tipoPreguntaId"
-                    filled
-                    :options="questionTypes"
-                    label="Tipo de pregunta *"
-                    emit-value
-                    map-options
-                    :rules="[(val) => !!val || 'Seleccione un tipo']"
-                    :dense="false"
-                    @update:model-value="(val) => {
+              <div class="q-gutter-md">
+                <q-select
+                  v-model.number="pregunta.tipoPreguntaId"
+                  filled
+                  :options="questionTypes"
+                  label="Tipo de pregunta *"
+                  emit-value
+                  map-options
+                  :rules="[(val) => !!val || 'Seleccione un tipo']"
+                  :dense="false"
+                  @update:model-value="
+                    (val) => {
                       pregunta.tipoPreguntaId = typeof val === 'number' ? val : parseInt(val);
-                    }"
-                  >
-                    <template #prepend>
-                      <q-icon name="category" />
-                    </template>
-                  </q-select>
+                    }
+                  "
+                >
+                  <template #prepend>
+                    <q-icon name="category" />
+                  </template>
+                </q-select>
 
-                  <q-input
-                    v-model="pregunta.enunciado"
-                    filled
-                    type="textarea"
-                    label="Enunciado *"
-                    hint="Texto de la pregunta"
-                    :rules="[(val) => !!val || 'El enunciado es obligatorio']"
-                    :dense="false"
-                    rows="2"
-                  />
+                <q-input
+                  v-model="pregunta.enunciado"
+                  filled
+                  type="textarea"
+                  label="Enunciado *"
+                  hint="Texto de la pregunta"
+                  :rules="[(val) => !!val || 'El enunciado es obligatorio']"
+                  :dense="false"
+                  rows="2"
+                />
 
                 <div class="row q-col-gutter-md">
                   <div class="col-12 col-md-6">
-                  <q-input
+                    <q-input
                       v-model.number="pregunta.porcentaje"
-                    filled
-                    type="number"
+                      filled
+                      type="number"
                       label="Porcentaje de la pregunta (%)"
                       hint="Porcentaje que vale esta pregunta (opcional, se distribuye automáticamente si no se especifica)"
-                    :dense="false"
-                    min="0"
+                      :dense="false"
+                      min="0"
                       max="100"
-                    step="0.01"
+                      step="0.01"
                       @update:model-value="calculateQuestionScores"
                     >
                       <template #prepend>
@@ -807,192 +823,240 @@
                   </div>
                 </div>
 
-                  <!-- Opciones de respuesta -->
-                  <q-separator class="q-my-sm" />
-                  <div class="text-body2 text-weight-medium q-mb-sm">
-                    Opciones de respuesta (mínimo 1, al menos una debe ser correcta)
-                  </div>
+                <!-- Opciones de respuesta -->
+                <q-separator class="q-my-sm" />
+                <div class="text-body2 text-weight-medium q-mb-sm">
+                  Opciones de respuesta (mínimo 1, al menos una debe ser correcta)
+                </div>
 
-                  <div
-                    v-for="(opcion, opcionIndex) in pregunta.opciones"
-                    :key="opcionIndex"
-                    class="q-mb-sm"
-                  >
-                    <q-card flat bordered class="q-pa-sm">
-                      <div class="column q-gutter-sm">
-                        <div class="row items-center q-gutter-sm">
-                          <div class="col">
-                            <q-input
-                              v-model="opcion.texto"
-                              filled
-                              dense
-                              label="Texto de la opción *"
-                              :rules="[(val) => !!val || 'El texto es obligatorio']"
-                            />
-                          </div>
-                          <div class="col-auto">
-                            <q-checkbox v-model="opcion.esCorrecta" label="Correcta" color="positive" />
-                          </div>
-                          <div class="col-auto">
-                            <q-btn
-                              v-if="pregunta.opciones.length > 1"
-                              flat
-                              dense
-                              round
-                              color="negative"
-                              icon="close"
-                              size="sm"
-                              @click="removeOption(preguntaIndex, opcionIndex)"
-                            />
-                          </div>
+                <div
+                  v-for="(opcion, opcionIndex) in pregunta.opciones"
+                  :key="opcionIndex"
+                  class="q-mb-sm"
+                >
+                  <q-card flat bordered class="q-pa-sm">
+                    <div class="column q-gutter-sm">
+                      <div class="row items-center q-gutter-sm">
+                        <div class="col">
+                          <q-input
+                            v-model="opcion.texto"
+                            filled
+                            dense
+                            label="Texto de la opción *"
+                            :rules="[(val) => !!val || 'El texto es obligatorio']"
+                          />
                         </div>
-                        <!-- Campo de carga de imagen para opciones cuando el tipo es imagen -->
-                        <div v-if="pregunta.tipoPreguntaId === 3" class="column q-gutter-sm">
-                          <!-- Debug: mostrar información de la opción -->
-                          <!-- <div class="text-caption text-grey-6 q-mb-xs">
+                        <div class="col-auto">
+                          <q-checkbox
+                            v-model="opcion.esCorrecta"
+                            label="Correcta"
+                            color="positive"
+                          />
+                        </div>
+                        <div class="col-auto">
+                          <q-btn
+                            v-if="pregunta.opciones.length > 1"
+                            flat
+                            dense
+                            round
+                            color="negative"
+                            icon="close"
+                            size="sm"
+                            @click="removeOption(preguntaIndex, opcionIndex)"
+                          />
+                        </div>
+                      </div>
+                      <!-- Campo de carga de imagen para opciones cuando el tipo es imagen -->
+                      <div v-if="pregunta.tipoPreguntaId === 3" class="column q-gutter-sm">
+                        <!-- Debug: mostrar información de la opción -->
+                        <!-- <div class="text-caption text-grey-6 q-mb-xs">
                             Debug: imagenUrl = {{ opcion.imagenUrl }},
                             hasOptionImage = {{ hasOptionImage(preguntaIndex, opcionIndex) }},
                             url = {{ getOptionImageUrl(preguntaIndex, opcionIndex) }}
                           </div> -->
 
-                          <!-- Input de archivo oculto para poder activarlo programáticamente -->
-                          <q-file
-                            :ref="(el) => setImageFileInputRef(preguntaIndex, opcionIndex, el)"
-                            :model-value="getOptionImageFile(preguntaIndex, opcionIndex)"
-                            accept="image/*"
-                            @update:model-value="(file) => handleOptionImageSelected(preguntaIndex, opcionIndex, file)"
-                            style="display: none;"
-                            class="hidden-file-input"
-                          />
+                        <!-- Input de archivo oculto para poder activarlo programáticamente -->
+                        <q-file
+                          :ref="(el) => setImageFileInputRef(preguntaIndex, opcionIndex, el)"
+                          :model-value="getOptionImageFile(preguntaIndex, opcionIndex)"
+                          accept="image/*"
+                          @update:model-value="
+                            (file) => handleOptionImageSelected(preguntaIndex, opcionIndex, file)
+                          "
+                          style="display: none"
+                          class="hidden-file-input"
+                        />
 
-                          <!-- Si ya hay imagen subida, mostrar miniatura -->
-                          <div
-                            v-if="opcion.imagenUrl && String(opcion.imagenUrl).trim() !== ''"
-                            class="option-image-wrapper q-mt-sm"
-                          >
-                            <div class="row items-center q-gutter-sm">
-                              <div class="option-image-thumbnail-container" style="width: 200px; height: 200px; min-width: 200px; min-height: 200px; max-width: 200px; max-height: 200px;">
-                                <img
-                                  :src="buildFullUrl(opcion.imagenUrl)"
-                                  :alt="opcion.texto || 'Imagen de opción'"
-                                  class="option-image-thumbnail"
-                                  loading="lazy"
-                                  style="width: 100%; height: 100%; max-width: 200px; max-height: 200px; object-fit: cover; border-radius:5px;"
+                        <!-- Si ya hay imagen subida, mostrar miniatura -->
+                        <div
+                          v-if="opcion.imagenUrl && String(opcion.imagenUrl).trim() !== ''"
+                          class="option-image-wrapper q-mt-sm"
+                        >
+                          <div class="row items-center q-gutter-sm">
+                            <div
+                              class="option-image-thumbnail-container"
+                              style="
+                                width: 200px;
+                                height: 200px;
+                                min-width: 200px;
+                                min-height: 200px;
+                                max-width: 200px;
+                                max-height: 200px;
+                              "
+                            >
+                              <img
+                                :src="buildFullUrl(opcion.imagenUrl)"
+                                :alt="opcion.texto || 'Imagen de opción'"
+                                class="option-image-thumbnail"
+                                loading="lazy"
+                                style="
+                                  width: 100%;
+                                  height: 100%;
+                                  max-width: 200px;
+                                  max-height: 200px;
+                                  object-fit: cover;
+                                  border-radius: 5px;
+                                "
+                              />
+                            </div>
+                            <div class="col">
+                              <div class="text-caption text-grey-7 q-mb-xs">
+                                Imagen de la opción
+                              </div>
+                              <div class="row q-gutter-xs">
+                                <q-btn
+                                  flat
+                                  dense
+                                  size="sm"
+                                  color="primary"
+                                  icon="image"
+                                  label="Cambiar"
+                                  @click="triggerImageFileInput(preguntaIndex, opcionIndex)"
+                                />
+                                <q-btn
+                                  flat
+                                  dense
+                                  size="sm"
+                                  color="negative"
+                                  icon="delete"
+                                  label="Eliminar"
+                                  @click="clearOptionImage(preguntaIndex, opcionIndex)"
                                 />
                               </div>
-                              <div class="col">
-                                <div class="text-caption text-grey-7 q-mb-xs">Imagen de la opción</div>
-                                <div class="row q-gutter-xs">
-                                  <q-btn
-                                    flat
-                                    dense
-                                    size="sm"
-                                    color="primary"
-                                    icon="image"
-                                    label="Cambiar"
-                                    @click="triggerImageFileInput(preguntaIndex, opcionIndex)"
-                                  />
-                                  <q-btn
-                                    flat
-                                    dense
-                                    size="sm"
-                                    color="negative"
-                                    icon="delete"
-                                    label="Eliminar"
-                                    @click="clearOptionImage(preguntaIndex, opcionIndex)"
-                                  />
-                                </div>
-                              </div>
                             </div>
-                          </div>
-
-                          <!-- Si no hay imagen pero hay archivo seleccionado, mostrar preview -->
-                          <div
-                            v-else-if="getOptionImageFile(preguntaIndex, opcionIndex) && isImageFile(getOptionImageFile(preguntaIndex, opcionIndex)!)"
-                            class="option-image-wrapper q-mt-sm"
-                          >
-                            <div class="row items-center q-gutter-sm">
-                              <div class="option-image-thumbnail-container" style="width: 80px; height: 60px; min-width: 80px; min-height: 60px; max-width: 80px; max-height: 60px;">
-                                <img
-                                  :src="getFilePreviewUrl(getOptionImageFile(preguntaIndex, opcionIndex)!)"
-                                  alt="Vista previa de imagen"
-                                  class="option-image-thumbnail"
-                                  style="width: 100%; height: 100%; max-width: 80px; max-height: 60px; object-fit: cover;"
-                                />
-                              </div>
-                              <div class="col">
-                                <div class="text-caption text-grey-7 q-mb-xs">Imagen seleccionada</div>
-                                <div class="row q-gutter-xs items-center">
-                                  <q-btn
-                                    v-if="!isUploadingOptionImage(preguntaIndex, opcionIndex)"
-                                    flat
-                                    dense
-                                    size="sm"
-                                    color="primary"
-                                    icon="cloud_upload"
-                                    label="Subir"
-                                    @click="uploadOptionImage(preguntaIndex, opcionIndex)"
-                                  />
-                                  <q-btn
-                                    flat
-                                    dense
-                                    size="sm"
-                                    color="negative"
-                                    icon="close"
-                                    label="Cancelar"
-                                    @click="clearOptionImage(preguntaIndex, opcionIndex)"
-                                  />
-                                  <q-linear-progress
-                                    v-if="isUploadingOptionImage(preguntaIndex, opcionIndex)"
-                                    :value="getOptionUploadProgress(preguntaIndex, opcionIndex)"
-                                    color="primary"
-                                    class="q-mt-xs"
-                                    style="width: 200px;"
-                                  />
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-
-                          <!-- Si no hay imagen ni archivo seleccionado, mostrar botón para seleccionar -->
-                          <div v-else>
-                            <q-btn
-                              flat
-                              dense
-                              color="primary"
-                              icon="image"
-                              label="Seleccionar imagen (opcional)"
-                              size="sm"
-                              @click="triggerImageFileInput(preguntaIndex, opcionIndex)"
-                            />
                           </div>
                         </div>
+
+                        <!-- Si no hay imagen pero hay archivo seleccionado, mostrar preview -->
+                        <div
+                          v-else-if="
+                            getOptionImageFile(preguntaIndex, opcionIndex) &&
+                            isImageFile(getOptionImageFile(preguntaIndex, opcionIndex)!)
+                          "
+                          class="option-image-wrapper q-mt-sm"
+                        >
+                          <div class="row items-center q-gutter-sm">
+                            <div
+                              class="option-image-thumbnail-container"
+                              style="
+                                width: 80px;
+                                height: 60px;
+                                min-width: 80px;
+                                min-height: 60px;
+                                max-width: 80px;
+                                max-height: 60px;
+                              "
+                            >
+                              <img
+                                :src="
+                                  getFilePreviewUrl(getOptionImageFile(preguntaIndex, opcionIndex)!)
+                                "
+                                alt="Vista previa de imagen"
+                                class="option-image-thumbnail"
+                                style="
+                                  width: 100%;
+                                  height: 100%;
+                                  max-width: 80px;
+                                  max-height: 60px;
+                                  object-fit: cover;
+                                "
+                              />
+                            </div>
+                            <div class="col">
+                              <div class="text-caption text-grey-7 q-mb-xs">
+                                Imagen seleccionada
+                              </div>
+                              <div class="row q-gutter-xs items-center">
+                                <q-btn
+                                  v-if="!isUploadingOptionImage(preguntaIndex, opcionIndex)"
+                                  flat
+                                  dense
+                                  size="sm"
+                                  color="primary"
+                                  icon="cloud_upload"
+                                  label="Subir"
+                                  @click="uploadOptionImage(preguntaIndex, opcionIndex)"
+                                />
+                                <q-btn
+                                  flat
+                                  dense
+                                  size="sm"
+                                  color="negative"
+                                  icon="close"
+                                  label="Cancelar"
+                                  @click="clearOptionImage(preguntaIndex, opcionIndex)"
+                                />
+                                <q-linear-progress
+                                  v-if="isUploadingOptionImage(preguntaIndex, opcionIndex)"
+                                  :value="getOptionUploadProgress(preguntaIndex, opcionIndex)"
+                                  color="primary"
+                                  class="q-mt-xs"
+                                  style="width: 200px"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <!-- Si no hay imagen ni archivo seleccionado, mostrar botón para seleccionar -->
+                        <div v-else>
+                          <q-btn
+                            flat
+                            dense
+                            color="primary"
+                            icon="image"
+                            label="Seleccionar imagen (opcional)"
+                            size="sm"
+                            @click="triggerImageFileInput(preguntaIndex, opcionIndex)"
+                          />
+                        </div>
                       </div>
-                    </q-card>
-                  </div>
-
-                  <q-btn
-                    flat
-                    dense
-                    color="primary"
-                    icon="add"
-                    label="Agregar opción"
-                    size="sm"
-                    @click="addOption(preguntaIndex)"
-                  />
+                    </div>
+                  </q-card>
                 </div>
-              </q-card>
-            </div>
 
-            <q-btn
-              flat
-              dense
-              color="primary"
-              icon="add"
-              label="Agregar pregunta"
-              @click="addQuestion"
-            />
+                <q-btn
+                  flat
+                  dense
+                  color="primary"
+                  icon="add"
+                  label="Agregar opción"
+                  size="sm"
+                  @click="addOption(preguntaIndex)"
+                />
+              </div>
+            </q-card>
           </div>
+
+          <q-btn
+            flat
+            dense
+            color="primary"
+            icon="add"
+            label="Agregar pregunta"
+            @click="addQuestion"
+          />
+        </div>
       </div>
     </q-card>
 
@@ -1198,12 +1262,20 @@
 <script setup lang="ts">
 import { reactive, ref, onMounted, computed, watch } from 'vue';
 import { useQuasar } from 'quasar';
-import type { Material } from '../../../shared/components/MaterialViewer.vue';
 import { materialsService } from '../../../infrastructure/http/materials/materials.service';
+
+/** Tipo de material para el formulario (videos/archivos) y visor PDF; evita importar desde .vue */
+export interface Material {
+  id?: string;
+  name: string;
+  url: string;
+  type: 'PDF' | 'IMAGE' | 'VIDEO' | 'DOC' | 'LINK' | 'PRESENTATION' | 'AUDIO';
+  description?: string;
+  order?: number;
+}
 import { useMaterialUrl } from '../../../shared/composables/useMaterialUrl';
 import { TRAINING_TYPE_OPTIONS } from '../../../shared/constants/training-types';
 import { usersService } from '../../../infrastructure/http/users/users.service';
-import { useAuthStore } from '../../../stores/auth.store';
 
 export interface EvaluationOption {
   id?: number; // ID de la opción (para edición)
@@ -1246,12 +1318,14 @@ export interface TrainingFormModel {
   modality: string | null;
   location: string;
   capacity: number | null;
+  durationHours?: number | null;
   instructor: string | null;
   area: string;
   targetAudience: string | null;
   startDate: string;
   endDate: string;
   coverImageUrl: string;
+  promoVideoUrl?: string | null;
   evaluationId: number | null; // RF-09: Evaluación obligatoria (para vincular existente)
   evaluationInline: InlineEvaluation | null; // RF-09: Evaluación a crear inline
   attachments: { id: string; label: string; url: string }[];
@@ -1435,16 +1509,16 @@ function calculateQuestionScores() {
 
   // Separar preguntas con porcentaje específico y sin porcentaje
   const preguntasConPorcentaje = preguntas.filter(
-    (p) => p.porcentaje !== undefined && p.porcentaje !== null && p.porcentaje > 0
+    (p) => p.porcentaje !== undefined && p.porcentaje !== null && p.porcentaje > 0,
   );
   const preguntasSinPorcentaje = preguntas.filter(
-    (p) => !p.porcentaje || p.porcentaje === null || p.porcentaje === 0
+    (p) => !p.porcentaje || p.porcentaje === null || p.porcentaje === 0,
   );
 
   // Calcular suma de porcentajes especificados
   const sumaPorcentajesEspecificados = preguntasConPorcentaje.reduce(
     (sum, p) => sum + (p.porcentaje || 0),
-    0
+    0,
   );
 
   // Validar que no se exceda el 100%
@@ -1459,7 +1533,8 @@ function calculateQuestionScores() {
     if (preguntasConPorcentaje.length > 0) {
       const ultimaPregunta = preguntasConPorcentaje[preguntasConPorcentaje.length - 1];
       if (ultimaPregunta) {
-        const porcentajeAjustado = 100 - (sumaPorcentajesEspecificados - (ultimaPregunta.porcentaje || 0));
+        const porcentajeAjustado =
+          100 - (sumaPorcentajesEspecificados - (ultimaPregunta.porcentaje || 0));
         ultimaPregunta.porcentaje = Math.max(0, porcentajeAjustado);
       }
     }
@@ -1472,13 +1547,16 @@ function calculateQuestionScores() {
   const porcentajeRestante = 100 - sumaPorcentajesEspecificados;
 
   // Distribuir porcentaje restante entre preguntas sin porcentaje específico
-  const porcentajePorPregunta = preguntasSinPorcentaje.length > 0
-    ? porcentajeRestante / preguntasSinPorcentaje.length
-    : 0;
+  const porcentajePorPregunta =
+    preguntasSinPorcentaje.length > 0 ? porcentajeRestante / preguntasSinPorcentaje.length : 0;
 
   // Actualizar puntajes de todas las preguntas
   preguntas.forEach((pregunta) => {
-    if (pregunta.porcentaje !== undefined && pregunta.porcentaje !== null && pregunta.porcentaje > 0) {
+    if (
+      pregunta.porcentaje !== undefined &&
+      pregunta.porcentaje !== null &&
+      pregunta.porcentaje > 0
+    ) {
       // Usar porcentaje especificado
       pregunta.puntaje = pregunta.porcentaje;
     } else {
@@ -1837,9 +1915,10 @@ async function uploadCoverImage(file: File): Promise<void> {
     });
   } catch (error) {
     console.error('Error al subir imagen de portada:', error);
-    coverImageError.value = error instanceof Error
-      ? error.message
-      : 'Error al subir la imagen. Por favor, intente nuevamente';
+    coverImageError.value =
+      error instanceof Error
+        ? error.message
+        : 'Error al subir la imagen. Por favor, intente nuevamente';
 
     // Limpiar preview y archivo en caso de error
     if (coverImagePreview.value && coverImagePreview.value.startsWith('blob:')) {
@@ -1932,7 +2011,7 @@ async function uploadAndSaveFile(): Promise<void> {
 
   try {
     const response = await materialsService.uploadFile(newFile.file, (progress) => {
-        uploadProgress.value = progress;
+      uploadProgress.value = progress;
     });
 
     // Guardar URL relativa para el backend, pero construir URL completa para visualización
@@ -2112,7 +2191,11 @@ function getOptionImageFile(preguntaIndex: number, opcionIndex: number): File | 
   return optionImageFiles.value.get(key) || null;
 }
 
-async function handleOptionImageSelected(preguntaIndex: number, opcionIndex: number, file: File | null): Promise<void> {
+async function handleOptionImageSelected(
+  preguntaIndex: number,
+  opcionIndex: number,
+  file: File | null,
+): Promise<void> {
   const key = getOptionKey(preguntaIndex, opcionIndex);
 
   if (!file) {
@@ -2181,9 +2264,9 @@ async function uploadOptionImage(preguntaIndex: number, opcionIndex: number): Pr
     // Usar Vue.set o asignación directa para asegurar reactividad
     if (form.evaluationInline) {
       const pregunta = form.evaluationInline.preguntas[preguntaIndex];
-      if (pregunta && pregunta.opciones[opcionIndex]) {
-        // Asignar directamente a la opción en el array para asegurar reactividad
-        pregunta.opciones[opcionIndex].imagenUrl = response.url;
+      const opcionEnArray = pregunta?.opciones[opcionIndex];
+      if (pregunta && opcionEnArray) {
+        opcionEnArray.imagenUrl = response.url;
         opcion.imagenUrl = response.url; // También actualizar la referencia local
       }
     }
@@ -2227,20 +2310,7 @@ function clearOptionImage(preguntaIndex: number, opcionIndex: number): void {
   if (form.evaluationInline) {
     const pregunta = form.evaluationInline.preguntas[preguntaIndex];
     if (pregunta && pregunta.opciones[opcionIndex]) {
-      delete pregunta.opciones[opcionIndex].imagenUrl;
-    }
-  }
-}
-
-function previewOptionImage(preguntaIndex: number, opcionIndex: number): void {
-  const file = getOptionImageFile(preguntaIndex, opcionIndex);
-  if (file && isImageFile(file)) {
-    const url = getFilePreviewUrl(file);
-    window.open(url, '_blank');
-  } else if (form.evaluationInline) {
-    const pregunta = form.evaluationInline.preguntas[preguntaIndex];
-    if (pregunta && pregunta.opciones[opcionIndex]?.imagenUrl) {
-      window.open(buildFullUrl(pregunta.opciones[opcionIndex].imagenUrl!), '_blank');
+      delete pregunta.opciones[opcionIndex]?.imagenUrl;
     }
   }
 }
@@ -2255,53 +2325,15 @@ function getOptionUploadProgress(preguntaIndex: number, opcionIndex: number): nu
   return optionUploadProgress.value.get(key) || 0;
 }
 
-/**
- * Verifica si una opción tiene una imagen válida
- */
-function hasOptionImage(preguntaIndex: number, opcionIndex: number): boolean {
-  if (!form.evaluationInline) {
-    return false;
-  }
-  const pregunta = form.evaluationInline.preguntas[preguntaIndex];
-  if (!pregunta || !pregunta.opciones || !pregunta.opciones[opcionIndex]) {
-    return false;
-  }
-  const opcion = pregunta.opciones[opcionIndex];
-  const hasImage = !!(opcion.imagenUrl && String(opcion.imagenUrl).trim() !== '');
-  if (hasImage) {
-    console.log('✅ hasOptionImage: true', {
-      preguntaIndex,
-      opcionIndex,
-      texto: opcion.texto,
-      imagenUrl: opcion.imagenUrl,
-    });
-  }
-  return hasImage;
-}
+// Referencias a los inputs de archivo para poder activarlos programáticamente (q-file o elemento)
+type FileInputRef = { $el?: HTMLElement } | HTMLElement | Element;
+const imageFileInputRefs = ref<Map<string, FileInputRef>>(new Map());
 
-/**
- * Obtiene la URL completa de la imagen de una opción
- */
-function getOptionImageUrl(preguntaIndex: number, opcionIndex: number): string {
-  if (!form.evaluationInline) return '';
-  const pregunta = form.evaluationInline.preguntas[preguntaIndex];
-  if (!pregunta || !pregunta.opciones || !pregunta.opciones[opcionIndex]) return '';
-  const opcion = pregunta.opciones[opcionIndex];
-  if (!opcion.imagenUrl || String(opcion.imagenUrl).trim() === '') return '';
-  const fullUrl = buildFullUrl(String(opcion.imagenUrl).trim());
-  console.log('🔗 getOptionImageUrl:', {
-    preguntaIndex,
-    opcionIndex,
-    imagenUrl: opcion.imagenUrl,
-    fullUrl,
-  });
-  return fullUrl;
-}
-
-// Referencias a los inputs de archivo para poder activarlos programáticamente
-const imageFileInputRefs = ref<Map<string, any>>(new Map());
-
-function setImageFileInputRef(preguntaIndex: number, opcionIndex: number, el: any): void {
+function setImageFileInputRef(
+  preguntaIndex: number,
+  opcionIndex: number,
+  el: FileInputRef | null,
+): void {
   if (el) {
     const key = getOptionKey(preguntaIndex, opcionIndex);
     imageFileInputRefs.value.set(key, el);
@@ -2313,24 +2345,26 @@ function triggerImageFileInput(preguntaIndex: number, opcionIndex: number): void
   const inputRef = imageFileInputRefs.value.get(key);
 
   if (!inputRef) {
-    console.warn('No se encontró la referencia al input de archivo para la opción:', { preguntaIndex, opcionIndex, key });
+    console.warn('No se encontró la referencia al input de archivo para la opción:', {
+      preguntaIndex,
+      opcionIndex,
+      key,
+    });
     return;
   }
 
   // Intentar acceder al elemento del input de diferentes formas
   let fileInput: HTMLInputElement | null = null;
 
-  // Si es un componente Quasar q-file
-  if (inputRef.$el) {
-    fileInput = inputRef.$el.querySelector('input[type="file"]') as HTMLInputElement;
+  // Si es un componente Quasar q-file (tiene $el)
+  if ('$el' in inputRef && inputRef.$el) {
+    fileInput = inputRef.$el.querySelector('input[type="file"]');
   }
-  // Si es directamente un elemento HTML
+  // Si es directamente un elemento HTML o Element
   else if (inputRef instanceof HTMLElement) {
-    fileInput = inputRef.querySelector('input[type="file"]') as HTMLInputElement;
-  }
-  // Si es un objeto con querySelector
-  else if (inputRef && typeof inputRef === 'object' && 'querySelector' in inputRef) {
-    fileInput = (inputRef as any).querySelector('input[type="file"]');
+    fileInput = inputRef.querySelector('input[type="file"]');
+  } else if (inputRef instanceof Element) {
+    fileInput = inputRef.querySelector('input[type="file"]');
   }
 
   if (fileInput) {
@@ -2342,7 +2376,7 @@ function triggerImageFileInput(preguntaIndex: number, opcionIndex: number): void
       preguntaIndex,
       opcionIndex,
       key,
-      inputRef
+      inputRef,
     });
   }
 }
@@ -2354,12 +2388,14 @@ const form = reactive<TrainingFormModel>({
   modality: null,
   location: '',
   capacity: null,
+  durationHours: null,
   instructor: null,
   area: '',
   targetAudience: 'Operadores',
   startDate: '',
   endDate: '',
   coverImageUrl: '',
+  promoVideoUrl: null,
   evaluationId: null, // RF-09: Evaluación obligatoria (para vincular existente)
   evaluationInline: {
     titulo: '',
@@ -2481,7 +2517,7 @@ function initializeFormWithData() {
         descripcion: props.initialEvaluationInline.descripcion,
       }),
       ...(props.initialEvaluationInline.tiempoLimiteMinutos !== undefined && {
-      tiempoLimiteMinutos: props.initialEvaluationInline.tiempoLimiteMinutos,
+        tiempoLimiteMinutos: props.initialEvaluationInline.tiempoLimiteMinutos,
       }),
       intentosPermitidos: props.initialEvaluationInline.intentosPermitidos || 1,
       mostrarResultados: props.initialEvaluationInline.mostrarResultados ?? true,
@@ -2492,7 +2528,10 @@ function initializeFormWithData() {
       preguntas: props.initialEvaluationInline.preguntas.map((p) => {
         const pregunta = {
           ...(p.id !== undefined && { id: p.id }),
-          tipoPreguntaId: typeof p.tipoPreguntaId === 'number' ? p.tipoPreguntaId : parseInt(String(p.tipoPreguntaId || 1)),
+          tipoPreguntaId:
+            typeof p.tipoPreguntaId === 'number'
+              ? p.tipoPreguntaId
+              : parseInt(String(p.tipoPreguntaId || 1)),
           enunciado: p.enunciado || '',
           ...(p.imagenUrl !== undefined && { imagenUrl: p.imagenUrl }),
           ...(p.porcentaje !== undefined && { porcentaje: p.porcentaje }),
@@ -2515,7 +2554,11 @@ function initializeFormWithData() {
               orden: o.orden ?? 0,
             };
             // Asegurar que imagenUrl se asigne correctamente si existe
-            if (o.imagenUrl !== undefined && o.imagenUrl !== null && String(o.imagenUrl).trim() !== '') {
+            if (
+              o.imagenUrl !== undefined &&
+              o.imagenUrl !== null &&
+              String(o.imagenUrl).trim() !== ''
+            ) {
               opcion.imagenUrl = String(o.imagenUrl).trim();
               console.log('✅ Imagen asignada en formulario para opción:', {
                 preguntaIndex: p.id || 'nueva',
@@ -2674,7 +2717,7 @@ watch(
   () => form.evaluationInline?.preguntas?.length,
   () => {
     calculateQuestionScores();
-  }
+  },
 );
 
 // Watch para recalcular cuando cambia un porcentaje específico
@@ -2686,7 +2729,7 @@ watch(
       calculateQuestionScores();
     }, 0);
   },
-  { deep: true }
+  { deep: true },
 );
 
 async function onSubmit() {
@@ -2720,7 +2763,11 @@ async function onSubmit() {
   if (form.evaluationInline && form.evaluationInline.preguntas) {
     const pendingUploads: Promise<void>[] = [];
 
-    for (let preguntaIndex = 0; preguntaIndex < form.evaluationInline.preguntas.length; preguntaIndex++) {
+    for (
+      let preguntaIndex = 0;
+      preguntaIndex < form.evaluationInline.preguntas.length;
+      preguntaIndex++
+    ) {
       const pregunta = form.evaluationInline.preguntas[preguntaIndex];
       if (pregunta && pregunta.tipoPreguntaId === 3 && pregunta.opciones) {
         // Es pregunta tipo imagen, verificar si hay imágenes pendientes
@@ -2763,64 +2810,64 @@ async function onSubmit() {
     }
   }
 
-    // Validar que todas las preguntas tengan enunciado y al menos una opción correcta
-    for (let i = 0; i < form.evaluationInline.preguntas.length; i++) {
-      const pregunta = form.evaluationInline.preguntas[i];
-      if (!pregunta) {
+  // Validar que todas las preguntas tengan enunciado y al menos una opción correcta
+  for (let i = 0; i < form.evaluationInline.preguntas.length; i++) {
+    const pregunta = form.evaluationInline.preguntas[i];
+    if (!pregunta) {
+      $q.notify({
+        type: 'warning',
+        message: `Error en la pregunta ${i + 1}`,
+        position: 'top',
+        timeout: 3000,
+      });
+      return;
+    }
+
+    if (!pregunta.enunciado) {
+      $q.notify({
+        type: 'warning',
+        message: `La pregunta ${i + 1} debe tener un enunciado`,
+        position: 'top',
+        timeout: 3000,
+      });
+      return;
+    }
+
+    if (!pregunta.opciones || pregunta.opciones.length === 0) {
+      $q.notify({
+        type: 'warning',
+        message: `La pregunta ${i + 1} debe tener al menos una opción`,
+        position: 'top',
+        timeout: 3000,
+      });
+      return;
+    }
+
+    const tieneOpcionCorrecta = pregunta.opciones.some((o) => o.esCorrecta && o.texto);
+    if (!tieneOpcionCorrecta) {
+      $q.notify({
+        type: 'warning',
+        message: `La pregunta ${i + 1} debe tener al menos una opción correcta`,
+        position: 'top',
+        timeout: 3000,
+      });
+      return;
+    }
+
+    // Validar que todas las opciones tengan texto
+    for (let j = 0; j < pregunta.opciones.length; j++) {
+      const opcion = pregunta.opciones[j];
+      if (!opcion || !opcion.texto) {
         $q.notify({
           type: 'warning',
-          message: `Error en la pregunta ${i + 1}`,
+          message: `La pregunta ${i + 1}, opción ${j + 1} debe tener texto`,
           position: 'top',
           timeout: 3000,
         });
         return;
-      }
-
-      if (!pregunta.enunciado) {
-        $q.notify({
-          type: 'warning',
-          message: `La pregunta ${i + 1} debe tener un enunciado`,
-          position: 'top',
-          timeout: 3000,
-        });
-        return;
-      }
-
-      if (!pregunta.opciones || pregunta.opciones.length === 0) {
-        $q.notify({
-          type: 'warning',
-          message: `La pregunta ${i + 1} debe tener al menos una opción`,
-          position: 'top',
-          timeout: 3000,
-        });
-        return;
-      }
-
-      const tieneOpcionCorrecta = pregunta.opciones.some((o) => o.esCorrecta && o.texto);
-      if (!tieneOpcionCorrecta) {
-        $q.notify({
-          type: 'warning',
-          message: `La pregunta ${i + 1} debe tener al menos una opción correcta`,
-          position: 'top',
-          timeout: 3000,
-        });
-        return;
-      }
-
-      // Validar que todas las opciones tengan texto
-      for (let j = 0; j < pregunta.opciones.length; j++) {
-        const opcion = pregunta.opciones[j];
-        if (!opcion || !opcion.texto) {
-          $q.notify({
-            type: 'warning',
-            message: `La pregunta ${i + 1}, opción ${j + 1} debe tener texto`,
-            position: 'top',
-            timeout: 3000,
-          });
-          return;
-        }
       }
     }
+  }
 
   // Marcar como submitting antes de emitir
   isSubmitting.value = true;
@@ -2851,7 +2898,12 @@ async function onSubmit() {
   // Nota: No resetear isSubmitting aquí, dejar que handleSubmit lo haga cuando termine
 }
 
-// Exponer estado para que el componente padre pueda resetearlo
+/** API expuesta al padre para control del formulario */
+export interface TrainingFormExposed {
+  isSubmitting: { value: boolean };
+  resetSubmitting(): void;
+}
+
 defineExpose({
   isSubmitting,
   resetSubmitting: () => {

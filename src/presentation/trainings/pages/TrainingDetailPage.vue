@@ -113,7 +113,9 @@
                     <div class="row items-start q-gutter-md">
                       <q-icon name="groups" size="24px" color="primary" />
                       <div class="col">
-                        <div class="text-subtitle2 q-mb-xs text-weight-medium">Audiencia Objetivo</div>
+                        <div class="text-subtitle2 q-mb-xs text-weight-medium">
+                          Audiencia Objetivo
+                        </div>
                         <div class="text-body2 text-grey-7">{{ training.targetAudience }}</div>
                       </div>
                     </div>
@@ -123,7 +125,9 @@
                     <div class="row items-start q-gutter-md">
                       <q-icon name="event" size="24px" color="primary" />
                       <div class="col">
-                        <div class="text-subtitle2 q-mb-xs text-weight-medium">Fechas del Curso</div>
+                        <div class="text-subtitle2 q-mb-xs text-weight-medium">
+                          Fechas del Curso
+                        </div>
                         <div class="text-body2 text-grey-7">
                           <span v-if="training.startDate">
                             Inicio: {{ formatDate(training.startDate) }}
@@ -142,7 +146,9 @@
                     <div class="row items-start q-gutter-md">
                       <q-icon name="attach_file" size="24px" color="primary" />
                       <div class="col">
-                        <div class="text-subtitle2 q-mb-xs text-weight-medium">Recursos y Materiales</div>
+                        <div class="text-subtitle2 q-mb-xs text-weight-medium">
+                          Recursos y Materiales
+                        </div>
                         <div class="column q-gutter-xs q-mt-sm">
                           <q-item
                             v-for="att in allAttachments"
@@ -180,7 +186,11 @@
                 <div class="resources-section">
                   <div class="row items-center justify-between q-mb-md">
                     <div class="text-h6 text-weight-medium">Recursos y Materiales</div>
-                    <q-badge v-if="allAttachments.length > 0" color="primary" :label="`${allAttachments.length} recursos`" />
+                    <q-badge
+                      v-if="allAttachments.length > 0"
+                      color="primary"
+                      :label="`${allAttachments.length} recursos`"
+                    />
                   </div>
 
                   <q-inner-loading :showing="loadingMaterials" />
@@ -205,12 +215,21 @@
                         <template v-if="att.type === 'video'">
                           <q-item-section class="full-width">
                             <div class="video-container q-mb-md">
-                              <div class="text-subtitle2 q-mb-sm text-weight-medium">{{ att.label }}</div>
+                              <div class="text-subtitle2 q-mb-sm text-weight-medium">
+                                {{ att.label }}
+                              </div>
                               <div class="video-wrapper">
                                 <iframe
                                   :src="getVideoEmbedUrl(att.url)"
                                   frameborder="0"
-                                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                  allow="
+                                    accelerometer;
+                                    autoplay;
+                                    clipboard-write;
+                                    encrypted-media;
+                                    gyroscope;
+                                    picture-in-picture;
+                                  "
                                   allowfullscreen
                                   class="video-iframe"
                                 />
@@ -252,7 +271,7 @@
                   </div>
                 </div>
               </q-tab-panel>
-              
+
               <q-tab-panel name="students">
                 <div class="students-section">
                   <q-inner-loading :showing="loadingStudents" />
@@ -340,7 +359,10 @@
                   </q-table>
 
                   <!-- Botón de guardar si hay cambios pendientes -->
-                  <div v-if="hasUnsavedChanges && canManageTrainings" class="row justify-end q-mt-md">
+                  <div
+                    v-if="hasUnsavedChanges && canManageTrainings"
+                    class="row justify-end q-mt-md"
+                  >
                     <q-btn
                       color="primary"
                       label="Guardar Cambios"
@@ -352,13 +374,16 @@
                 </div>
               </q-tab-panel>
 
-          
-
               <q-tab-panel name="reviews">
                 <div class="reviews-section">
-                  <div v-if="training.reviews && training.reviews.length > 0" class="row items-center q-gutter-md q-mb-lg">
+                  <div
+                    v-if="training.reviews && training.reviews.length > 0"
+                    class="row items-center q-gutter-md q-mb-lg"
+                  >
                     <div class="rating-summary">
-                      <div class="text-h3 text-weight-bold">{{ training.averageRating.toFixed(1) }}</div>
+                      <div class="text-h3 text-weight-bold">
+                        {{ training.averageRating.toFixed(1) }}
+                      </div>
                       <q-rating
                         :model-value="training.averageRating"
                         max="5"
@@ -368,12 +393,20 @@
                         class="q-mb-xs"
                       />
                       <div class="text-body2 text-grey-7">
-                        Basado en {{ training.reviews.length }} reseña{{ training.reviews.length !== 1 ? 's' : '' }}
+                        Basado en {{ training.reviews.length }} reseña{{
+                          training.reviews.length !== 1 ? 's' : ''
+                        }}
                       </div>
                     </div>
                   </div>
-                  <q-separator v-if="training.reviews && training.reviews.length > 0" class="q-mb-lg" />
-                  <div v-if="!training.reviews || training.reviews.length === 0" class="empty-state">
+                  <q-separator
+                    v-if="training.reviews && training.reviews.length > 0"
+                    class="q-mb-lg"
+                  />
+                  <div
+                    v-if="!training.reviews || training.reviews.length === 0"
+                    class="empty-state"
+                  >
                     <q-icon name="star" size="48px" color="grey-5" class="q-mb-sm" />
                     <div class="text-body1 text-grey-6">No hay reseñas disponibles</div>
                   </div>
@@ -395,10 +428,14 @@
                               color="amber"
                               readonly
                             />
-                            <span class="text-caption text-grey-6">{{ formatDate(review.createdAt) }}</span>
+                            <span class="text-caption text-grey-6">{{
+                              formatDate(review.createdAt)
+                            }}</span>
                           </div>
                         </div>
-                        <div class="text-body1 text-grey-8">{{ review.comment || 'Sin comentario' }}</div>
+                        <div class="text-body1 text-grey-8">
+                          {{ review.comment || 'Sin comentario' }}
+                        </div>
                       </q-card-section>
                     </q-card>
                   </div>
@@ -441,7 +478,12 @@
               </q-card-section>
               <q-card-section>
                 <div class="text-h6 q-mb-sm text-weight-medium">{{ training.title }}</div>
-                <div v-if="training.averageRating > 0 && training.reviews && training.reviews.length > 0" class="row items-center q-gutter-xs q-mb-md">
+                <div
+                  v-if="
+                    training.averageRating > 0 && training.reviews && training.reviews.length > 0
+                  "
+                  class="row items-center q-gutter-xs q-mb-md"
+                >
                   <q-rating
                     :model-value="training.averageRating"
                     max="5"
@@ -453,7 +495,8 @@
                     {{ training.averageRating.toFixed(1) }}
                   </span>
                   <span class="text-caption text-grey-6 q-ml-xs">
-                    ({{ training.reviews.length }} {{ training.reviews.length === 1 ? 'reseña' : 'reseñas' }})
+                    ({{ training.reviews.length }}
+                    {{ training.reviews.length === 1 ? 'reseña' : 'reseñas' }})
                   </span>
                 </div>
 
@@ -464,7 +507,11 @@
                     <q-icon name="people" size="18px" color="grey-6" class="q-mr-sm" />
                     <span class="text-body2 text-grey-7">
                       <strong>Capacidad:</strong>
-                      {{ training.capacity ? `${enrolledStudentsCount}/${training.capacity}` : `${enrolledStudentsCount} inscritos` }}
+                      {{
+                        training.capacity
+                          ? `${enrolledStudentsCount}/${training.capacity}`
+                          : `${enrolledStudentsCount} inscritos`
+                      }}
                     </span>
                   </div>
                 </div>
@@ -493,11 +540,16 @@
                   class="full-width q-mb-sm"
                   @click="handleEnrollStudent"
                 />
-                <q-separator v-if="canEnrollStudents || canActivateTrainings || canManageTrainings" class="q-my-md" />
+                <q-separator
+                  v-if="canEnrollStudents || canActivateTrainings || canManageTrainings"
+                  class="q-my-md"
+                />
 
                 <!-- Status Toggle (RF-10) - Solo ADMIN y CLIENTE -->
                 <div v-if="canActivateTrainings" class="status-toggle-section q-mb-md">
-                  <div class="text-subtitle2 q-mb-sm text-weight-medium">Estado de la Capacitación</div>
+                  <div class="text-subtitle2 q-mb-sm text-weight-medium">
+                    Estado de la Capacitación
+                  </div>
                   <q-banner
                     :class="trainingStatus === 'active' ? 'bg-positive-1' : 'bg-grey-2'"
                     rounded
@@ -514,7 +566,11 @@
                       {{ trainingStatus === 'active' ? 'ACTIVA' : 'INACTIVA' }}
                     </div>
                     <div class="text-caption text-grey-7">
-                      {{ trainingStatus === 'active' ? 'La capacitación está disponible para inscripciones' : 'La capacitación no está disponible' }}
+                      {{
+                        trainingStatus === 'active'
+                          ? 'La capacitación está disponible para inscripciones'
+                          : 'La capacitación no está disponible'
+                      }}
                     </div>
                   </q-banner>
                   <q-btn
@@ -526,7 +582,11 @@
                     @click="handleToggleStatus"
                   >
                     <q-tooltip>
-                      {{ trainingStatus === 'active' ? 'Desactivar capacitación (RF-10)' : 'Activar capacitación (RF-10)' }}
+                      {{
+                        trainingStatus === 'active'
+                          ? 'Desactivar capacitación (RF-10)'
+                          : 'Activar capacitación (RF-10)'
+                      }}
                     </q-tooltip>
                   </q-btn>
                 </div>
@@ -548,7 +608,10 @@
                 <q-separator class="q-my-md" />
                 <div class="sidebar-reviews-section">
                   <div class="text-subtitle2 q-mb-sm text-weight-medium">Reseñas</div>
-                  <div v-if="displayReviews.length === 0" class="text-caption text-grey-6 text-center q-py-sm">
+                  <div
+                    v-if="displayReviews.length === 0"
+                    class="text-caption text-grey-6 text-center q-py-sm"
+                  >
                     No hay reseñas disponibles
                   </div>
                   <div v-else class="sidebar-reviews-list">
@@ -565,14 +628,22 @@
                           color="amber"
                           readonly
                         />
-                        <span class="text-caption text-grey-6">{{ formatDate(review.createdAt) }}</span>
+                        <span class="text-caption text-grey-6">{{
+                          formatDate(review.createdAt)
+                        }}</span>
                       </div>
                       <div class="text-caption text-grey-7 ellipsis-2-lines">
                         {{ review.comment || 'Sin comentario' }}
                       </div>
                     </div>
-                    <div v-if="displayReviews.length > 3" class="text-caption text-grey-6 text-center q-mt-sm">
-                      Y {{ displayReviews.length - 3 }} reseña{{ displayReviews.length - 3 !== 1 ? 's' : '' }} más
+                    <div
+                      v-if="displayReviews.length > 3"
+                      class="text-caption text-grey-6 text-center q-mt-sm"
+                    >
+                      Y {{ displayReviews.length - 3 }} reseña{{
+                        displayReviews.length - 3 !== 1 ? 's' : ''
+                      }}
+                      más
                     </div>
                   </div>
                 </div>
@@ -593,17 +664,28 @@ import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 import type { QTableColumn } from 'quasar';
-import type { Training, TrainingStudent, TrainingAttachment, TrainingReview } from '../../../domain/training/models';
+import type {
+  Training,
+  TrainingStudent,
+  TrainingAttachment,
+  TrainingReview,
+} from '../../../domain/training/models';
 import { TrainingUseCasesFactory } from '../../../application/training/training.use-cases.factory';
 import { trainingsService } from '../../../infrastructure/http/trainings/trainings.service';
 // import { materialsService } from '../../../infrastructure/http/materials/materials.service';
 import type { Material } from '../../../domain/material/models';
 import { useRole } from '../../../shared/composables/useRole';
-import { useTrainingEvaluation, type TrainingWithEvaluations } from '../../../shared/composables/useTrainingEvaluation';
+import {
+  useTrainingEvaluation,
+  type TrainingWithEvaluations,
+} from '../../../shared/composables/useTrainingEvaluation';
 import { useEnrollmentCheck } from '../../../shared/composables/useEnrollmentCheck';
 import { useMaterialUrl } from '../../../shared/composables/useMaterialUrl';
 import { useAuthStore } from '../../../stores/auth.store';
-import { inscriptionsService, type InscriptionWithDocument } from '../../../infrastructure/http/inscriptions/inscriptions.service';
+import {
+  inscriptionsService,
+  type InscriptionWithDocument,
+} from '../../../infrastructure/http/inscriptions/inscriptions.service';
 import EnrollStudentDialog from '../../../shared/components/EnrollStudentDialog.vue';
 
 const route = useRoute();
@@ -647,7 +729,11 @@ const { navigateToEvaluation } = useTrainingEvaluation();
 const loadingEvaluation = ref(false);
 
 // Composable para verificar inscripción del usuario
-const { isEnrolled, loading: loadingEnrollment, checkEnrollment } = useEnrollmentCheck({
+const {
+  isEnrolled,
+  loading: loadingEnrollment,
+  checkEnrollment,
+} = useEnrollmentCheck({
   courseId: computed(() => training.value?.id ?? ''),
 });
 
@@ -705,7 +791,8 @@ function mapMaterialToAttachment(material: Material): TrainingAttachment {
     tipoNombre.includes('enlace') ||
     tipoNombre.includes('link') ||
     tipoCodigo === 'LINK' ||
-    (isExternalLink && !material.url.match(/\.(pdf|doc|docx|ppt|pptx|jpg|jpeg|png|gif|mp4|webm|mp3|wav)$/i));
+    (isExternalLink &&
+      !material.url.match(/\.(pdf|doc|docx|ppt|pptx|jpg|jpeg|png|gif|mp4|webm|mp3|wav)$/i));
 
   return {
     id: material.id,
@@ -729,7 +816,7 @@ const allAttachments = computed<TrainingAttachment[]>(() => {
       url: isExternalLink ? att.url : buildFullUrl(att.url),
     };
   });
-  
+
   const attachmentsFromMaterials = materials.value
     .filter((m) => m.activo !== false)
     .map(mapMaterialToAttachment);
@@ -756,26 +843,28 @@ async function loadEnrolledStudents(): Promise<void> {
   loadingStudents.value = true;
   try {
     const inscriptions = await inscriptionsService.findByCourse(training.value.id);
-    
+
     // Mapear inscripciones a StudentWithDocument
-    enrolledStudents.value = inscriptions.map((inscription: InscriptionWithDocument): StudentWithDocument => {
-      const student: StudentWithDocument = {
-        id: inscription.userId,
-        name: inscription.userName,
-        email: '',
-        progress: inscription.progress,
-      };
-      if (inscription.documentNumber) {
-        student.documentNumber = inscription.documentNumber;
-      }
-      if (inscription.inscriptionId) {
-        student.inscriptionId = inscription.inscriptionId;
-      }
-      if (inscription.score !== undefined) {
-        student.score = inscription.score;
-      }
-      return student;
-    });
+    enrolledStudents.value = inscriptions.map(
+      (inscription: InscriptionWithDocument): StudentWithDocument => {
+        const student: StudentWithDocument = {
+          id: inscription.userId,
+          name: inscription.userName,
+          email: '',
+          progress: inscription.progress,
+        };
+        if (inscription.documentNumber) {
+          student.documentNumber = inscription.documentNumber;
+        }
+        if (inscription.id) {
+          student.inscriptionId = inscription.id;
+        }
+        if (inscription.score !== undefined) {
+          student.score = inscription.score;
+        }
+        return student;
+      },
+    );
   } catch (error) {
     console.error('Error al cargar estudiantes inscritos:', error);
     enrolledStudents.value = [];
@@ -818,11 +907,13 @@ async function loadTraining() {
       const errorStr = error.message.toLowerCase();
 
       if (errorStr.includes('404') || errorStr.includes('not found')) {
-        errorMessage = 'Capacitación no encontrada: La capacitación solicitada no existe o ha sido eliminada';
+        errorMessage =
+          'Capacitación no encontrada: La capacitación solicitada no existe o ha sido eliminada';
       } else if (errorStr.includes('network') || errorStr.includes('timeout')) {
         errorMessage = 'Error de conexión: Verifique su conexión a internet e intente nuevamente';
       } else if (errorStr.includes('401') || errorStr.includes('unauthorized')) {
-        errorMessage = 'Error de autenticación: Su sesión ha expirado. Por favor, inicie sesión nuevamente';
+        errorMessage =
+          'Error de autenticación: Su sesión ha expirado. Por favor, inicie sesión nuevamente';
         void router.push('/auth/login');
         return;
       } else if (errorStr.includes('403') || errorStr.includes('forbidden')) {
@@ -956,9 +1047,8 @@ function handleEnrollStudent() {
 
 async function handleEnrollStudentConfirm(estudianteId: string): Promise<void> {
   try {
-    const { inscriptionsService } = await import(
-      '../../../infrastructure/http/inscriptions/inscriptions.service'
-    );
+    const { inscriptionsService } =
+      await import('../../../infrastructure/http/inscriptions/inscriptions.service');
 
     // Crear la inscripción
     await inscriptionsService.create({
@@ -979,7 +1069,7 @@ async function handleEnrollStudentConfirm(estudianteId: string): Promise<void> {
     if (!isAlumno.value) {
       await loadEnrolledStudents();
     }
-    
+
     // Si el usuario inscrito es el usuario actual, verificar inscripción
     // Obtener personaId del perfil (puede venir como personaId directo o desde persona.id)
     const profile = authStore.profile as { personaId?: number; persona?: { id?: number } } | null;
@@ -990,13 +1080,13 @@ async function handleEnrollStudentConfirm(estudianteId: string): Promise<void> {
   } catch (error: unknown) {
     // Extraer el mensaje de error de forma más robusta
     let errorMessage = 'Error al inscribir el estudiante';
-    
+
     if (error instanceof Error) {
       errorMessage = error.message;
     } else if (error && typeof error === 'object' && 'message' in error) {
       errorMessage = String(error.message);
     }
-    
+
     // Mostrar notificación con el mensaje del error
     $q.notify({
       type: 'negative',
@@ -1011,7 +1101,7 @@ async function handleEnrollStudentConfirm(estudianteId: string): Promise<void> {
         },
       ],
     });
-    
+
     // Log para depuración
     console.error('Error al inscribir estudiante:', error);
   }
@@ -1034,7 +1124,7 @@ function getScoreClass(score: number | undefined): string {
  */
 function handleScoreChange(student: StudentWithDocument): void {
   if (!canManageTrainings || !student.inscriptionId) return;
-  
+
   hasUnsavedChanges.value = true;
   if (student.score !== undefined && student.score !== null) {
     pendingScoreChanges.value.set(student.id, {
@@ -1058,9 +1148,8 @@ async function saveAllScores(): Promise<void> {
 
   savingScore.value = true;
   try {
-    const { inscriptionsService } = await import(
-      '../../../infrastructure/http/inscriptions/inscriptions.service'
-    );
+    const { inscriptionsService } =
+      await import('../../../infrastructure/http/inscriptions/inscriptions.service');
 
     // Guardar todas las notas pendientes
     const savePromises = Array.from(pendingScoreChanges.value.entries()).map(
@@ -1072,7 +1161,7 @@ async function saveAllScores(): Promise<void> {
           }
           await inscriptionsService.update(inscriptionId, updateDto);
           // Actualizar el estudiante en la lista local
-          const student = enrolledStudents.value.find(s => s.id === userId);
+          const student = enrolledStudents.value.find((s) => s.id === userId);
           if (student) {
             if (score > 0) {
               student.score = score;
@@ -1084,7 +1173,7 @@ async function saveAllScores(): Promise<void> {
           console.error(`Error al guardar nota para estudiante ${userId}:`, error);
           throw error;
         }
-      }
+      },
     );
 
     await Promise.all(savePromises);
@@ -1152,7 +1241,7 @@ async function handlePresentEvaluation(): Promise<void> {
  */
 const trainingStatus = computed(() => {
   if (!training.value?.status) return 'inactive';
-  
+
   // Estados considerados como activos (permiten inscripciones)
   const estadosActivos: string[] = ['published', 'active'];
   return estadosActivos.includes(training.value.status) ? 'active' : 'inactive';
@@ -1167,7 +1256,11 @@ function handleToggleStatus(): void {
   // Verificar si $q.dialog está disponible, si no usar confirm nativo
   if (typeof $q.dialog !== 'function') {
     // Fallback si dialog no está disponible
-    if (confirm(`¿Está seguro de que desea ${action} esta capacitación? Los certificados ya emitidos no se afectarán (RF-10).`)) {
+    if (
+      confirm(
+        `¿Está seguro de que desea ${action} esta capacitación? Los certificados ya emitidos no se afectarán (RF-10).`,
+      )
+    ) {
       void handleToggleStatusConfirm();
     }
     return;
@@ -1199,14 +1292,6 @@ async function handleToggleStatusConfirm(): Promise<void> {
     const currentStatus = trainingStatus.value;
     const actionPast = currentStatus === 'active' ? 'desactivada' : 'activada';
 
-    // Importar servicio de toggle
-    const { trainingsToggleStatusService } = await import(
-      '../../../infrastructure/http/trainings/trainings-toggle-status.service'
-    );
-
-    // Llamar al endpoint de toggle
-    const updatedTraining = await trainingsToggleStatusService.toggleActivoInactivo(trainingId);
-
     // Recargar la capacitación para obtener el estado actualizado del backend
     await loadTraining();
 
@@ -1219,10 +1304,10 @@ async function handleToggleStatusConfirm(): Promise<void> {
   } catch (error) {
     // Mejorar mensajes de error
     let errorMessage = 'Error al cambiar el estado';
-    
+
     if (error instanceof Error) {
       const errorStr = error.message.toLowerCase();
-      
+
       if (errorStr.includes('evaluación') || errorStr.includes('evaluation')) {
         errorMessage = 'No se puede activar: Debe vincular una evaluación primero (RF-09)';
       } else if (errorStr.includes('network') || errorStr.includes('timeout')) {
@@ -1231,7 +1316,7 @@ async function handleToggleStatusConfirm(): Promise<void> {
         errorMessage = error.message;
       }
     }
-    
+
     $q.notify({
       type: 'negative',
       message: errorMessage,
@@ -1251,7 +1336,8 @@ function handleRemoveCoverImage(): void {
   // Confirmar eliminación
   $q.dialog({
     title: 'Eliminar imagen de portada',
-    message: '¿Está seguro de que desea eliminar la imagen de portada? Podrá cargar una nueva imagen después.',
+    message:
+      '¿Está seguro de que desea eliminar la imagen de portada? Podrá cargar una nueva imagen después.',
     cancel: {
       label: 'Cancelar',
       flat: true,
@@ -1265,34 +1351,35 @@ function handleRemoveCoverImage(): void {
     persistent: true,
   }).onOk(() => {
     void (async () => {
-    try {
-      // Actualizar capacitación eliminando la imagen de portada
-      const updateTrainingUseCase = TrainingUseCasesFactory.getUpdateTrainingUseCase(trainingsService);
-      
-      await updateTrainingUseCase.execute(parseInt(training.value!.id), {
-        imagenPortadaUrl: '', // String vacío para eliminar la imagen
-      });
+      try {
+        // Actualizar capacitación eliminando la imagen de portada
+        const updateTrainingUseCase =
+          TrainingUseCasesFactory.getUpdateTrainingUseCase(trainingsService);
 
-      // Recargar la capacitación para reflejar los cambios
-      await loadTraining();
+        await updateTrainingUseCase.execute(parseInt(training.value!.id), {
+          imagenPortadaUrl: '', // String vacío para eliminar la imagen
+        });
 
-      $q.notify({
-        type: 'positive',
-        message: 'Imagen de portada eliminada exitosamente',
-        icon: 'check_circle',
-        position: 'top',
-        timeout: 3000,
-      });
-    } catch (error) {
-      console.error('Error al eliminar imagen de portada:', error);
-      $q.notify({
-        type: 'negative',
-        message: 'Error al eliminar la imagen de portada',
-        icon: 'error',
-        position: 'top',
-        timeout: 5000,
-      });
-    }
+        // Recargar la capacitación para reflejar los cambios
+        await loadTraining();
+
+        $q.notify({
+          type: 'positive',
+          message: 'Imagen de portada eliminada exitosamente',
+          icon: 'check_circle',
+          position: 'top',
+          timeout: 3000,
+        });
+      } catch (error) {
+        console.error('Error al eliminar imagen de portada:', error);
+        $q.notify({
+          type: 'negative',
+          message: 'Error al eliminar la imagen de portada',
+          icon: 'error',
+          position: 'top',
+          timeout: 5000,
+        });
+      }
     })();
   });
 }
@@ -1328,7 +1415,7 @@ const enrolledStudentsCount = computed(() => {
  */
 const displayReviews = computed<TrainingReview[]>(() => {
   if (!training.value) return [];
-  
+
   // Mostrar solo reseñas reales de la base de datos
   return training.value.reviews || [];
 });
@@ -1356,7 +1443,7 @@ const studentColumns: QTableColumn<StudentWithDocument>[] = [
     label: 'Nota',
     align: 'center',
     sortable: true,
-    format: (val: number) => val !== undefined && val !== null ? val.toFixed(2) : 'Sin calificar',
+    format: (val: number) => (val !== undefined && val !== null ? val.toFixed(2) : 'Sin calificar'),
   },
 ];
 
@@ -1367,7 +1454,8 @@ function getVideoEmbedUrl(url: string): string {
   if (!url) return '';
 
   // YouTube
-  const youtubeRegex = /(?:youtube\.com\/(?:[^/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?/\s]{11})/;
+  const youtubeRegex =
+    /(?:youtube\.com\/(?:[^/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?/\s]{11})/;
   const youtubeMatch = url.match(youtubeRegex);
   if (youtubeMatch) {
     return `https://www.youtube.com/embed/${youtubeMatch[1]}`;
@@ -1515,7 +1603,9 @@ body.body--dark .training-detail-page {
   border-radius: 16px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
   overflow: hidden;
-  transition: background-color 0.3s ease, box-shadow 0.3s ease;
+  transition:
+    background-color 0.3s ease,
+    box-shadow 0.3s ease;
 }
 
 body.body--light .content-card {
@@ -1626,7 +1716,9 @@ body.body--dark .resource-link-item:hover {
   padding: 24px;
   border-radius: 16px;
   border: 2px solid #e5e7eb;
-  transition: background 0.3s ease, border-color 0.3s ease;
+  transition:
+    background 0.3s ease,
+    border-color 0.3s ease;
 }
 
 body.body--light .rating-summary {
@@ -1661,7 +1753,9 @@ body.body--dark .rating-summary {
   border-radius: 16px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
   overflow: hidden;
-  transition: background-color 0.3s ease, box-shadow 0.3s ease;
+  transition:
+    background-color 0.3s ease,
+    box-shadow 0.3s ease;
 }
 
 body.body--light .sidebar-card {
@@ -1690,7 +1784,9 @@ body.body--dark .sidebar-card {
   align-items: center;
   justify-content: center;
   border-bottom: 2px dashed #d1d5db;
-  transition: background 0.3s ease, border-color 0.3s ease;
+  transition:
+    background 0.3s ease,
+    border-color 0.3s ease;
 }
 
 body.body--light .sidebar-watermark {

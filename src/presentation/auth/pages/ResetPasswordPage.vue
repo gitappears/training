@@ -210,10 +210,11 @@ async function handleSubmit() {
     setTimeout(() => {
       void router.push({ name: 'login' });
     }, 2000);
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const err = error as { response?: { data?: { message?: string } }; message?: string };
     const errorMessage =
-      error.response?.data?.message ||
-      error.message ||
+      err.response?.data?.message ||
+      err.message ||
       'Error al restablecer la contraseña';
 
     $q.notify({

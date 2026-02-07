@@ -7,6 +7,9 @@
         <div class="text-body1 text-grey-7">
           Resumen de la actividad de formación de tu organización
         </div>
+        <div v-if="dashboardScopeLabel" class="text-caption text-grey-6 q-mt-xs">
+          {{ dashboardScopeLabel }}
+        </div>
       </div>
       <div class="row q-gutter-sm">
         <q-btn
@@ -34,10 +37,7 @@
       <q-card-section class="q-pa-md">
         <div class="text-subtitle2 q-mb-md text-weight-medium">Acceso Rápido</div>
         <div class="row q-col-gutter-md">
-          <div
-            v-if="canViewTrainings"
-            class="col-6 col-sm-4 col-md-2"
-          >
+          <div v-if="canViewTrainings" class="col-6 col-sm-4 col-md-2">
             <q-btn flat class="quick-action-btn full-width" @click="navigateTo('/trainings')">
               <div class="column items-center q-gutter-xs">
                 <q-icon name="school" size="32px" color="primary" />
@@ -45,10 +45,7 @@
               </div>
             </q-btn>
           </div>
-          <div
-            v-if="canManageUsers"
-            class="col-6 col-sm-4 col-md-2"
-          >
+          <div v-if="canManageUsers" class="col-6 col-sm-4 col-md-2">
             <q-btn flat class="quick-action-btn full-width" @click="navigateTo('/users')">
               <div class="column items-center q-gutter-xs">
                 <q-icon name="people" size="32px" color="primary" />
@@ -56,10 +53,7 @@
               </div>
             </q-btn>
           </div>
-          <div
-            v-if="canViewEvaluations"
-            class="col-6 col-sm-4 col-md-2"
-          >
+          <div v-if="canViewEvaluations" class="col-6 col-sm-4 col-md-2">
             <q-btn flat class="quick-action-btn full-width" @click="navigateTo('/evaluations')">
               <div class="column items-center q-gutter-xs">
                 <q-icon name="quiz" size="32px" color="primary" />
@@ -67,10 +61,7 @@
               </div>
             </q-btn>
           </div>
-          <div
-            v-if="canViewCertificates"
-            class="col-6 col-sm-4 col-md-2"
-          >
+          <div v-if="canViewCertificates" class="col-6 col-sm-4 col-md-2">
             <q-btn flat class="quick-action-btn full-width" @click="navigateTo('/certificates')">
               <div class="column items-center q-gutter-xs">
                 <q-icon name="verified" size="32px" color="primary" />
@@ -78,10 +69,7 @@
               </div>
             </q-btn>
           </div>
-          <div
-            v-if="canViewReports"
-            class="col-6 col-sm-4 col-md-2"
-          >
+          <div v-if="canViewReports" class="col-6 col-sm-4 col-md-2">
             <q-btn flat class="quick-action-btn full-width" @click="navigateTo('/reports')">
               <div class="column items-center q-gutter-xs">
                 <q-icon name="insights" size="32px" color="primary" />
@@ -89,10 +77,7 @@
               </div>
             </q-btn>
           </div>
-          <div
-            v-if="canManageTrainings"
-            class="col-6 col-sm-4 col-md-2"
-          >
+          <div v-if="canManageTrainings" class="col-6 col-sm-4 col-md-2">
             <q-btn
               flat
               class="quick-action-btn full-width"
@@ -407,9 +392,11 @@ import { useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 import { dashboardService } from '../../../infrastructure/http/dashboard';
 import { useRole } from '../../../shared/composables/useRole';
+import { useAuthStore } from '../../../stores/auth.store';
 
 const router = useRouter();
 const $q = useQuasar();
+const authStore = useAuthStore();
 const {
   canViewTrainings,
   canManageTrainings,
@@ -417,7 +404,19 @@ const {
   canViewEvaluations,
   canViewCertificates,
   canViewReports,
+  isAdmin,
 } = useRole();
+
+// Indicador de alcance del dashboard: solo admin ve datos globales; el resto ve datos de su empresa
+const dashboardScopeLabel = computed(() => {
+  if (isAdmin.value) return null;
+  const empresa = authStore.profile?.persona?.empresa;
+  const nombreEmpresa = empresa?.razonSocial;
+  if (authStore.profile?.persona?.empresaId != null || empresa) {
+    return nombreEmpresa ? `Datos de tu empresa · ${nombreEmpresa}` : 'Datos de tu empresa';
+  }
+  return null;
+});
 
 // Estado
 const showCustomizeDialog = ref(false);
@@ -660,7 +659,7 @@ async function loadDashboardData() {
         columnClass: 'col-12 col-sm-6 col-md-3',
         visible: true,
         ...(stats.kpis.activeCourses.variation !== undefined && {
-        variation: stats.kpis.activeCourses.variation,
+          variation: stats.kpis.activeCourses.variation,
         }),
       },
       {
@@ -674,7 +673,7 @@ async function loadDashboardData() {
         columnClass: 'col-12 col-sm-6 col-md-3',
         visible: true,
         ...(stats.kpis.enrolledUsers.variation !== undefined && {
-        variation: stats.kpis.enrolledUsers.variation,
+          variation: stats.kpis.enrolledUsers.variation,
         }),
       },
       {
@@ -712,7 +711,7 @@ async function loadDashboardData() {
         columnClass: 'col-12 col-sm-6 col-md-3',
         visible: false,
         ...(stats.kpis.certificatesIssued.variation !== undefined && {
-        variation: stats.kpis.certificatesIssued.variation,
+          variation: stats.kpis.certificatesIssued.variation,
         }),
       },
       {
@@ -738,36 +737,34 @@ async function loadDashboardData() {
     completionTrend.value = stats.completionTrend;
 
     // Actualizar notificaciones (Mapeo de backend a frontend)
-    notifications.value = stats.notifications.map(
-      (n: { id: string; message: string; time: string; type: string }) => ({
+    type BackendNotification = { id: string; message: string; time: string; type: string };
+    notifications.value = (stats.notifications as BackendNotification[]).map((n) => ({
       id: n.id,
-      title: n.message, // Backend envía 'message'
+      title: n.message,
       time: n.time,
-      icon: 'warning', // Backend envía 'type', mapeamos a icono
+      icon: 'warning',
       color: n.type === 'warning' ? 'warning' : 'primary',
       read: false,
-      }),
-    );
+    }));
 
     // Actualizar actividad reciente (Mapeo de backend a frontend)
-    recentActivity.value = stats.recentActivity.map(
-      (a: {
-        id: string;
-        title: string;
-        time: string;
-        description: string;
-        icon: string;
-        color: string;
-      }) => ({
+    type BackendActivity = {
+      id: string;
+      title: string;
+      time: string;
+      description: string;
+      icon: string;
+      color: string;
+    };
+    recentActivity.value = (stats.recentActivity as BackendActivity[]).map((a) => ({
       id: a.id,
       title: a.title,
-      when: a.time, // Backend envía 'time', frontend espera 'when'
+      when: a.time,
       description: a.description,
-      meta: '', // Backend no envía meta por ahora
+      meta: '',
       icon: a.icon,
       color: a.color,
-      }),
-    );
+    }));
 
     // Cargar preferencias guardadas
     loadWidgetPreferences();

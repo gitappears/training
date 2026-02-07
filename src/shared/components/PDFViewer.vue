@@ -1,27 +1,12 @@
 <template>
   <div class="pdf-viewer">
-    <div
-      v-if="loading"
-      class="loading-container"
-    >
-      <q-spinner
-        color="primary"
-        size="3em"
-      />
-      <div class="q-mt-md text-body2">
-        Cargando PDF...
-      </div>
+    <div v-if="loading" class="loading-container">
+      <q-spinner color="primary" size="3em" />
+      <div class="q-mt-md text-body2">Cargando PDF...</div>
     </div>
 
-    <div
-      v-else-if="error"
-      class="error-container"
-    >
-      <q-icon
-        name="error_outline"
-        size="48px"
-        color="negative"
-      />
+    <div v-else-if="error" class="error-container">
+      <q-icon name="error_outline" size="48px" color="negative" />
       <div class="q-mt-md text-body1 text-negative">
         {{ errorMessage }}
       </div>
@@ -34,110 +19,52 @@
       />
     </div>
 
-    <div
-      v-else
-      class="pdf-container"
-    >
+    <div v-else class="pdf-container">
       <!-- Controles de zoom y navegación -->
       <div class="pdf-controls q-mb-md">
-        <q-btn-group
-          flat
-          rounded
-        >
-          <q-btn
-            icon="zoom_out"
-            :disable="zoom <= minZoom"
-            @click="zoomOut"
-          >
+        <q-btn-group flat rounded>
+          <q-btn icon="zoom_out" :disable="zoom <= minZoom" @click="zoomOut">
             <q-tooltip>Alejar</q-tooltip>
           </q-btn>
-          <q-btn
-            :label="`${Math.round(zoom * 100)}%`"
-            disable
-            style="min-width: 80px;"
-          />
-          <q-btn
-            icon="zoom_in"
-            :disable="zoom >= maxZoom"
-            @click="zoomIn"
-          >
+          <q-btn :label="`${Math.round(zoom * 100)}%`" disable style="min-width: 80px" />
+          <q-btn icon="zoom_in" :disable="zoom >= maxZoom" @click="zoomIn">
             <q-tooltip>Acercar</q-tooltip>
           </q-btn>
         </q-btn-group>
 
         <q-space />
 
-        <q-btn-group
-          flat
-          rounded
-        >
-          <q-btn
-            icon="first_page"
-            :disable="currentPage <= 1"
-            @click="goToFirstPage"
-          >
+        <q-btn-group flat rounded>
+          <q-btn icon="first_page" :disable="currentPage <= 1" @click="goToFirstPage">
             <q-tooltip>Primera página</q-tooltip>
           </q-btn>
-          <q-btn
-            icon="chevron_left"
-            :disable="currentPage <= 1"
-            @click="previousPage"
-          >
+          <q-btn icon="chevron_left" :disable="currentPage <= 1" @click="previousPage">
             <q-tooltip>Página anterior</q-tooltip>
           </q-btn>
-          <q-btn
-            :label="`${currentPage} / ${totalPages}`"
-            disable
-            style="min-width: 100px;"
-          />
-          <q-btn
-            icon="chevron_right"
-            :disable="currentPage >= totalPages"
-            @click="nextPage"
-          >
+          <q-btn :label="`${currentPage} / ${totalPages}`" disable style="min-width: 100px" />
+          <q-btn icon="chevron_right" :disable="currentPage >= totalPages" @click="nextPage">
             <q-tooltip>Página siguiente</q-tooltip>
           </q-btn>
-          <q-btn
-            icon="last_page"
-            :disable="currentPage >= totalPages"
-            @click="goToLastPage"
-          >
+          <q-btn icon="last_page" :disable="currentPage >= totalPages" @click="goToLastPage">
             <q-tooltip>Última página</q-tooltip>
           </q-btn>
         </q-btn-group>
 
         <q-space />
 
-        <q-btn-group
-          flat
-          rounded
-        >
-          <q-btn
-            icon="fullscreen"
-            @click="toggleFullscreen"
-          >
+        <q-btn-group flat rounded>
+          <q-btn icon="fullscreen" @click="toggleFullscreen">
             <q-tooltip>Pantalla completa</q-tooltip>
           </q-btn>
-          <q-btn
-            v-if="allowDownload"
-            icon="download"
-            @click="downloadPdf"
-          >
+          <q-btn v-if="allowDownload" icon="download" @click="downloadPdf">
             <q-tooltip>Descargar PDF</q-tooltip>
           </q-btn>
         </q-btn-group>
       </div>
 
       <!-- Contenedor del PDF -->
-      <div
-        ref="pdfContainer"
-        class="pdf-content"
-        :class="{ 'fullscreen': isFullscreen }"
-      >
-        <canvas
-          ref="pdfCanvas"
-          class="pdf-canvas"
-        />
+      <div ref="pdfContainer" class="pdf-content" :class="{ fullscreen: isFullscreen }">
+        <canvas ref="pdfCanvas" class="pdf-canvas" />
       </div>
     </div>
   </div>
@@ -146,10 +73,25 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch } from 'vue';
 
-// Declarar tipo global para window si se usa CDN
+/** Minimal type for PDF.js library (pdfjs-dist or CDN global) */
+interface PdfJsLibrary {
+  GlobalWorkerOptions?: { workerSrc?: string };
+  getDocument: (params: {
+    url: string;
+    withCredentials?: boolean;
+    httpHeaders?: Record<string, string>;
+  }) => { promise: Promise<PdfDocumentLike> };
+}
+
+/** Documento PDF cargado (retorno de getDocument().promise) */
+interface PdfDocumentLike {
+  numPages: number;
+  getPage(num: number): Promise<unknown>;
+}
+
 declare global {
   interface Window {
-    pdfjsLib?: any;
+    pdfjsLib?: PdfJsLibrary;
   }
 }
 
@@ -189,10 +131,8 @@ const isFullscreen = ref(false);
 const pdfContainer = ref<HTMLElement | null>(null);
 const pdfCanvas = ref<HTMLCanvasElement | null>(null);
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let pdfDoc: any = null;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let pdfjsLib: any = null;
+let pdfDoc: PdfDocumentLike | null = null;
+let pdfjsLib: PdfJsLibrary | null = null;
 
 onMounted(async () => {
   await loadPdfLibrary();
@@ -205,9 +145,12 @@ onUnmounted(() => {
   }
 });
 
-watch(() => props.src, async () => {
-  await loadPdf();
-});
+watch(
+  () => props.src,
+  async () => {
+    await loadPdf();
+  },
+);
 
 watch(zoom, () => {
   void renderPage();
@@ -221,31 +164,31 @@ async function loadPdfLibrary() {
         // Primero intentar importar como módulo ES6
         const pdfjsModule = await import('pdfjs-dist');
         pdfjsLib = pdfjsModule.default || pdfjsModule;
-        
+
         // Configurar el worker para PDF.js
         if (pdfjsLib.GlobalWorkerOptions) {
           // Usar el worker desde el CDN o desde node_modules
           const workerUrl = new URL(
             'pdfjs-dist/build/pdf.worker.min.mjs',
-            import.meta.url
+            import.meta.url,
           ).toString();
           pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl;
         }
       } catch (importError) {
         console.warn('No se pudo cargar pdfjs-dist como módulo, intentando CDN...', importError);
-        
+
         // Fallback: usar CDN de PDF.js
         const script = document.createElement('script');
         script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.mjs';
         script.type = 'module';
-        
+
         await new Promise((resolve, reject) => {
           script.onload = () => {
-            // @ts-ignore - pdfjsLib estará disponible globalmente desde el CDN
             if (window.pdfjsLib) {
               pdfjsLib = window.pdfjsLib;
               if (pdfjsLib.GlobalWorkerOptions) {
-                pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.mjs';
+                pdfjsLib.GlobalWorkerOptions.workerSrc =
+                  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.mjs';
               }
               resolve(true);
             } else {
@@ -256,7 +199,7 @@ async function loadPdfLibrary() {
           document.head.appendChild(script);
         });
       }
-      
+
       if (!pdfjsLib) {
         throw new Error('No se pudo cargar PDF.js desde ninguna fuente');
       }
@@ -277,12 +220,18 @@ async function loadPdf() {
     }
 
     if (!pdfjsLib) {
-      throw new Error('PDF.js library not available. Please install pdfjs-dist package: npm install pdfjs-dist');
+      throw new Error(
+        'PDF.js library not available. Please install pdfjs-dist package: npm install pdfjs-dist',
+      );
     }
 
     // Construir la URL completa si es relativa
     let pdfUrl = props.src;
-    if (!pdfUrl.startsWith('http://') && !pdfUrl.startsWith('https://') && !pdfUrl.startsWith('blob:')) {
+    if (
+      !pdfUrl.startsWith('http://') &&
+      !pdfUrl.startsWith('https://') &&
+      !pdfUrl.startsWith('blob:')
+    ) {
       // Si es una URL relativa, construir la URL completa
       const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
       pdfUrl = pdfUrl.startsWith('/') ? `${baseUrl}${pdfUrl}` : `${baseUrl}/${pdfUrl}`;
@@ -296,7 +245,7 @@ async function loadPdf() {
       withCredentials: false,
       httpHeaders: {},
     });
-    
+
     pdfDoc = await loadingTask.promise;
     totalPages.value = pdfDoc.numPages;
     currentPage.value = 1;
@@ -484,4 +433,3 @@ function downloadPdf() {
   }
 }
 </style>
-

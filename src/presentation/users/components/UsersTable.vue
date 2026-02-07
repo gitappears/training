@@ -81,21 +81,10 @@
 
       <template #body-cell-actions="props">
         <q-td :props="props">
-          <q-btn
-            flat
-            dense
-            round
-            icon="more_vert"
-            color="grey-7"
-            size="sm"
-          >
+          <q-btn flat dense round icon="more_vert" color="grey-7" size="sm">
             <q-menu anchor="top right" self="top left">
               <q-list style="min-width: 180px">
-                <q-item
-                  clickable
-                  v-close-popup
-                  @click="$emit('view-user', props.row.id)"
-                >
+                <q-item clickable v-close-popup @click="$emit('view-user', props.row.id)">
                   <q-item-section avatar>
                     <q-icon name="visibility" color="primary" />
                   </q-item-section>
@@ -103,11 +92,7 @@
                     <q-item-label>Ver detalles</q-item-label>
                   </q-item-section>
                 </q-item>
-                <q-item
-                  clickable
-                  v-close-popup
-                  @click="$emit('edit-user', props.row)"
-                >
+                <q-item clickable v-close-popup @click="$emit('edit-user', props.row)">
                   <q-item-section avatar>
                     <q-icon name="edit" color="primary" />
                   </q-item-section>
@@ -116,11 +101,7 @@
                   </q-item-section>
                 </q-item>
                 <q-separator />
-                <q-item
-                  clickable
-                  v-close-popup
-                  @click="$emit('toggle-status', props.row)"
-                >
+                <q-item clickable v-close-popup @click="$emit('toggle-status', props.row)">
                   <q-item-section avatar>
                     <q-icon
                       :name="props.row.enabled ? 'block' : 'check_circle'"
@@ -148,6 +129,24 @@
                   </q-item-section>
                   <q-item-section>
                     <q-item-label>Aceptar términos</q-item-label>
+                  </q-item-section>
+                </q-item>
+                <q-item
+                  v-if="isAdmin"
+                  clickable
+                  v-close-popup
+                  :disable="completingTrainings[props.row.id] === true"
+                  @click="$emit('complete-trainings', props.row)"
+                >
+                  <q-item-section avatar>
+                    <q-icon
+                      name="school"
+                      color="secondary"
+                      :class="{ 'q-spinner': completingTrainings[props.row.id] === true }"
+                    />
+                  </q-item-section>
+                  <q-item-section>
+                    <q-item-label>Habilitar para certificar</q-item-label>
                   </q-item-section>
                 </q-item>
               </q-list>
@@ -210,12 +209,16 @@ interface Props {
   selectedUsers: User[];
   hasActiveFilters?: boolean;
   acceptingTerms?: Record<string, boolean>;
+  completingTrainings?: Record<string, boolean>;
+  isAdmin?: boolean;
   noDataDescription?: string;
 }
 
 const props = withDefaults(defineProps<Props>(), {
   hasActiveFilters: false,
   acceptingTerms: () => ({}),
+  completingTrainings: () => ({}),
+  isAdmin: false,
   noDataDescription: 'No se encontraron usuarios que coincidan con los filtros aplicados.',
 });
 
@@ -232,6 +235,7 @@ const emit = defineEmits<{
   (e: 'edit-user', user: User): void;
   (e: 'toggle-status', user: User): void;
   (e: 'accept-terms', user: User): void;
+  (e: 'complete-trainings', user: User): void;
   (e: 'export-csv'): void;
   (e: 'export-excel'): void;
   (e: 'clear-filters'): void;
@@ -255,6 +259,7 @@ const selectedUsers = computed({
 });
 
 const acceptingTerms = computed(() => props.acceptingTerms || {});
+const completingTrainings = computed(() => props.completingTrainings || {});
 
 function onRequest(requestProps: TableRequestProps) {
   emit('request', requestProps);

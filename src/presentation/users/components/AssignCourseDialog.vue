@@ -44,8 +44,18 @@
                 {{ selectedCourse.description }}
               </div>
               <div class="row q-gutter-md">
-                <q-badge v-if="selectedCourse.type" :label="selectedCourse.type" color="primary" outline />
-                <q-badge v-if="selectedCourse.modality" :label="selectedCourse.modality" color="secondary" outline />
+                <q-badge
+                  v-if="selectedCourse.type"
+                  :label="selectedCourse.type"
+                  color="primary"
+                  outline
+                />
+                <q-badge
+                  v-if="selectedCourse.modality"
+                  :label="selectedCourse.modality"
+                  color="secondary"
+                  outline
+                />
               </div>
             </q-card-section>
           </q-card>
@@ -78,7 +88,7 @@ import type { Training } from '../../../domain/training/models';
 interface Props {
   open: boolean;
   userId: string;
-  personaId?: string;
+  personaId?: string | undefined;
   assignedCourseIds?: string[];
 }
 
@@ -167,7 +177,7 @@ async function onSubmit() {
   } catch (error) {
     console.error('Error assigning course:', error);
     let errorMessage = 'Error al asignar el curso';
-    
+
     if (error instanceof Error) {
       errorMessage = error.message;
       // Si el error indica que el curso ya está asignado, recargar los cursos
@@ -175,7 +185,7 @@ async function onSubmit() {
         emit('assigned'); // Recargar cursos para mostrar el que ya estaba asignado
       }
     }
-    
+
     $q.notify({
       type: 'negative',
       message: errorMessage,
@@ -207,4 +217,3 @@ onMounted(() => {
   }
 });
 </script>
-

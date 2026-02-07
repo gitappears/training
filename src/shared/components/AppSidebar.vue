@@ -256,6 +256,14 @@ const menuSections = computed<MenuSection[]>(() => {
           visible: isAdmin.value,
         },
         {
+          label: 'Cuotas del asistente',
+          caption: 'Tokens por empresa',
+          icon: 'token',
+          iconColor: 'light-blue',
+          to: '/admin/assistant-quota',
+          visible: isAdmin.value,
+        },
+        {
           label: 'Empresas',
           caption: 'Gestionar empresas',
           icon: 'business',

@@ -3,7 +3,12 @@
 
 import { api } from '../../../boot/axios';
 import type { AxiosError } from 'axios';
-import type { IPeopleRepository } from '../../../application/people/people.repository.port';
+import type {
+  IPeopleRepository,
+  CreateExternalDriverDto,
+  ExternalDriver,
+  BulkUploadResult,
+} from '../../../application/people/people.repository.port';
 
 /**
  * Tipos para las respuestas del backend
@@ -44,7 +49,7 @@ interface BackendCargaMasiva {
   errores: Array<{
     fila: number;
     error: string;
-    datos: any;
+    datos: Record<string, unknown>;
   }>;
 }
 
@@ -55,31 +60,30 @@ interface BackendCargaMasiva {
 export class PeopleService implements IPeopleRepository {
   private readonly baseUrl = '/people';
 
-  async createExternalDriver(
-    dto: IPeopleRepository['CreateExternalDriverDto'],
-  ): Promise<IPeopleRepository['ExternalDriver']> {
+  async createExternalDriver(dto: CreateExternalDriverDto): Promise<ExternalDriver> {
     try {
       const response = await api.post<BackendConductorExterno>(
         `${this.baseUrl}/external-drivers`,
         dto,
       );
 
+      const persona = response.data.persona;
       return {
         persona: {
-          id: response.data.persona.id,
-          numeroDocumento: response.data.persona.numeroDocumento,
-          tipoDocumento: response.data.persona.tipoDocumento,
-          nombres: response.data.persona.nombres,
-          apellidos: response.data.persona.apellidos,
-          email: response.data.persona.email,
-          telefono: response.data.persona.telefono,
-          fechaNacimiento: response.data.persona.fechaNacimiento
-            ? new Date(response.data.persona.fechaNacimiento)
-            : undefined,
-          genero: response.data.persona.genero,
-          direccion: response.data.persona.direccion,
-          activo: response.data.persona.activo,
-          fechaCreacion: new Date(response.data.persona.fechaCreacion),
+          id: persona.id,
+          numeroDocumento: persona.numeroDocumento,
+          tipoDocumento: persona.tipoDocumento,
+          nombres: persona.nombres,
+          apellidos: persona.apellidos,
+          activo: persona.activo,
+          fechaCreacion: new Date(persona.fechaCreacion),
+          ...(persona.email !== undefined && { email: persona.email }),
+          ...(persona.telefono !== undefined && { telefono: persona.telefono }),
+          ...(persona.fechaNacimiento !== undefined && {
+            fechaNacimiento: new Date(persona.fechaNacimiento),
+          }),
+          ...(persona.genero !== undefined && { genero: persona.genero }),
+          ...(persona.direccion !== undefined && { direccion: persona.direccion }),
         },
         alumno: {
           id: response.data.alumno.id,
@@ -92,13 +96,11 @@ export class PeopleService implements IPeopleRepository {
       };
     } catch (error) {
       const axiosError = error as AxiosError<{ message?: string }>;
-      throw new Error(
-        axiosError.response?.data?.message ?? 'Error al crear el conductor externo',
-      );
+      throw new Error(axiosError.response?.data?.message ?? 'Error al crear el conductor externo');
     }
   }
 
-  async bulkUploadDrivers(file: File): Promise<IPeopleRepository['BulkUploadResult']> {
+  async bulkUploadDrivers(file: File): Promise<BulkUploadResult> {
     try {
       const formData = new FormData();
       formData.append('file', file);
@@ -130,4 +132,3 @@ export class PeopleService implements IPeopleRepository {
 
 // Exportar instancia singleton
 export const peopleService = new PeopleService();
-

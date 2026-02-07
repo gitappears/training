@@ -23,12 +23,7 @@
     />
 
     <!-- FAL-004: Banner informativo para encuestas -->
-    <q-banner
-      v-if="isSurvey"
-      rounded
-      class="bg-info text-white q-mb-lg"
-      icon="info"
-    >
+    <q-banner v-if="isSurvey" rounded class="bg-info text-white q-mb-lg" icon="info">
       <template #avatar>
         <q-icon name="poll" color="white" size="32px" />
       </template>
@@ -48,19 +43,16 @@
         <div class="text-body1 text-grey-7">{{ evaluation.description }}</div>
       </div>
       <div class="row items-center q-gutter-md">
-        <div v-if="!evaluationCompleted && !reviewMode && attemptStarted" class="row items-center q-gutter-sm">
+        <div
+          v-if="!evaluationCompleted && !reviewMode && attemptStarted"
+          class="row items-center q-gutter-sm"
+        >
           <q-icon name="schedule" size="20px" color="primary" />
           <div class="text-body2 text-weight-medium" :class="timeWarningClass">
             {{ formatTime(timeRemaining) }}
           </div>
         </div>
-        <q-btn
-          v-if="!isViewingResults"
-          flat
-          label="Cancelar"
-          icon="close"
-          @click="confirmCancel"
-        />
+        <q-btn v-if="!isViewingResults" flat label="Cancelar" icon="close" @click="confirmCancel" />
       </div>
     </div>
 
@@ -71,17 +63,9 @@
           <div class="text-subtitle2 text-weight-medium">
             Pregunta {{ currentQuestionIndex + 1 }} de {{ questions.length }}
           </div>
-          <div class="text-body2 text-grey-7">
-            {{ Math.round(progress * 100) }}% completado
-          </div>
+          <div class="text-body2 text-grey-7">{{ Math.round(progress * 100) }}% completado</div>
         </div>
-        <q-linear-progress
-          :value="progress"
-          rounded
-          size="24px"
-          color="primary"
-          class="q-mb-xs"
-        >
+        <q-linear-progress :value="progress" rounded size="24px" color="primary" class="q-mb-xs">
           <div class="absolute-full flex flex-center">
             <q-badge color="white" text-color="primary" :label="`${Math.round(progress * 100)}%`" />
           </div>
@@ -100,22 +84,23 @@
     </q-card>
 
     <!-- Review Mode Header -->
-    <q-card v-if="reviewMode && !evaluationCompleted && shouldShowCorrectAnswers" flat bordered class="q-mb-lg bg-info-1">
+    <q-card
+      v-if="reviewMode && !evaluationCompleted && shouldShowCorrectAnswers"
+      flat
+      bordered
+      class="q-mb-lg bg-info-1"
+    >
       <q-card-section class="q-pa-md">
         <div class="row items-center q-gutter-sm">
           <q-icon name="preview" size="24px" color="info" />
           <div class="col">
             <div class="text-subtitle2 text-weight-medium">Modo de Revisión</div>
             <div class="text-body2 text-grey-7">
-              Revisa tus respuestas antes de enviar la evaluación. Puedes ver las respuestas correctas y modificar cualquier respuesta.
+              Revisa tus respuestas antes de enviar la evaluación. Puedes ver las respuestas
+              correctas y modificar cualquier respuesta.
             </div>
           </div>
-          <q-btn
-            flat
-            color="primary"
-            label="Salir de Revisión"
-            @click="reviewMode = false"
-          />
+          <q-btn flat color="primary" label="Salir de Revisión" @click="reviewMode = false" />
         </div>
       </q-card-section>
     </q-card>
@@ -137,6 +122,19 @@
               </q-badge>
             </div>
 
+            <!-- Aviso cuando la pregunta es de respuesta múltiple -->
+            <q-banner
+              v-if="currentQuestion.type === 'multiple'"
+              dense
+              rounded
+              class="bg-info-1 text-info q-mb-md"
+            >
+              <template #avatar>
+                <q-icon name="checklist" color="info" size="24px" />
+              </template>
+              <span class="text-body2">Puedes seleccionar más de una opción.</span>
+            </q-banner>
+
             <!-- Question Image (RF-16) -->
             <div v-if="currentQuestion.imageUrl" class="question-image-container">
               <q-img
@@ -148,7 +146,10 @@
             </div>
 
             <!-- Type: Única respuesta -->
-            <div v-if="currentQuestion.type === 'single'" class="single-choice-options column q-gutter-md">
+            <div
+              v-if="currentQuestion.type === 'single'"
+              class="single-choice-options column q-gutter-md"
+            >
               <q-card
                 v-for="option in currentQuestion.options"
                 :key="option.id"
@@ -158,7 +159,8 @@
                 :class="{
                   'option-selected': currentAnswer === option.id,
                   'option-correct': canShowCorrectAnswers && option.isCorrect,
-                  'option-incorrect': canShowCorrectAnswers && !option.isCorrect && currentAnswer === option.id,
+                  'option-incorrect':
+                    canShowCorrectAnswers && !option.isCorrect && currentAnswer === option.id,
                 }"
                 @click="currentAnswer = option.id"
               >
@@ -189,7 +191,10 @@
             </div>
 
             <!-- Type: Múltiple respuesta -->
-            <div v-if="currentQuestion.type === 'multiple'" class="multiple-choice-options column q-gutter-md">
+            <div
+              v-if="currentQuestion.type === 'multiple'"
+              class="multiple-choice-options column q-gutter-md"
+            >
               <q-card
                 v-for="option in currentQuestion.options"
                 :key="option.id"
@@ -197,9 +202,14 @@
                 bordered
                 class="option-card cursor-pointer transition-all"
                 :class="{
-                  'option-selected': Array.isArray(currentAnswer) && currentAnswer.includes(option.id),
+                  'option-selected':
+                    Array.isArray(currentAnswer) && currentAnswer.includes(option.id),
                   'option-correct': canShowCorrectAnswers && option.isCorrect,
-                  'option-incorrect': canShowCorrectAnswers && !option.isCorrect && Array.isArray(currentAnswer) && currentAnswer.includes(option.id),
+                  'option-incorrect':
+                    canShowCorrectAnswers &&
+                    !option.isCorrect &&
+                    Array.isArray(currentAnswer) &&
+                    currentAnswer.includes(option.id),
                 }"
                 @click="toggleMultipleAnswer(option.id)"
               >
@@ -219,7 +229,12 @@
                     class="q-ml-sm"
                   />
                   <q-icon
-                    v-if="canShowCorrectAnswers && !option.isCorrect && Array.isArray(currentAnswer) && currentAnswer.includes(option.id)"
+                    v-if="
+                      canShowCorrectAnswers &&
+                      !option.isCorrect &&
+                      Array.isArray(currentAnswer) &&
+                      currentAnswer.includes(option.id)
+                    "
                     name="cancel"
                     color="negative"
                     size="24px"
@@ -230,7 +245,10 @@
             </div>
 
             <!-- Type: Selección de imagen -->
-            <div v-if="currentQuestion.type === 'image'" class="image-choice-options row q-col-gutter-md">
+            <div
+              v-if="currentQuestion.type === 'image'"
+              class="image-choice-options row q-col-gutter-md"
+            >
               <div
                 v-for="option in currentQuestion.options"
                 :key="option.id"
@@ -241,7 +259,8 @@
                   :class="{
                     'option-selected': currentAnswer === option.id,
                     'option-correct': canShowCorrectAnswers && option.isCorrect,
-                    'option-incorrect': canShowCorrectAnswers && !option.isCorrect && currentAnswer === option.id,
+                    'option-incorrect':
+                      canShowCorrectAnswers && !option.isCorrect && currentAnswer === option.id,
                   }"
                   @click="currentAnswer = option.id"
                 >
@@ -253,14 +272,26 @@
                         class="image-square"
                         loading="lazy"
                       />
-                      <div class="absolute-full flex flex-center bg-transparent" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; align-items: center; justify-content: center;">
+                      <div
+                        class="absolute-full flex flex-center bg-transparent"
+                        style="
+                          position: absolute;
+                          top: 0;
+                          left: 0;
+                          right: 0;
+                          bottom: 0;
+                          display: flex;
+                          align-items: center;
+                          justify-content: center;
+                        "
+                      >
                         <q-icon
                           v-if="currentAnswer === option.id"
                           name="check_circle"
                           color="white"
                           size="48px"
                           class="selection-indicator"
-                          style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));"
+                          style="filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5))"
                         />
                         <q-icon
                           v-if="canShowCorrectAnswers && option.isCorrect"
@@ -268,15 +299,19 @@
                           color="positive"
                           size="48px"
                           class="correct-indicator"
-                          style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));"
+                          style="filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5))"
                         />
                         <q-icon
-                          v-if="canShowCorrectAnswers && !option.isCorrect && currentAnswer === option.id"
+                          v-if="
+                            canShowCorrectAnswers &&
+                            !option.isCorrect &&
+                            currentAnswer === option.id
+                          "
                           name="cancel"
                           color="negative"
                           size="48px"
                           class="incorrect-indicator"
-                          style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));"
+                          style="filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5))"
                         />
                       </div>
                     </div>
@@ -292,7 +327,10 @@
             </div>
 
             <!-- Type: Falso/Verdadero -->
-            <div v-if="currentQuestion.type === 'true_false'" class="true-false-options row q-gutter-md">
+            <div
+              v-if="currentQuestion.type === 'true_false'"
+              class="true-false-options row q-gutter-md"
+            >
               <q-card
                 flat
                 bordered
@@ -300,7 +338,10 @@
                 :class="{
                   'option-selected': currentAnswer === currentQuestion.options[0]?.id,
                   'option-correct': canShowCorrectAnswers && currentQuestion.options[0]?.isCorrect,
-                  'option-incorrect': canShowCorrectAnswers && !currentQuestion.options[0]?.isCorrect && currentAnswer === currentQuestion.options[0]?.id,
+                  'option-incorrect':
+                    canShowCorrectAnswers &&
+                    !currentQuestion.options[0]?.isCorrect &&
+                    currentAnswer === currentQuestion.options[0]?.id,
                 }"
                 @click="currentAnswer = currentQuestion.options[0]?.id"
               >
@@ -320,7 +361,11 @@
                     class="q-mt-sm"
                   />
                   <q-icon
-                    v-if="canShowCorrectAnswers && !currentQuestion.options[0]?.isCorrect && currentAnswer === currentQuestion.options[0]?.id"
+                    v-if="
+                      canShowCorrectAnswers &&
+                      !currentQuestion.options[0]?.isCorrect &&
+                      currentAnswer === currentQuestion.options[0]?.id
+                    "
                     name="cancel"
                     color="negative"
                     size="32px"
@@ -335,7 +380,10 @@
                 :class="{
                   'option-selected': currentAnswer === currentQuestion.options[1]?.id,
                   'option-correct': canShowCorrectAnswers && currentQuestion.options[1]?.isCorrect,
-                  'option-incorrect': canShowCorrectAnswers && !currentQuestion.options[1]?.isCorrect && currentAnswer === currentQuestion.options[1]?.id,
+                  'option-incorrect':
+                    canShowCorrectAnswers &&
+                    !currentQuestion.options[1]?.isCorrect &&
+                    currentAnswer === currentQuestion.options[1]?.id,
                 }"
                 @click="currentAnswer = currentQuestion.options[1]?.id"
               >
@@ -355,7 +403,11 @@
                     class="q-mt-sm"
                   />
                   <q-icon
-                    v-if="canShowCorrectAnswers && !currentQuestion.options[1]?.isCorrect && currentAnswer === currentQuestion.options[1]?.id"
+                    v-if="
+                      canShowCorrectAnswers &&
+                      !currentQuestion.options[1]?.isCorrect &&
+                      currentAnswer === currentQuestion.options[1]?.id
+                    "
                     name="cancel"
                     color="negative"
                     size="32px"
@@ -374,7 +426,10 @@
                 :class="{
                   'option-selected': currentAnswer === currentQuestion.options[0]?.id,
                   'option-correct': canShowCorrectAnswers && currentQuestion.options[0]?.isCorrect,
-                  'option-incorrect': canShowCorrectAnswers && !currentQuestion.options[0]?.isCorrect && currentAnswer === currentQuestion.options[0]?.id,
+                  'option-incorrect':
+                    canShowCorrectAnswers &&
+                    !currentQuestion.options[0]?.isCorrect &&
+                    currentAnswer === currentQuestion.options[0]?.id,
                 }"
                 @click="currentAnswer = currentQuestion.options[0]?.id"
               >
@@ -394,7 +449,11 @@
                     class="q-mt-sm"
                   />
                   <q-icon
-                    v-if="canShowCorrectAnswers && !currentQuestion.options[0]?.isCorrect && currentAnswer === currentQuestion.options[0]?.id"
+                    v-if="
+                      canShowCorrectAnswers &&
+                      !currentQuestion.options[0]?.isCorrect &&
+                      currentAnswer === currentQuestion.options[0]?.id
+                    "
                     name="cancel"
                     color="negative"
                     size="32px"
@@ -409,7 +468,10 @@
                 :class="{
                   'option-selected': currentAnswer === currentQuestion.options[1]?.id,
                   'option-correct': canShowCorrectAnswers && currentQuestion.options[1]?.isCorrect,
-                  'option-incorrect': canShowCorrectAnswers && !currentQuestion.options[1]?.isCorrect && currentAnswer === currentQuestion.options[1]?.id,
+                  'option-incorrect':
+                    canShowCorrectAnswers &&
+                    !currentQuestion.options[1]?.isCorrect &&
+                    currentAnswer === currentQuestion.options[1]?.id,
                 }"
                 @click="currentAnswer = currentQuestion.options[1]?.id"
               >
@@ -429,7 +491,11 @@
                     class="q-mt-sm"
                   />
                   <q-icon
-                    v-if="canShowCorrectAnswers && !currentQuestion.options[1]?.isCorrect && currentAnswer === currentQuestion.options[1]?.id"
+                    v-if="
+                      canShowCorrectAnswers &&
+                      !currentQuestion.options[1]?.isCorrect &&
+                      currentAnswer === currentQuestion.options[1]?.id
+                    "
                     name="cancel"
                     color="negative"
                     size="32px"
@@ -458,16 +524,27 @@
                   :disable="!isCurrentQuestionAnswered"
                   @click="nextQuestion"
                 />
-                <q-btn
-                  v-else-if="!reviewMode"
-                  color="info"
-                  unelevated
-                  :label="shouldShowCorrectAnswers ? 'Revisar' : 'Finalizar'"
-                  :icon="shouldShowCorrectAnswers ? 'preview' : 'check'"
-                  :loading="submittingEvaluation"
-                  :disable="submittingEvaluation"
-                  @click="shouldShowCorrectAnswers ? enterReviewMode() : submitEvaluation()"
-                />
+                <template v-else-if="!reviewMode">
+                  <!-- Siempre permitir enviar de una vez; si hay revisión, ofrecerla como opción -->
+                  <q-btn
+                    color="positive"
+                    unelevated
+                    label="Enviar evaluación"
+                    icon="check"
+                    :loading="submittingEvaluation"
+                    :disable="submittingEvaluation"
+                    @click="submitEvaluation"
+                  />
+                  <q-btn
+                    v-if="shouldShowCorrectAnswers"
+                    flat
+                    color="info"
+                    label="Revisar respuestas"
+                    icon="preview"
+                    :disable="submittingEvaluation"
+                    @click="enterReviewMode"
+                  />
+                </template>
                 <q-btn
                   v-else
                   color="positive"
@@ -491,17 +568,13 @@
         <transition name="result-fade">
           <!-- FAL-004: Mensaje diferenciado para encuestas -->
           <div v-if="isSurvey" :key="'survey-completed'">
-            <q-icon
-              name="check_circle"
-              color="positive"
-              size="120px"
-              class="q-mb-md"
-            />
+            <q-icon name="check_circle" color="positive" size="120px" class="q-mb-md" />
             <div class="text-h3 text-weight-bold q-mb-sm text-positive">
               ¡Gracias por tu participación!
             </div>
             <div class="text-h5 text-grey-7 q-mb-lg">
-              Tu encuesta ha sido completada exitosamente. Agradecemos tu tiempo y tus valiosos comentarios.
+              Tu encuesta ha sido completada exitosamente. Agradecemos tu tiempo y tus valiosos
+              comentarios.
             </div>
           </div>
           <!-- Resultado normal para evaluaciones -->
@@ -524,7 +597,9 @@
             <!-- Score Breakdown Mejorado -->
             <q-card v-if="!isSurvey" flat bordered class="q-mb-lg q-mt-lg result-breakdown-card">
               <q-card-section>
-                <div class="text-subtitle1 q-mb-md text-weight-medium">Desglose Detallado de Resultados</div>
+                <div class="text-subtitle1 q-mb-md text-weight-medium">
+                  Desglose Detallado de Resultados
+                </div>
 
                 <!-- Estadísticas principales con animación -->
                 <div class="row q-col-gutter-md q-mb-lg">
@@ -669,12 +744,7 @@
                 icon="refresh"
                 @click="retryEvaluation"
               />
-              <q-btn
-                flat
-                size="lg"
-                label="Volver a Evaluaciones"
-                @click="goBack"
-              />
+              <q-btn flat size="lg" label="Volver a Evaluaciones" @click="goBack" />
             </div>
           </div>
         </transition>
@@ -684,28 +754,14 @@
     <!-- Mensaje cuando no se muestran resultados -->
     <q-card v-else flat bordered class="result-card">
       <q-card-section class="q-pa-xl text-center">
-        <q-icon
-          name="check_circle"
-          color="positive"
-          size="120px"
-          class="q-mb-md"
-        />
-        <div class="text-h3 text-weight-bold q-mb-sm text-positive">
-          ¡Evaluación completada!
-        </div>
-        <div class="text-h5 text-grey-7 q-mb-lg">
-          Tu evaluación ha sido enviada exitosamente.
-        </div>
+        <q-icon name="check_circle" color="positive" size="120px" class="q-mb-md" />
+        <div class="text-h3 text-weight-bold q-mb-sm text-positive">¡Evaluación completada!</div>
+        <div class="text-h5 text-grey-7 q-mb-lg">Tu evaluación ha sido enviada exitosamente.</div>
         <div class="text-body1 q-mb-xl text-grey-7">
           Los resultados estarán disponibles próximamente.
         </div>
         <div class="row justify-center q-gutter-sm">
-          <q-btn
-            flat
-            size="lg"
-            label="Volver a Evaluaciones"
-            @click="goBack"
-          />
+          <q-btn flat size="lg" label="Volver a Evaluaciones" @click="goBack" />
         </div>
       </q-card-section>
     </q-card>
@@ -717,7 +773,18 @@ import { ref, computed, onMounted, onUnmounted, watch, type Ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 import type { Evaluation, Question } from '../../../domain/evaluation/models';
+import type { SubmitAnswerData } from '../../../domain/evaluation-attempt/models';
 import { useEvaluationAttempt } from '../../../shared/composables/useEvaluationAttempt';
+
+function getErrorMessage(err: unknown, fallback: string): string {
+  if (err instanceof Error) return err.message;
+  if (err && typeof err === 'object' && 'response' in err) {
+    const data = (err as { response?: { data?: { message?: string | string[] } } }).response?.data
+      ?.message;
+    if (data) return Array.isArray(data) ? data.join(', ') : data;
+  }
+  return fallback;
+}
 import { evaluationsService } from '../../../infrastructure/http/evaluations/evaluations.service';
 import { certificatesService } from '../../../infrastructure/http/certificates/certificates.service';
 import { evaluationAttemptsService } from '../../../infrastructure/http/evaluation-attempts/evaluation-attempts.service';
@@ -913,7 +980,7 @@ function isQuestionAnswered(questionId: string): boolean {
 
   // Para respuestas múltiples, verificar que tenga al menos una opción válida
   if (Array.isArray(answer)) {
-    return answer.length > 0 && answer.every(id => id !== '' && id !== null && id !== undefined);
+    return answer.length > 0 && answer.every((id) => id !== '' && id !== null && id !== undefined);
   }
 
   // Para respuestas simples, verificar que no sea string vacío
@@ -948,9 +1015,10 @@ function nextQuestion() {
   // Asegurar que la respuesta actual esté guardada en answers.value antes de avanzar
   if (currentQ && currentAnswer.value !== undefined && currentAnswer.value !== null) {
     // Validar que la respuesta no esté vacía
-    const isValidAnswer = currentQ.type === 'multiple'
-      ? Array.isArray(currentAnswer.value) && currentAnswer.value.length > 0
-      : String(currentAnswer.value).trim() !== '';
+    const isValidAnswer =
+      currentQ.type === 'multiple'
+        ? Array.isArray(currentAnswer.value) && currentAnswer.value.length > 0
+        : String(currentAnswer.value).trim() !== '';
 
     if (isValidAnswer && !answers.value[currentQ.id]) {
       // Guardar la respuesta si no está guardada
@@ -999,49 +1067,68 @@ async function submitEvaluation() {
 
   try {
     // Guardar todas las respuestas antes de finalizar
-  for (const [questionId, answer] of Object.entries(answers.value)) {
-    const question = questions.value.find((q) => q.id === questionId);
-    if (!question) continue;
+    for (const [questionId, answer] of Object.entries(answers.value)) {
+      const question = questions.value.find((q) => q.id === questionId);
+      if (!question) continue;
 
-    const answerData: any = {
-      preguntaId: parseInt(questionId),
-    };
+      const answerData: SubmitAnswerData = {
+        preguntaId: parseInt(questionId, 10),
+      };
 
-    // Manejar preguntas de texto abierto (OPEN_TEXT)
-    if (question.type === 'open_text') {
-      if (typeof answer === 'string' && answer.trim() !== '') {
-        answerData.textoRespuesta = answer.trim();
+      // Manejar preguntas de texto abierto (OPEN_TEXT)
+      if (question.type === 'open_text') {
+        if (typeof answer === 'string' && answer.trim() !== '') {
+          answerData.textoRespuesta = answer.trim();
+        } else {
+          console.warn('⚠️ Respuesta OPEN_TEXT vacía o inválida:', { questionId, answer });
+          continue;
+        }
+      } else if (question.type === 'multiple' && Array.isArray(answer)) {
+        // Validar que el array no esté vacío
+        if (answer.length > 0) {
+          answerData.opcionRespuestaIds = answer
+            .map((id) => parseInt(String(id)))
+            .filter((id) => !isNaN(id));
+        }
+      } else if (typeof answer === 'string' && answer.trim() !== '') {
+        const parsedId = parseInt(answer);
+        if (!isNaN(parsedId)) {
+          answerData.opcionRespuestaId = parsedId;
+        }
+      } else if (typeof answer === 'number' && !isNaN(answer)) {
+        answerData.opcionRespuestaId = answer;
+      }
+
+      // Solo guardar si hay una respuesta válida
+      if (
+        answerData.textoRespuesta ||
+        answerData.opcionRespuestaId ||
+        (answerData.opcionRespuestaIds && answerData.opcionRespuestaIds.length > 0)
+      ) {
+        try {
+          await evaluationAttempt.saveAnswer(answerData);
+          console.log('✅ Respuesta guardada:', {
+            questionId,
+            questionType: question.type,
+            answerData,
+          });
+        } catch (error) {
+          console.error('❌ Error al guardar respuesta:', {
+            questionId,
+            questionType: question.type,
+            answerData,
+            error,
+          });
+          // Continuar con las demás respuestas aunque una falle
+        }
       } else {
-        console.warn('⚠️ Respuesta OPEN_TEXT vacía o inválida:', { questionId, answer });
-        continue;
+        console.warn('⚠️ Respuesta inválida omitida:', {
+          questionId,
+          answer,
+          questionType: question.type,
+        });
       }
-    } else if (question.type === 'multiple' && Array.isArray(answer)) {
-      // Validar que el array no esté vacío
-      if (answer.length > 0) {
-        answerData.opcionRespuestaIds = answer.map((id) => parseInt(String(id))).filter((id) => !isNaN(id));
-      }
-    } else if (typeof answer === 'string' && answer.trim() !== '') {
-      const parsedId = parseInt(answer);
-      if (!isNaN(parsedId)) {
-        answerData.opcionRespuestaId = parsedId;
-      }
-    } else if (typeof answer === 'number' && !isNaN(answer)) {
-      answerData.opcionRespuestaId = answer;
     }
-
-    // Solo guardar si hay una respuesta válida
-    if (answerData.textoRespuesta || answerData.opcionRespuestaId || (answerData.opcionRespuestaIds && answerData.opcionRespuestaIds.length > 0)) {
-      try {
-        await evaluationAttempt.saveAnswer(answerData);
-        console.log('✅ Respuesta guardada:', { questionId, questionType: question.type, answerData });
-      } catch (error) {
-        console.error('❌ Error al guardar respuesta:', { questionId, questionType: question.type, answerData, error });
-        // Continuar con las demás respuestas aunque una falle
-      }
-    } else {
-      console.warn('⚠️ Respuesta inválida omitida:', { questionId, answer, questionType: question.type });
-    }
-  }
 
     // Finalizar el intento
     const result = await evaluationAttempt.finishAttempt();
@@ -1062,16 +1149,16 @@ async function submitEvaluation() {
             attemptsAllowed: loadedEvaluation.attemptsAllowed,
           });
         }
-      } catch (error) {
-        console.error('❌ Error al recargar evaluación para actualizar intentos:', error);
+      } catch (err: unknown) {
+        console.error('❌ Error al recargar evaluación para actualizar intentos:', err);
         // No bloquear la UI si falla la recarga, pero loguear el error
       }
 
       // Verificar si ya existe una reseña y mostrar el diálogo si no existe
       await checkAndShowReviewDialog();
     }
-  } catch (error) {
-    console.error('❌ Error al finalizar evaluación:', error);
+  } catch (err: unknown) {
+    console.error('❌ Error al finalizar evaluación:', err);
     $q.notify({
       type: 'negative',
       message: 'Error al finalizar la evaluación. Por favor, intenta nuevamente.',
@@ -1114,7 +1201,8 @@ async function downloadCertificate() {
       $q.loading.hide();
       $q.notify({
         type: 'warning',
-        message: 'Certificado no encontrado. El certificado se generará automáticamente. Por favor, intenta nuevamente en unos momentos.',
+        message:
+          'Certificado no encontrado. El certificado se generará automáticamente. Por favor, intenta nuevamente en unos momentos.',
         position: 'top',
         timeout: 6000,
       });
@@ -1148,11 +1236,14 @@ async function downloadCertificate() {
       icon: 'download',
       position: 'top',
     });
-  } catch (error: any) {
+  } catch (err: unknown) {
     $q.loading.hide();
-    console.error('❌ Error al descargar certificado:', error);
+    console.error('❌ Error al descargar certificado:', err);
 
-    const errorMessage = error.message || 'Error al descargar el certificado. Por favor, intenta nuevamente.';
+    const errorMessage = getErrorMessage(
+      err,
+      'Error al descargar el certificado. Por favor, intenta nuevamente.',
+    );
 
     $q.notify({
       type: 'negative',
@@ -1191,7 +1282,9 @@ function confirmCancel() {
     });
   } else {
     // Fallback: usar confirm nativo
-    const confirmed = window.confirm('¿Estás seguro de que deseas cancelar la evaluación? Tu progreso se perderá.');
+    const confirmed = window.confirm(
+      '¿Estás seguro de que deseas cancelar la evaluación? Tu progreso se perderá.',
+    );
     if (confirmed) {
       evaluationAttempt.stopTimer();
       void router.push('/evaluations');
@@ -1235,8 +1328,7 @@ function isQuestionCorrect(questionId: string): boolean {
     const selectedIds = Array.isArray(answer) ? answer : [];
     const correctIds = question.options.filter((opt) => opt.isCorrect).map((opt) => opt.id);
     return (
-      selectedIds.length === correctIds.length &&
-      selectedIds.every((id) => correctIds.includes(id))
+      selectedIds.length === correctIds.length && selectedIds.every((id) => correctIds.includes(id))
     );
   } else {
     const selectedId = Array.isArray(answer) ? answer[0] : answer;
@@ -1296,8 +1388,8 @@ async function checkAndShowReviewDialog() {
       console.log('✅ Ya existe una reseña para esta inscripción');
       hasSubmittedReview.value = true;
     }
-  } catch (error) {
-    console.error('❌ Error al verificar reseña:', error);
+  } catch (err: unknown) {
+    console.error('❌ Error al verificar reseña:', err);
     // No bloquear la UI si falla la verificación
   }
 }
@@ -1329,11 +1421,11 @@ async function handleSubmitReview(data: { rating: number; comment?: string }) {
       position: 'top',
       timeout: 4000,
     });
-  } catch (error: any) {
-    console.error('❌ Error al enviar reseña:', error);
+  } catch (err: unknown) {
+    console.error('❌ Error al enviar reseña:', err);
     $q.notify({
       type: 'negative',
-      message: error.message || 'Error al enviar la reseña. Por favor, intenta nuevamente.',
+      message: getErrorMessage(err, 'Error al enviar la reseña. Por favor, intenta nuevamente.'),
       icon: 'error',
       position: 'top',
       timeout: 5000,
@@ -1381,7 +1473,7 @@ watch(
         questionText: currentQ.text.substring(0, 50) + (currentQ.text.length > 50 ? '...' : ''),
         currentAnswer: answersObj[currentQ.id],
         isAnswered,
-        allAnswers: Object.keys(answersObj).map(key => ({
+        allAnswers: Object.keys(answersObj).map((key) => ({
           questionId: key,
           answer: answersObj[key],
         })),
@@ -1418,7 +1510,7 @@ watch(
         continue;
       }
 
-      const answerData: any = {
+      const answerData: SubmitAnswerData = {
         preguntaId: parseInt(questionId),
       };
 
@@ -1431,14 +1523,16 @@ watch(
       try {
         await evaluationAttempt.saveAnswer(answerData);
         console.log('✅ Respuesta guardada exitosamente:', { questionId, answer });
-      } catch (error: any) {
-        console.error(`❌ Error al guardar respuesta para pregunta ${questionId}:`, error);
+      } catch (err: unknown) {
+        console.error(`❌ Error al guardar respuesta para pregunta ${questionId}:`, err);
         // No bloquear la UI, solo loguear el error
         // Solo mostrar notificación para errores críticos del servidor
-        if (error.response?.status >= 500) {
+        const status = (err as { response?: { status?: number } })?.response?.status;
+        if (status != null && status >= 500) {
           $q.notify({
             type: 'warning',
-            message: 'Hubo un problema al guardar tu respuesta. Por favor, intenta responder nuevamente.',
+            message:
+              'Hubo un problema al guardar tu respuesta. Por favor, intenta responder nuevamente.',
             icon: 'warning',
             position: 'top',
             timeout: 3000,
@@ -1457,11 +1551,11 @@ async function handleStartEvaluation() {
     await evaluationAttempt.startAttempt();
     attemptStarted.value = true;
     showPreviewDialog.value = false;
-  } catch (error: any) {
-    console.error('Error al iniciar evaluación:', error);
+  } catch (err: unknown) {
+    console.error('Error al iniciar evaluación:', err);
     $q.notify({
       type: 'negative',
-      message: error.response?.data?.message || 'Error al iniciar la evaluación',
+      message: getErrorMessage(err, 'Error al iniciar la evaluación'),
       icon: 'error',
       position: 'top',
     });
@@ -1503,12 +1597,12 @@ onMounted(async () => {
       // Obtener todos los intentos de la evaluación
       const attempts = await evaluationAttemptsService.getAttempts(
         parseInt(evaluationId),
-        inscripcionId
+        inscripcionId,
       );
 
       // Encontrar el último intento completado
       const completedAttempts = attempts.filter(
-        (attempt) => attempt.estado === 'completado' && attempt.fechaFinalizacion
+        (attempt) => attempt.estado === 'completado' && attempt.fechaFinalizacion,
       );
 
       if (completedAttempts.length === 0) {
@@ -1519,7 +1613,7 @@ onMounted(async () => {
       const completedAttempt = completedAttempts.sort(
         (a, b) =>
           new Date(b.fechaFinalizacion || '').getTime() -
-          new Date(a.fechaFinalizacion || '').getTime()
+          new Date(a.fechaFinalizacion || '').getTime(),
       )[0];
 
       // Si se proporcionó un attemptId específico, usarlo; de lo contrario, usar el más reciente
@@ -1536,12 +1630,9 @@ onMounted(async () => {
 
       // Cargar las respuestas del intento desde el backend
       // El backend ahora retorna las respuestas en el intento
-      const backendAttempt = await api.get<any>(
-        `/evaluaciones/${evaluationId}/intentos`,
-        {
-          params: { inscripcionId },
-        }
-      );
+      const backendAttempt = await api.get<any>(`/evaluaciones/${evaluationId}/intentos`, {
+        params: { inscripcionId },
+      });
 
       const backendAttemptData = backendAttempt.data.find((a: any) => a.id === attemptId);
 
@@ -1556,13 +1647,18 @@ onMounted(async () => {
 
           // Si tiene respuestas múltiples (pregunta de tipo multiple)
           if (respuesta.respuestasMultiples && respuesta.respuestasMultiples.length > 0) {
-            mappedAnswers[preguntaId] = respuesta.respuestasMultiples.map(
-              (rm: any) => rm.opcionRespuesta?.id?.toString() || rm.opcionRespuestaId?.toString()
-            ).filter((id: string) => id);
+            mappedAnswers[preguntaId] = respuesta.respuestasMultiples
+              .map(
+                (rm: any) => rm.opcionRespuesta?.id?.toString() || rm.opcionRespuestaId?.toString(),
+              )
+              .filter((id: string) => id);
           }
           // Si tiene una opción de respuesta única
           else if (respuesta.opcionRespuesta) {
-            mappedAnswers[preguntaId] = respuesta.opcionRespuesta.id?.toString() || respuesta.opcionRespuestaId?.toString() || '';
+            mappedAnswers[preguntaId] =
+              respuesta.opcionRespuesta.id?.toString() ||
+              respuesta.opcionRespuestaId?.toString() ||
+              '';
           }
           // Si tiene texto de respuesta (pregunta abierta)
           else if (respuesta.textoRespuesta) {
@@ -1600,11 +1696,11 @@ onMounted(async () => {
       // Comportamiento normal: mostrar diálogo de vista previa
       showPreviewDialog.value = true;
     }
-  } catch (error: any) {
-    console.error('Error al cargar evaluación:', error);
+  } catch (err: unknown) {
+    console.error('Error al cargar evaluación:', err);
     $q.notify({
       type: 'negative',
-      message: error.response?.data?.message || error.message || 'Error al cargar la evaluación',
+      message: getErrorMessage(err, 'Error al cargar la evaluación'),
       icon: 'error',
       position: 'top',
     });
@@ -1798,7 +1894,9 @@ body.body--dark .question-card:hover {
 // Animaciones
 .question-fade-enter-active,
 .question-fade-leave-active {
-  transition: opacity 0.3s ease, transform 0.3s ease;
+  transition:
+    opacity 0.3s ease,
+    transform 0.3s ease;
 }
 
 .question-fade-enter-from {
@@ -1813,7 +1911,9 @@ body.body--dark .question-card:hover {
 
 .result-fade-enter-active,
 .result-fade-leave-active {
-  transition: opacity 0.5s ease, transform 0.5s ease;
+  transition:
+    opacity 0.5s ease,
+    transform 0.5s ease;
 }
 
 .result-fade-enter-from {
@@ -1897,7 +1997,8 @@ body.body--dark .question-card:hover {
 }
 
 @keyframes incorrectShake {
-  0%, 100% {
+  0%,
+  100% {
     transform: translateX(0);
   }
   25% {
@@ -1909,7 +2010,8 @@ body.body--dark .question-card:hover {
 }
 
 @keyframes iconBounce {
-  0%, 100% {
+  0%,
+  100% {
     transform: scale(1);
   }
   50% {

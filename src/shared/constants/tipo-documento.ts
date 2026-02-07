@@ -23,9 +23,7 @@ export const TIPO_DOCUMENTO_OPTIONS: TipoDocumentoOption[] = [
  * @param type Código del tipo o null/undefined
  * @returns Etiqueta o el valor original si no se encuentra
  */
-export function getTipoDocumentoLabel(
-  type: TipoDocumento | string | null | undefined,
-): string {
+export function getTipoDocumentoLabel(type: string | null | undefined): string {
   if (type == null || type === '') return '';
   const opt = TIPO_DOCUMENTO_OPTIONS.find((o) => o.value === type);
   return opt?.label ?? String(type);

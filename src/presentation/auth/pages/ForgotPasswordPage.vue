@@ -5,8 +5,8 @@
         <q-icon name="lock_reset" size="64px" color="primary" class="q-mb-md" />
         <div class="text-h5 q-mb-xs">¿Olvidaste tu contraseña?</div>
         <div class="text-body2 text-grey-7">
-          No te preocupes. Ingresa tu usuario o email y te enviaremos
-          instrucciones para recuperarla.
+          No te preocupes. Ingresa tu usuario o email y te enviaremos instrucciones para
+          recuperarla.
         </div>
       </q-card-section>
 
@@ -54,18 +54,13 @@
         <div class="text-h6 q-mb-md text-positive">¡Correo enviado!</div>
         <div class="text-body2 text-grey-7 q-mb-md">
           Si el usuario existe, se ha enviado un correo electrónico a
-          <strong>{{ emailSentTo }}</strong> con instrucciones para recuperar tu
-          contraseña.
+          <strong>{{ emailSentTo }}</strong> con instrucciones para recuperar tu contraseña.
         </div>
         <div class="text-caption text-grey-6 q-mb-md">
           <q-icon name="info" size="18px" />
           Revisa también la carpeta de spam si no lo encuentras.
         </div>
-        <q-btn
-          label="Volver al login"
-          color="primary"
-          :to="{ name: 'login' }"
-        />
+        <q-btn label="Volver al login" color="primary" :to="{ name: 'login' }" />
       </q-card-section>
     </q-card>
   </q-page>
@@ -101,11 +96,10 @@ async function handleSubmit() {
       message: 'Correo de recuperación enviado',
       caption: 'Revisa tu bandeja de entrada',
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const err = error as { response?: { data?: { message?: string } }; message?: string };
     const errorMessage =
-      error.response?.data?.message ||
-      error.message ||
-      'Error al procesar la solicitud';
+      err.response?.data?.message || err.message || 'Error al procesar la solicitud';
 
     $q.notify({
       type: 'negative',

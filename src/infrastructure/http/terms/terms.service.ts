@@ -3,7 +3,11 @@
 
 import { api } from '../../../boot/axios';
 import type { AxiosError } from 'axios';
-import type { ITermsRepository } from '../../../application/terms/terms.repository.port';
+import type {
+  ITermsRepository,
+  DocumentoLegal,
+  Aceptacion,
+} from '../../../application/terms/terms.repository.port';
 
 /**
  * Tipos para las respuestas del backend
@@ -32,11 +36,9 @@ interface BackendAceptacion {
 export class TermsService implements ITermsRepository {
   private readonly baseUrl = '/terms';
 
-  async getActiveDocuments(): Promise<ITermsRepository['DocumentoLegal'][]> {
+  async getActiveDocuments(): Promise<DocumentoLegal[]> {
     try {
-      const response = await api.get<BackendDocumentoLegal[]>(
-        `${this.baseUrl}/active-documents`,
-      );
+      const response = await api.get<BackendDocumentoLegal[]>(`${this.baseUrl}/active-documents`);
 
       return response.data.map((doc) => ({
         id: doc.id,
@@ -55,12 +57,11 @@ export class TermsService implements ITermsRepository {
     }
   }
 
-  async acceptTerms(documentosIds: number[]): Promise<ITermsRepository['Aceptacion'][]> {
+  async acceptTerms(documentosIds: number[]): Promise<Aceptacion[]> {
     try {
-      const response = await api.post<BackendAceptacion[]>(
-        `${this.baseUrl}/accept`,
-        { documentosIds },
-      );
+      const response = await api.post<BackendAceptacion[]>(`${this.baseUrl}/accept`, {
+        documentosIds,
+      });
 
       return response.data.map((aceptacion) => ({
         id: aceptacion.id,
@@ -88,7 +89,8 @@ export class TermsService implements ITermsRepository {
       if (axiosError.response?.status === 401) {
         return {
           aceptado: false,
-          message: axiosError.response?.data?.message ?? 'No ha aceptado los términos y condiciones',
+          message:
+            axiosError.response?.data?.message ?? 'No ha aceptado los términos y condiciones',
         };
       }
       throw new Error(
@@ -105,12 +107,13 @@ export class TermsService implements ITermsRepository {
     username: string,
     password: string,
     documentosIds: number[],
-  ): Promise<ITermsRepository['Aceptacion'][]> {
+  ): Promise<Aceptacion[]> {
     try {
-      const response = await api.post<BackendAceptacion[]>(
-        `${this.baseUrl}/public/accept`,
-        { username, password, documentosIds },
-      );
+      const response = await api.post<BackendAceptacion[]>(`${this.baseUrl}/public/accept`, {
+        username,
+        password,
+        documentosIds,
+      });
 
       return response.data.map((aceptacion) => ({
         id: aceptacion.id,
@@ -129,7 +132,7 @@ export class TermsService implements ITermsRepository {
   /**
    * Acepta términos y condiciones en nombre de otro usuario (solo para administradores)
    */
-  async acceptTermsForUser(userId: string, documentosIds: number[]): Promise<ITermsRepository['Aceptacion'][]> {
+  async acceptTermsForUser(userId: string, documentosIds: number[]): Promise<Aceptacion[]> {
     try {
       // Convertir userId de string a número para el backend
       const userIdNumber = Number.parseInt(userId, 10);
@@ -151,7 +154,8 @@ export class TermsService implements ITermsRepository {
     } catch (error) {
       const axiosError = error as AxiosError<{ message?: string }>;
       throw new Error(
-        axiosError.response?.data?.message ?? 'Error al aceptar términos y condiciones para el usuario',
+        axiosError.response?.data?.message ??
+          'Error al aceptar términos y condiciones para el usuario',
       );
     }
   }
@@ -159,4 +163,3 @@ export class TermsService implements ITermsRepository {
 
 // Exportar instancia singleton
 export const termsService = new TermsService();
-

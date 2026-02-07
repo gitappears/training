@@ -10,6 +10,8 @@ import type {
   UserListParams,
   UserFilters,
   UserStatistics,
+  CompleteTrainingsResult,
+  CompleteTrainingsBulkResult,
 } from '../../../application/user/user.repository.port';
 import type { User } from '../../../domain/user/models';
 import type { PaginatedResponse } from '../../../application/training/training.repository.port';
@@ -287,9 +289,14 @@ export class UsersService implements IUserRepository {
       // Por lo tanto, si hay campos de persona, necesitamos usar un endpoint específico
       // Por ahora, intentamos enviarlos en el mismo request al endpoint de usuarios
       // Si el backend no los acepta, se ignorarán
-      const hasPersonData = backendDto.nombres || backendDto.apellidos || backendDto.email ||
-                            backendDto.telefono || backendDto.fechaNacimiento ||
-                            backendDto.genero || backendDto.direccion;
+      const hasPersonData =
+        backendDto.nombres ||
+        backendDto.apellidos ||
+        backendDto.email ||
+        backendDto.telefono ||
+        backendDto.fechaNacimiento ||
+        backendDto.genero ||
+        backendDto.direccion;
 
       if (hasPersonData) {
         // Intentar actualizar datos personales usando el endpoint de perfil del usuario
@@ -307,7 +314,6 @@ export class UsersService implements IUserRepository {
       );
     }
   }
-
 
   async remove(id: string): Promise<void> {
     try {
@@ -390,9 +396,7 @@ export class UsersService implements IUserRepository {
       await Promise.all(ids.map((id) => this.toggleStatus(id, true)));
     } catch (error) {
       const axiosError = error as AxiosError<{ message?: string }>;
-      throw new Error(
-        axiosError.response?.data?.message ?? 'Error al habilitar usuarios',
-      );
+      throw new Error(axiosError.response?.data?.message ?? 'Error al habilitar usuarios');
     }
   }
 
@@ -402,13 +406,25 @@ export class UsersService implements IUserRepository {
       await Promise.all(ids.map((id) => this.toggleStatus(id, false)));
     } catch (error) {
       const axiosError = error as AxiosError<{ message?: string }>;
-      throw new Error(
-        axiosError.response?.data?.message ?? 'Error al deshabilitar usuarios',
-      );
+      throw new Error(axiosError.response?.data?.message ?? 'Error al deshabilitar usuarios');
     }
+  }
+
+  async completeTrainings(userId: string): Promise<CompleteTrainingsResult> {
+    const response = await api.post<CompleteTrainingsResult>(
+      `${this.baseUrl}/${userId}/complete-trainings`,
+    );
+    return response.data;
+  }
+
+  async completeTrainingsBulk(userIds: string[]): Promise<CompleteTrainingsBulkResult> {
+    const response = await api.post<CompleteTrainingsBulkResult>(
+      `${this.baseUrl}/complete-trainings-bulk`,
+      { userIds: userIds.map((id) => Number(id)) },
+    );
+    return response.data;
   }
 }
 
 // Exportar instancia singleton
 export const usersService = new UsersService();
-

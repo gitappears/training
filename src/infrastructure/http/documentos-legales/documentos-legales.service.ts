@@ -49,17 +49,14 @@ export class DocumentosLegalesService implements IDocumentosLegalesRepository {
         requiereFirmaDigital:
           typeof doc.requiereFirmaDigital === 'number'
             ? doc.requiereFirmaDigital === 1
-            : doc.requiereFirmaDigital,
-        // Convertir número (1/0) a boolean
-        activo: typeof doc.activo === 'number' ? doc.activo === 1 : doc.activo,
+            : !!doc.requiereFirmaDigital,
+        activo: typeof doc.activo === 'number' ? doc.activo === 1 : !!doc.activo,
         fechaCreacion: new Date(doc.fechaCreacion),
         fechaActualizacion: new Date(doc.fechaActualizacion),
       }));
     } catch (error) {
       const axiosError = error as AxiosError<{ message?: string }>;
-      throw new Error(
-        axiosError.response?.data?.message ?? 'Error al obtener documentos legales',
-      );
+      throw new Error(axiosError.response?.data?.message ?? 'Error al obtener documentos legales');
     }
   }
 
@@ -77,9 +74,12 @@ export class DocumentosLegalesService implements IDocumentosLegalesRepository {
         requiereFirmaDigital:
           typeof response.data.requiereFirmaDigital === 'number'
             ? response.data.requiereFirmaDigital === 1
-            : response.data.requiereFirmaDigital,
+            : !!response.data.requiereFirmaDigital,
         // Convertir número (1/0) a boolean
-        activo: typeof response.data.activo === 'number' ? response.data.activo === 1 : response.data.activo,
+        activo:
+          typeof response.data.activo === 'number'
+            ? response.data.activo === 1
+            : !!response.data.activo,
         fechaCreacion: new Date(response.data.fechaCreacion),
         fechaActualizacion: new Date(response.data.fechaActualizacion),
       };
@@ -88,9 +88,7 @@ export class DocumentosLegalesService implements IDocumentosLegalesRepository {
       if (axiosError.response?.status === 404) {
         return null;
       }
-      throw new Error(
-        axiosError.response?.data?.message ?? 'Error al obtener el documento legal',
-      );
+      throw new Error(axiosError.response?.data?.message ?? 'Error al obtener el documento legal');
     }
   }
 
@@ -123,17 +121,21 @@ export class DocumentosLegalesService implements IDocumentosLegalesRepository {
         titulo: response.data.titulo,
         contenido: response.data.contenido,
         version: response.data.version,
-        requiereFirmaDigital: response.data.requiereFirmaDigital,
         // Convertir número (1/0) a boolean
-        activo: typeof response.data.activo === 'number' ? response.data.activo === 1 : response.data.activo,
+        requiereFirmaDigital:
+          typeof response.data.requiereFirmaDigital === 'number'
+            ? response.data.requiereFirmaDigital === 1
+            : !!response.data.requiereFirmaDigital,
+        activo:
+          typeof response.data.activo === 'number'
+            ? response.data.activo === 1
+            : !!response.data.activo,
         fechaCreacion: new Date(response.data.fechaCreacion),
         fechaActualizacion: new Date(response.data.fechaActualizacion),
       };
     } catch (error) {
       const axiosError = error as AxiosError<{ message?: string }>;
-      throw new Error(
-        axiosError.response?.data?.message ?? 'Error al crear el documento legal',
-      );
+      throw new Error(axiosError.response?.data?.message ?? 'Error al crear el documento legal');
     }
   }
 
@@ -147,7 +149,10 @@ export class DocumentosLegalesService implements IDocumentosLegalesRepository {
       if (dto.requiereFirmaDigital !== undefined) {
         dtoParaBackend.requiereFirmaDigital = dto.requiereFirmaDigital ? 1 : 0;
       }
-      const response = await api.put<BackendDocumentoLegal>(`${this.baseUrl}/${id}`, dtoParaBackend);
+      const response = await api.put<BackendDocumentoLegal>(
+        `${this.baseUrl}/${id}`,
+        dtoParaBackend,
+      );
 
       return {
         id: response.data.id,
@@ -159,9 +164,11 @@ export class DocumentosLegalesService implements IDocumentosLegalesRepository {
         requiereFirmaDigital:
           typeof response.data.requiereFirmaDigital === 'number'
             ? response.data.requiereFirmaDigital === 1
-            : response.data.requiereFirmaDigital,
-        // Convertir número (1/0) a boolean
-        activo: typeof response.data.activo === 'number' ? response.data.activo === 1 : response.data.activo,
+            : !!response.data.requiereFirmaDigital,
+        activo:
+          typeof response.data.activo === 'number'
+            ? response.data.activo === 1
+            : !!response.data.activo,
         fechaCreacion: new Date(response.data.fechaCreacion),
         fechaActualizacion: new Date(response.data.fechaActualizacion),
       };
@@ -178,9 +185,7 @@ export class DocumentosLegalesService implements IDocumentosLegalesRepository {
       await api.delete(`${this.baseUrl}/${id}`);
     } catch (error) {
       const axiosError = error as AxiosError<{ message?: string }>;
-      throw new Error(
-        axiosError.response?.data?.message ?? 'Error al eliminar el documento legal',
-      );
+      throw new Error(axiosError.response?.data?.message ?? 'Error al eliminar el documento legal');
     }
   }
 }
