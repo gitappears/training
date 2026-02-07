@@ -224,6 +224,36 @@ export function useCertificates() {
   };
 
   /**
+   * Actualiza las fechas de expedición y/o caducidad de un certificado (solo ADMIN).
+   */
+  const updateCertificateDates = async (
+    id: string,
+    dto: { issuedDate?: string; expiryDate?: string },
+  ): Promise<void> => {
+    try {
+      const updated = await certificatesService.updateDates(id, dto);
+      currentCertificate.value = updated;
+      $q.notify({
+        type: 'positive',
+        message: 'Fechas actualizadas correctamente',
+        icon: 'check_circle',
+        position: 'top',
+      });
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Error al actualizar las fechas';
+      $q.notify({
+        type: 'negative',
+        message: errorMessage,
+        icon: 'error',
+        position: 'top',
+        timeout: 5000,
+      });
+      throw error;
+    }
+  };
+
+  /**
    * Actualiza los filtros y recarga los certificados
    */
   const updateFilters = async (newFilters: Partial<CertificateFilters>): Promise<void> => {
@@ -270,6 +300,7 @@ export function useCertificates() {
     loadUserCertificates,
     downloadCertificatePDF,
     verifyCertificate,
+    updateCertificateDates,
     updateFilters,
     clearFilters,
     changePage,

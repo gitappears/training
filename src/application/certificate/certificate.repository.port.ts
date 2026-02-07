@@ -59,6 +59,11 @@ export interface ICertificateRepository {
   update(id: string, dto: UpdateCertificateDto): Promise<Certificate>;
 
   /**
+   * Actualizar fechas de un certificado (expedición y caducidad). Solo ADMIN.
+   */
+  updateDates(id: string, dto: { issuedDate?: string; expiryDate?: string }): Promise<Certificate>;
+
+  /**
    * Eliminar un certificado
    */
   remove(id: string): Promise<void>;
@@ -103,11 +108,13 @@ export interface ICertificateRepository {
   /**
    * Obtener configuraciones de alertas
    */
-  getAlertConfigurations(): Promise<Array<{
-    id: number;
-    diasAntesVencimiento: number;
-    activo: boolean;
-  }>>;
+  getAlertConfigurations(): Promise<
+    Array<{
+      id: number;
+      diasAntesVencimiento: number;
+      activo: boolean;
+    }>
+  >;
 
   /**
    * Actualizar configuración de alerta
@@ -126,4 +133,3 @@ export interface ICertificateRepository {
    */
   checkExpirationsManually(): Promise<{ success: boolean; message: string }>;
 }
-

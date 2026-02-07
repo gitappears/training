@@ -102,6 +102,18 @@ interface BackendPaginatedResponse {
 }
 
 /**
+ * Normaliza una fecha que puede venir solo como YYYY-MM-DD a ISO con mediodía UTC,
+ * para que al formatear en cualquier zona (ej. America/Bogota) se muestre el mismo día.
+ */
+function toISOKeepingCalendarDay(dateStr: string): string {
+  const trimmed = dateStr?.trim() ?? '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    return `${trimmed}T12:00:00.000Z`;
+  }
+  return new Date(dateStr).toISOString();
+}
+
+/**
  * Mapea la respuesta del backend al modelo de dominio
  */
 function mapBackendToDomain(backendData: BackendCertificate): Certificate {
@@ -110,11 +122,19 @@ function mapBackendToDomain(backendData: BackendCertificate): Certificate {
   const capacitacion = inscripcion?.capacitacion;
   const instructor = capacitacion?.instructor;
 
-  // Calcular fecha de emisión (retroactiva si aplica) (RF-28, RF-31)
+  // Calcular fecha de emisión (retroactiva si aplica) (RF-28, RF-31). Normalizar para evitar desfase de zona.
   const fechaEmision =
     backendData.esRetroactivo && backendData.fechaRetroactiva
-      ? new Date(backendData.fechaRetroactiva).toISOString()
-      : backendData.fechaEmision;
+      ? toISOKeepingCalendarDay(
+          backendData.fechaRetroactiva.includes('T')
+            ? backendData.fechaRetroactiva.slice(0, 10)
+            : backendData.fechaRetroactiva,
+        )
+      : backendData.fechaEmision?.includes('T')
+        ? backendData.fechaEmision
+        : backendData.fechaEmision
+          ? toISOKeepingCalendarDay(backendData.fechaEmision)
+          : new Date().toISOString();
 
   // Asegurar que siempre tengamos un código de verificación y URL
   const hashVerificacion =
@@ -144,7 +164,7 @@ function mapBackendToDomain(backendData: BackendCertificate): Certificate {
       : '',
     issuedDate: fechaEmision,
     expiryDate: backendData.fechaVencimiento
-      ? new Date(backendData.fechaVencimiento).toISOString()
+      ? toISOKeepingCalendarDay(backendData.fechaVencimiento)
       : new Date().toISOString(),
     isRetroactive: backendData.esRetroactivo ?? false,
     score: inscripcion?.calificacionFinal ?? 0,
@@ -186,17 +206,15 @@ function mapStatus(backendData: BackendCertificate): CertificateStatus {
 
   if (!backendData.activo) return 'revoked';
 
-  // Verificar si está vencido
+  // Verificar si está vencido. Si la fecha viene solo como YYYY-MM-DD, considerar "válido hasta fin de ese día".
   if (backendData.fechaVencimiento) {
-    const fechaVencimiento = new Date(backendData.fechaVencimiento);
+    const raw = backendData.fechaVencimiento.trim();
+    const endOfExpiryDay = /^\d{4}-\d{2}-\d{2}$/.test(raw)
+      ? new Date(`${raw}T23:59:59.999Z`)
+      : new Date(backendData.fechaVencimiento);
     const ahora = new Date();
 
-    // Debug fecha
-    console.log(
-      `[Cert Status] ID: ${backendData.id}, Vence: ${fechaVencimiento.toISOString()}, Ahora: ${ahora.toISOString()}`,
-    );
-
-    if (ahora > fechaVencimiento) {
+    if (ahora > endOfExpiryDay) {
       return 'expired';
     }
   }
@@ -377,6 +395,33 @@ export class CertificatesService implements ICertificateRepository {
     }
   }
 
+  async updateDates(
+    id: string,
+    dto: { issuedDate?: string; expiryDate?: string },
+  ): Promise<Certificate> {
+    try {
+      const body: { fechaEmision?: string; fechaVencimiento?: string } = {};
+      if (dto.issuedDate) {
+        body.fechaEmision = dto.issuedDate.includes('T')
+          ? dto.issuedDate.slice(0, 10)
+          : dto.issuedDate;
+      }
+      if (dto.expiryDate) {
+        body.fechaVencimiento = dto.expiryDate.includes('T')
+          ? dto.expiryDate.slice(0, 10)
+          : dto.expiryDate;
+      }
+      const response = await api.patch<BackendCertificate>(`${this.baseUrl}/${id}`, body);
+      return mapBackendToDomain(response.data);
+    } catch (error) {
+      const axiosError = error as AxiosError<{ message?: string }>;
+      throw new Error(
+        axiosError.response?.data?.message ??
+          `Error al actualizar las fechas del certificado con ID ${id}`,
+      );
+    }
+  }
+
   async remove(id: string): Promise<void> {
     try {
       await api.delete(`${this.baseUrl}/${id}`);
@@ -508,7 +553,9 @@ export class CertificatesService implements ICertificateRepository {
               instructor: '',
               instructorName: '',
               issuedDate: response.data.fechaEmision,
-              expiryDate: response.data.fechaVencimiento || new Date().toISOString(),
+              expiryDate: response.data.fechaVencimiento
+                ? toISOKeepingCalendarDay(response.data.fechaVencimiento)
+                : new Date().toISOString(),
               isRetroactive: false,
               score: 0,
               minimumScore: 70,

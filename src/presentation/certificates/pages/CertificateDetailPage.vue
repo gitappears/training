@@ -270,6 +270,16 @@
                         </q-item-section>
                       </q-item>
                     </q-list>
+                    <q-btn
+                      v-if="isAdmin"
+                      flat
+                      dense
+                      color="primary"
+                      icon="edit_calendar"
+                      label="Editar fechas"
+                      class="q-mt-sm"
+                      @click="openEditDatesDialog"
+                    />
                   </div>
                 </div>
 
@@ -509,6 +519,46 @@
       </div>
     </div>
 
+    <!-- Diálogo Editar fechas (solo ADMIN) -->
+    <q-dialog v-model="showEditDatesDialog" persistent>
+      <q-card style="min-width: 320px">
+        <q-card-section class="row items-center q-pb-none">
+          <div class="text-h6">Editar fechas del certificado</div>
+          <q-space />
+          <q-btn icon="close" flat round dense v-close-popup />
+        </q-card-section>
+        <q-card-section class="q-pt-none">
+          <q-input
+            v-model="editIssuedDate"
+            label="Fecha de expedición"
+            type="date"
+            outlined
+            dense
+            class="q-mb-md"
+            :rules="[(v) => !!v || 'Requerido']"
+          />
+          <q-input
+            v-model="editExpiryDate"
+            label="Fecha de caducidad"
+            type="date"
+            outlined
+            dense
+            :rules="[(v) => !!v || 'Requerido']"
+          />
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat label="Cancelar" color="grey" v-close-popup />
+          <q-btn
+            unelevated
+            label="Guardar"
+            color="primary"
+            :loading="editDatesLoading"
+            @click="saveEditDates"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
     <!-- Dialogo de Codigo QR -->
     <q-dialog v-model="showQrDialog">
       <q-card style="min-width: 350px">
@@ -587,6 +637,7 @@ import type { CertificateVerificationHistory } from '../../../domain/certificate
 import EmptyState from '../../../shared/components/EmptyState.vue';
 import QRCodeDisplay from '../../../shared/components/QRCodeDisplay.vue';
 import { useCertificates } from '../../../shared/composables/useCertificates';
+import { useRole } from '../../../shared/composables/useRole';
 import {
   certificateFormatsService,
   type PdfConfig,
@@ -602,7 +653,10 @@ const {
   currentCertificate: certificate,
   loadCertificate,
   downloadCertificatePDF,
+  updateCertificateDates,
 } = useCertificates();
+
+const { isAdmin } = useRole();
 
 // Estado local
 const tab = ref<'info' | 'verification' | 'history'>('info');
@@ -619,6 +673,33 @@ const certificateConfig = ref<PdfConfig | null>(null);
 
 // Historial de verificaciones (mock por ahora, puede conectarse al backend después)
 const verificationHistory = ref<CertificateVerificationHistory[]>([]);
+
+// Editar fechas (solo ADMIN)
+const showEditDatesDialog = ref(false);
+const editDatesLoading = ref(false);
+const editIssuedDate = ref('');
+const editExpiryDate = ref('');
+
+function openEditDatesDialog() {
+  if (!certificate.value) return;
+  editIssuedDate.value = certificate.value.issuedDate.slice(0, 10);
+  editExpiryDate.value = certificate.value.expiryDate.slice(0, 10);
+  showEditDatesDialog.value = true;
+}
+
+async function saveEditDates() {
+  if (!certificate.value || !certificateId) return;
+  editDatesLoading.value = true;
+  try {
+    await updateCertificateDates(certificateId, {
+      issuedDate: editIssuedDate.value || undefined,
+      expiryDate: editExpiryDate.value || undefined,
+    });
+    showEditDatesDialog.value = false;
+  } finally {
+    editDatesLoading.value = false;
+  }
+}
 
 // AUTO-AJUSTE DE TAMAÑO DE LETRA
 const courseBoxRef = ref<HTMLElement | null>(null);
