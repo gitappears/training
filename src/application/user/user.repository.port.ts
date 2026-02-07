@@ -87,5 +87,28 @@ export interface IUserRepository {
    * Deshabilitar múltiples usuarios (acción masiva)
    */
   bulkDisable(ids: string[]): Promise<void>;
+
+  /**
+   * Completar todas las capacitaciones del usuario y habilitar para certificar (solo ADMIN).
+   */
+  completeTrainings(userId: string): Promise<CompleteTrainingsResult>;
+
+  /**
+   * Completar capacitaciones para varios usuarios (solo ADMIN).
+   */
+  completeTrainingsBulk(userIds: string[]): Promise<CompleteTrainingsBulkResult>;
 }
 
+export interface CompleteTrainingsResult {
+  userId: number;
+  inscripcionesProcesadas: number;
+  message: string;
+  errors?: string[];
+}
+
+export interface CompleteTrainingsBulkResult {
+  results: CompleteTrainingsResult[];
+  totalProcessed: number;
+  totalSuccess: number;
+  totalErrors: number;
+}

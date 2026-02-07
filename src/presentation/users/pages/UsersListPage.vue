@@ -174,6 +174,14 @@
             @click="openBulkAssignDialog"
           />
           <q-btn
+            v-if="isAdmin"
+            flat
+            color="secondary"
+            icon="verified_user"
+            label="Habilitar para certificar"
+            @click="handleBulkCompleteTrainings"
+          />
+          <q-btn
             flat
             color="positive"
             icon="check_circle"
@@ -202,11 +210,14 @@
       :selected-users="selectedUsers"
       :has-active-filters="hasActiveFilters"
       :accepting-terms="acceptingTerms"
+      :completing-trainings="completingTrainings"
+      :is-admin="isAdmin"
       @request="onRequest"
       @view-user="viewUser"
       @edit-user="handleEditUser"
       @toggle-status="handleToggleUserStatus"
       @accept-terms="handleAcceptTerms"
+      @complete-trainings="handleCompleteTrainings"
       @export-csv="handleExportToCSV"
       @export-excel="handleExportToExcel"
       @clear-filters="clearAllFilters"
@@ -228,6 +239,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { useUserList, useUserRoles } from '../composables';
+import { useRole } from '../../../shared/composables/useRole';
 import FiltersPanel from '../../../shared/components/FiltersPanel.vue';
 import UsersTable from '../components/UsersTable.vue';
 import UserEditDialog from '../components/UserEditDialog.vue';
@@ -252,7 +264,10 @@ const {
   handleToggleUserStatus,
   handleBulkEnable,
   handleBulkDisable,
+  handleBulkCompleteTrainings,
   handleAcceptTerms,
+  handleCompleteTrainings,
+  completingTrainings,
   viewUser,
   createUser,
   handleExportToCSV,
@@ -260,6 +275,7 @@ const {
 } = useUserList();
 
 const { roleOptions, statusOptions, personTypeOptions } = useUserRoles();
+const { isAdmin } = useRole();
 
 const editDialogOpen = ref(false);
 const userToEdit = ref<User | null>(null);

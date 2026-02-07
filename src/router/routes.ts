@@ -138,7 +138,7 @@ const routes: RouteRecordRaw[] = [
           roles: ['ADMIN', 'INSTRUCTOR', 'ALUMNO', 'CLIENTE', 'OPERADOR'] as UserRole[],
         },
       },
-      
+
       // Certificados - Vigencias y Alertas (RF-35 a RF-39)
       {
         path: 'certificates/expiring',
@@ -192,6 +192,14 @@ const routes: RouteRecordRaw[] = [
         path: 'admin/pdf-editor',
         name: 'pdf-editor',
         component: () => import('../presentation/admin/pages/PdfEditorPage.vue'),
+        meta: {
+          roles: ['ADMIN'] as UserRole[],
+        },
+      },
+      {
+        path: 'admin/assistant-quota',
+        name: 'assistant-quota',
+        component: () => import('../presentation/admin/pages/AssistantQuotaPage.vue'),
         meta: {
           roles: ['ADMIN'] as UserRole[],
         },

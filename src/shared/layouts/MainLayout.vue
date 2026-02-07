@@ -95,6 +95,9 @@
       <router-view />
     </q-page-container>
 
+    <!-- Asistente de ayuda Formar 360 -->
+    <AssistantChat />
+
     <!-- Diálogos de Timeout de Sesión -->
     <SessionTimeoutDialog
       :show-inactivity-dialog="showInactivityDialog"
@@ -117,19 +120,15 @@ import { useSessionTimeout } from '../composables/useSessionTimeout';
 import { api } from 'boot/axios';
 import AppSidebar from '../components/AppSidebar.vue';
 import SessionTimeoutDialog from '../components/SessionTimeoutDialog.vue';
+import AssistantChat from '../components/AssistantChat.vue';
 
 const router = useRouter();
 const themeStore = useThemeStore();
 const { logout, user } = useAuth();
 
 // Gestión de timeout de sesión
-const {
-  showInactivityDialog,
-  showMaxSessionDialog,
-  warningTime,
-  extenderSesion,
-  cerrarSesion,
-} = useSessionTimeout();
+const { showInactivityDialog, showMaxSessionDialog, warningTime, extenderSesion, cerrarSesion } =
+  useSessionTimeout();
 
 const userImageUrl = computed(() => {
   const fotoUrl = user.value?.persona?.fotoUrl;
